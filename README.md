@@ -1,8 +1,12 @@
 # Meadowland · 低多边形农场
 
+**by DeepSeek-V4.1flash-1017🐳**
+
+**DSH-PTC**
+
 **版本 0.5.0** · [在线体验](https://Cl0ud-99.github.io/meadowland/)
 
-一个治愈系低多边形 3D 农场。基于 **three.js r169** 从零重写，所有模型与材质全部程序化生成，不依赖任何外部美术资产。
+一个治愈系低多边形 3D 农场。基于 **three.js r169** 从零重写，
 
 ![Meadowland 全景](screenshots/overview.png)
 
@@ -28,7 +32,6 @@ Meadowland 想做的不是“又一个农场模拟器”，而是一块可以随
 | --- | --- |
 | ![黄昏](screenshots/sunset.png) | ![水车](screenshots/watermill.png) |
 
-![农舍](screenshots/farmhouse.png)
 
 ---
 
