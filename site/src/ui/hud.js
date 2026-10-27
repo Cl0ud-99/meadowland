@@ -5,7 +5,7 @@ import { TRUCK_STYLES } from '../world/truck.js';
 import { SNOWMAN_STYLES } from '../world/snowmanDemo.js';
 import { TREE_SPECIES, BIG_TREE_SPECIES } from '../world/bigtree.js';
 import { loadState, saveState, STORAGE_OK } from '../util/save.js';
-import { DEFAULT_SNAPSHOT } from '../config/defaultSnapshot.js';
+import { DEFAULT_SNAPSHOT, SNAPSHOT_VERSION } from '../config/defaultSnapshot.js';
 
 
 // ---------------------------------------------------------------------------
@@ -1294,7 +1294,7 @@ export function createHud(app) {
 
   // ---------- 状态记忆 ----------
   function collectState() {
-    const s = {};
+    const s = { snapshotVersion: SNAPSHOT_VERSION };
     try {
       s.time = app.mode.target;
       // 优先用 app.seasonT（applySeason 一定会设置它），
@@ -1469,7 +1469,11 @@ export function createHud(app) {
   // 这样 loop() 的第一帧就是记忆中的场景，开屏不会"先默认、再跳变"。
   // 首次打开用默认快照，之后用户自定义会覆盖（保存在 localStorage）
   if (STORAGE_OK) {
-    const initial = loadState() || DEFAULT_SNAPSHOT;
+    const saved = loadState();
+    // 快照版本变化时，强制用新默认覆盖一次；之后用户的自定义正常保存。
+    const initial = (!saved || saved.snapshotVersion !== SNAPSHOT_VERSION)
+      ? DEFAULT_SNAPSHOT
+      : saved;
     if (initial) applyState(initial);
   } else {
     applyState(DEFAULT_SNAPSHOT);
