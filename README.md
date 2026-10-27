@@ -32,6 +32,24 @@ Meadowland 想做的不是“又一个农场模拟器”，而是一块可以随
 
 ---
 
+## 互动
+
+点击场景里的建筑、动物、雪人，进入特写并更换样式。
+
+| 建筑换色 | 雪人独立换装 |
+| --- | --- |
+| ![建筑换色](screenshots/interaction-barn.png) | ![雪人换装](screenshots/interaction-snowman.png) |
+
+| 动物特写 | 第一人称 |
+| --- | --- |
+| ![动物特写](screenshots/interaction-cow.png) | ![第一人称](screenshots/firstperson.png) |
+
+| 夜晚灯光 | 农田近景 |
+| --- | --- |
+| ![夜晚](screenshots/night.png) | ![农田](screenshots/crops.png) |
+
+---
+
 ## 快速开始
 
 ### 直接双击（无需环境）
