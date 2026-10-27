@@ -56474,8 +56474,13 @@ void main() {
 	// ---------------------------------------------------------------------------
 	// 默认快照：所有新用户第一次打开时，从这个场景状态开始。
 	// 用户之后的自定义会覆盖此快照，保存在 localStorage。
+	//
+	// SNAPSHOT_VERSION 变更后，老用户本地存档会在下一次打开时被新默认覆盖一次。
 	// ---------------------------------------------------------------------------
+	const SNAPSHOT_VERSION = '0.5.0-snapshot-1';
+
 	const DEFAULT_SNAPSHOT = {
+	  snapshotVersion: SNAPSHOT_VERSION,
 	  time: 0.82,
 	  season: 2.34,
 	  buildings: { barn: 0, farmhouse: 0 },
@@ -57758,7 +57763,7 @@ void main() {
 
 	  // ---------- 状态记忆 ----------
 	  function collectState() {
-	    const s = {};
+	    const s = { snapshotVersion: SNAPSHOT_VERSION };
 	    try {
 	      s.time = app.mode.target;
 	      // 优先用 app.seasonT（applySeason 一定会设置它），
@@ -57933,7 +57938,11 @@ void main() {
 	  // 这样 loop() 的第一帧就是记忆中的场景，开屏不会"先默认、再跳变"。
 	  // 首次打开用默认快照，之后用户自定义会覆盖（保存在 localStorage）
 	  if (STORAGE_OK) {
-	    const initial = loadState() || DEFAULT_SNAPSHOT;
+	    const saved = loadState();
+	    // 快照版本变化时，强制用新默认覆盖一次；之后用户的自定义正常保存。
+	    const initial = (!saved || saved.snapshotVersion !== SNAPSHOT_VERSION)
+	      ? DEFAULT_SNAPSHOT
+	      : saved;
 	    if (initial) applyState(initial);
 	  } else {
 	    applyState(DEFAULT_SNAPSHOT);
