@@ -3,3 +3,4 @@ dist/
 .pnpm-store/
 *.zip
 *.py
+_*.mjs
