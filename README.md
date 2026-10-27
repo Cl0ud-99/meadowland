@@ -61,7 +61,7 @@ Meadowland 想做的不是“又一个农场模拟器”，而是一块可以随
 
 ```bash
 cd meadowland
-node serve.mjs
+node scripts/serve.mjs
 ```
 
 浏览器打开终端打印的地址（默认 `http://127.0.0.1:5173`）。手机与电脑连同一 Wi-Fi 时，也可以用局域网地址访问。
@@ -86,8 +86,8 @@ node serve.mjs
 
 ```bash
 npm install        # 或 pnpm install
-node prepare.mjs   # src -> site
-node bundle.mjs    # site -> standalone
+node scripts/prepare.mjs   # src -> site
+node scripts/bundle.mjs    # site -> standalone
 ```
 
 依赖仅 `three@0.169` 与 `vite@5`，无平台相关代码。
@@ -101,6 +101,8 @@ src/          源码
 site/         分离版（本地服务器运行）
 standalone/   单文件版（双击即玩）
 screenshots/  预览截图
+scripts/      构建、自检、本地服务器等开发脚本
+dev/demos/    旧版模型 demo（保留备查）
 ```
 
 ---
