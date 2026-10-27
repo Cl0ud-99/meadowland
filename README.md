@@ -1,12 +1,10 @@
 # Meadowland · 低多边形农场
 
-**by DeepSeek-V4.1flash-1017🐳**
+**by DeepSeek-three.js r169**
 
 **DSH-PTC**
 
-**版本 0.5.0** · [在线体验](https://Cl0ud-99.github.io/meadowland/)
-
-可互动像素农场。基于 **three.js r169** 
+可互动像素农场**版本 0.5.0** · [在线体验](https://Cl0ud-99.github.io/meadowland/)
 
 ![Meadowland 全景](screenshots/overview.png)
 
