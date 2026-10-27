@@ -6,7 +6,7 @@
 
 **版本 0.5.0** · [在线体验](https://Cl0ud-99.github.io/meadowland/)
 
-一个治愈系低多边形 3D 农场。基于 **three.js r169** 从零重写，
+可互动像素农场。基于 **three.js r169** 
 
 ![Meadowland 全景](screenshots/overview.png)
 
