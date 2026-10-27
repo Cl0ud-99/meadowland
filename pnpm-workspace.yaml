@@ -1,0 +1,4 @@
+verifyDepsBeforeRun: false
+nodeLinker: hoisted
+onlyBuiltDependencies:
+  - esbuild

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Meadowland — 治愈系低多边形农场</title>
+  <meta name="description" content="A cozy low-poly farm experience built with three.js" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#9fd0ea" />
+</head>
+<body>
+  <div id="loader">
+    <div class="loader-box">
+      <span id="loader-title" aria-hidden="true"></span>
+      <div class="loader-dots"><i></i><i></i><i></i></div>
+    </div>
+  </div>
+
+  <div id="intro">
+    <h1 class="title" aria-label="Meadowland"><span id="title-pixel" aria-hidden="true"></span></h1>
+  </div>
+
+  <header id="header">
+    <button class="brand" id="btn-brand" type="button" aria-label="关于"><span id="brand-pixel" aria-hidden="true"></span></button>
+    <nav class="actions">
+    </nav>
+  </header>
+
+  <div id="hint"></div>
+  <div id="fx-layer"></div>
+
+  <div id="time-bar">
+    <div class="time-row">
+      <span class="time-end" title="早晨">🌅</span>
+      <input id="time-slider" type="range" min="0" max="100" value="50" step="1" aria-label="时间" />
+      <span class="time-end" title="夜晚">🌙</span>
+    </div>
+    <div class="time-row season-row">
+      <span class="time-end" title="春">🌸</span>
+      <input id="season-slider" type="range" min="0" max="300" value="100" step="1" aria-label="季节" />
+      <span class="time-end" title="冬">❄️</span>
+    </div>
+    <div class="tool-row">
+      <button id="btn-random" class="tool" aria-label="随机镜头" title="随机镜头">
+        <svg viewBox="0 0 16 16" width="18" height="18" shape-rendering="crispEdges" fill="currentColor">
+          <rect x="2" y="2" width="12" height="12"/>
+          <rect x="4" y="4" width="2" height="2" fill="#2e2418"/>
+          <rect x="7" y="7" width="2" height="2" fill="#2e2418"/>
+          <rect x="10" y="10" width="2" height="2" fill="#2e2418"/>
+        </svg>
+      </button>
+      <button id="btn-rotate" class="tool" aria-label="自动环绕" title="自动环绕">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="btn-audio" class="tool off" aria-label="环境音" title="环境音">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btn-reset" class="tool" aria-label="回到全景" title="回到全景">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 关于面板（点击 Meadowland 出现） -->
+  <div id="about" aria-label="关于">
+    <div class="about-inner">
+      <!-- 咖啡杯彩蛋 -->
+      <div class="coffee">
+        <svg viewBox="0 0 64 64" width="72" height="72" aria-hidden="true">
+          <!-- 杯身 -->
+          <path d="M14 24h30v16a10 10 0 0 1-10 10H24a10 10 0 0 1-10-10V24z"
+                fill="#f3efe6" stroke="#8b5836" stroke-width="2.4" stroke-linejoin="round"/>
+          <!-- 把手 -->
+          <path d="M44 29h5a7 7 0 0 1 0 14h-5"
+                fill="none" stroke="#8b5836" stroke-width="2.4" stroke-linecap="round"/>
+          <!-- 咖啡液面 -->
+          <ellipse cx="29" cy="27" rx="13" ry="3.4" fill="#6a4a2a"/>
+          <!-- 热气 -->
+          <path class="steam s1" d="M24 18c-2-3 2-5 0-8" fill="none"
+                stroke="#c8b8a8" stroke-width="2" stroke-linecap="round"/>
+          <path class="steam s2" d="M31 16c-2-3 2-5 0-8" fill="none"
+                stroke="#c8b8a8" stroke-width="2" stroke-linecap="round"/>
+          <path class="steam s3" d="M38 18c-2-3 2-5 0-8" fill="none"
+                stroke="#c8b8a8" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h2 class="about-name">Cloud99</h2>
+      <p class="about-sub">Meadowland · A cozy low-poly farm</p>
+    </div>
+    <button class="about-close" id="about-close" type="button" aria-label="关闭">×</button>
+  </div>
+
+  <!-- 建筑/农作物风格选择面板（点击建筑后出现） -->
+  <div id="style-panel" aria-label="样式选择">
+    <div class="style-title"></div>
+    <div class="style-list"></div>
+  </div>
+
+  <script>
+    // 像素标题：逐格拼出 MEADOWLAND（和参考图同款思路）
+    (function () {
+      const BIT = {
+        M: ['10001', '11011', '11111', '11011', '10001', '10001', '10001'],
+        E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+        A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+        D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+        O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+        W: ['10001', '10001', '10001', '10101', '10101', '11011', '10001'],
+        L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+        N: ['10001', '11001', '11001', '10101', '10101', '10011', '10001'],
+        G: ['01110', '10000', '10000', '10111', '10001', '10001', '01110'],
+        I: ['01110', '00100', '00100', '00100', '00100', '00100', '01110'],
+      };
+      const COLORS = {
+        M: '#4a7a3a', E: '#d05a4a', A: '#e0a33c',
+        D: '#d05a4a', O: '#e0b050', W: '#4a7a3a',
+        L: '#4a7a3a', N: '#e0a33c',
+      };
+      // 三行排版：MEA / DOW / LAND
+      const ROWS = ['MEA', 'DOW', 'LAND'];
+      const S = 6;
+      const GAP = 1;
+      const ROW_GAP = 2;
+      const maxLen = Math.max(...ROWS.map(r => r.length));
+      const width = (maxLen * (5 + GAP) - GAP) * S;
+      const height = (ROWS.length * 7 + (ROWS.length - 1) * ROW_GAP) * S;
+      let rects = '';
+      let li = 0;
+      ROWS.forEach((word, r) => {
+        const offsetCells = (maxLen - word.length) / 2 * (5 + GAP);
+        word.split('').forEach((ch, c) => {
+          const rows = BIT[ch];
+          if (!rows) { li++; return; }
+          const color = COLORS[ch] || '#4a7a3a';
+          const baseX = (offsetCells + c * (5 + GAP)) * S;
+          const baseY = r * (7 + ROW_GAP) * S;
+          const delay = (Math.random() * 0.5 + li * 0.06).toFixed(2);
+          let letter = '';
+          rows.forEach((row, y) => {
+            row.split('').forEach((b, x) => {
+              if (b === '1') {
+                const rx = baseX + x * S;
+                const ry = baseY + y * S;
+                letter += `<rect x="${rx}" y="${ry}" width="${S}" height="${S}" fill="${color}"/>`;
+              }
+            });
+          });
+          rects += `<g class="letter" style="animation-delay:${delay}s">${letter}</g>`;
+          li++;
+        });
+      });
+      const svg = `<svg viewBox="0 0 ${width} ${height}" style="display:block;width:min(36vw,450px);height:auto;image-rendering:pixelated" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+      const el = document.getElementById('title-pixel');
+      if (el) el.innerHTML = svg;
+
+      // 加载页像素字 LOADING
+      const loaderEl = document.getElementById('loader-title');
+      if (loaderEl) {
+        const word2 = 'LOADING';
+        const S2 = 5;
+        const GAP2 = 1;
+        const w2 = (word2.length * 5 + (word2.length - 1)) * S2;
+        const h2 = 7 * S2;
+        let r2 = '';
+        word2.split('').forEach((ch, li) => {
+          const rows = BIT[ch];
+          if (!rows) return;
+          const color = li % 2 === 0 ? '#5a7a42' : '#c08840';
+          rows.forEach((row, y) => {
+            row.split('').forEach((b, x) => {
+              if (b === '1') {
+                const rx = (li * (5 + GAP2) + x) * S2;
+                const ry = y * S2;
+                r2 += `<rect x="${rx}" y="${ry}" width="${S2}" height="${S2}" fill="${color}"/>`;
+              }
+            });
+          });
+        });
+        loaderEl.innerHTML = `<svg viewBox="0 0 ${w2} ${h2}" style="display:block;width:min(58vw,340px);height:auto;image-rendering:pixelated" xmlns="http://www.w3.org/2000/svg">${r2}</svg>`;
+      }
+
+      // 右上角 logo：单行像素字 MEADOWLAND
+      const brandEl = document.getElementById('brand-pixel');
+      if (brandEl) {
+        const bWord = 'MEADOWLAND';
+        const S3 = 3;
+        const GAP3 = 1;
+        const w3 = (bWord.length * 5 + (bWord.length - 1)) * S3;
+        const h3 = 7 * S3;
+        const bColors = [
+          '#4a7a3a', '#d05a4a', '#e0a33c', '#d05a4a', '#e0b050',
+          '#4a7a3a', '#4a7a3a', '#d05a4a', '#e0a33c', '#e0c088',
+        ];
+        let r3 = '';
+        bWord.split('').forEach((ch, li) => {
+          const rows = BIT[ch];
+          if (!rows) return;
+          const color = bColors[li % bColors.length];
+          rows.forEach((row, y) => {
+            row.split('').forEach((b, x) => {
+              if (b === '1') {
+                const rx = (li * (5 + GAP3) + x) * S3;
+                const ry = y * S3;
+                r3 += `<rect x="${rx}" y="${ry}" width="${S3}" height="${S3}" fill="${color}"/>`;
+              }
+            });
+          });
+        });
+        brandEl.innerHTML = `<svg viewBox="0 0 ${w3} ${h3}" style="display:block;width:176px;height:auto;image-rendering:pixelated" xmlns="http://www.w3.org/2000/svg">${r3}</svg>`;
+      }
+    })();
+  </script>
+  <script>
+    // 点击水波纹特效
+    (function () {
+      const layer = document.getElementById('fx-layer');
+      if (!layer) return;
+      window.addEventListener('pointerdown', function (e) {
+        const r = document.createElement('span');
+        r.className = 'fx-ripple';
+        const size = 26;
+        r.style.width = size + 'px';
+        r.style.height = size + 'px';
+        r.style.left = (e.clientX - size / 2) + 'px';
+        r.style.top = (e.clientY - size / 2) + 'px';
+        layer.appendChild(r);
+        setTimeout(function () { r.remove(); }, 750);
+      }, { passive: true });
+    })();
+  </script>
+  <script>
+    // 兜底：如果【25 秒】后加载动画还在，说明启动失败，把错误显示出来
+    //
+    // ★ 阈值从 8 秒提到 25 秒：
+    //   新版作物模型（体素风格）顶点量大，低配机器首帧要 8~12 秒，
+    //   8 秒阈值会在场景【已经加载成功】时误报"加载超时"，
+    //   把 intro 的按钮全部冲掉，用户点不了"探索"。
+    window.__loaderGuard = setTimeout(function () {
+      var l = document.getElementById('loader');
+      if (l && !l.classList.contains('hidden')) {
+        l.classList.add('hidden');
+        var el = document.getElementById('intro');
+        if (el) {
+          el.innerHTML = '<div class="title" style="font-size:clamp(22px,5vw,34px)">加载超时</div>' +
+            '<p class="subtitle" style="max-width:36ch;line-height:1.7">' +
+            '场景启动超过 25 秒仍未完成。请打开浏览器控制台查看具体错误，' +
+            '或换用最新版 Chrome / Safari 重试。</p>';
+          el.style.opacity = '1';
+          el.style.visibility = 'visible';
+          el.style.pointerEvents = 'auto';
+        }
+      }
+    }, 25000);
+  </script>
+  <link rel="stylesheet" href="./src/style.css" />
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
