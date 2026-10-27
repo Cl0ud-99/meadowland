@@ -6,7 +6,7 @@ export const DEFAULT_SNAPSHOT = {
   time: 0.21,
   season: 0.27,
   buildings: { barn: 0, farmhouse: 0 },
-  silos: { silo1: 'metal', silo2: 'metal' },
+  silos: { silo1: 'concrete', silo2: 'wood' },
   watertowerStyle: 'metal',
   windmillStyle: 'ranch',
   fenceStyles: { pasture: 'plank', coop: 'picket', field: 'rail' },
