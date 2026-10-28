@@ -27,7 +27,7 @@ function inBuilding(x, z, pad = 2) {
 }
 
 // 散落在地面的低多边形石头：单块、成对、3~6 块成群。
-export function buildGroundStones(model, rng, groupCount = 190) {
+export function buildGroundStones(model, rng, groupCount = 95) {
   const geo = new THREE.DodecahedronGeometry(1, 0);
   const mat = toonLambert({ color: 0xffffff, flatShading: true, shared: false });
   const stones = [];

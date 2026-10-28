@@ -121,7 +121,7 @@ function boot() {
   world.add(grass.mesh);
 
   // 地面散石：单块/成对/成群，避开田地、建筑和池塘
-  const groundStones = buildGroundStones(terrainModel, rng, quality.tier === 'low' ? 110 : 190);
+  const groundStones = buildGroundStones(terrainModel, rng, quality.tier === 'low' ? 55 : 95);
   world.add(groundStones);
 
   const farm = buildFarm(terrainModel);
