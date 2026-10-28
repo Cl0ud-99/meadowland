@@ -52385,27 +52385,26 @@ void main() {
 	  }
 
 	  // ---------- 牛羊圈苹果树：吊灯 ----------
-	  // 树 (-38, 50) 是牧场里唯一的树；灯泡挂在树冠下，夜里作为树下照明。
-	  const treeLampX = -35.2;
-	  const treeLampZ = 53.0;
-	  const treeLampY = groundAt(treeLampX, treeLampZ);
+	  // 树本身可以通过 UI 换模型，所以灯泡不写死坐标：
+	  // 每帧读取这棵树的包围盒，按当前树高/树冠宽度重新计算挂点。
+	  let pastureTree = null;
+	  scene.traverse((o) => {
+	    if (pastureTree) return;
+	    if (!o.name || !o.name.startsWith('tree-')) return;
+	    if (Math.hypot(o.position.x + 38, o.position.z - 50) < 3) pastureTree = o;
+	  });
+
 	  const treeLamp = new Group();
 	  treeLamp.name = 'tree-hanging-lamp';
-
+	  const cordH = 1.8;
 	  const cord = new Mesh(
-	    new CylinderGeometry(0.022, 0.028, 1.8, 5),
+	    new CylinderGeometry(0.022, 0.028, cordH, 5),
 	    new MeshBasicMaterial({ color: 0x2f241b })
 	  );
-	  cord.position.set(treeLampX, treeLampY + 3.2, treeLampZ);
-	  treeLamp.add(cord);
-
 	  const socket = new Mesh(
 	    new CylinderGeometry(0.10, 0.12, 0.16, 8),
 	    new MeshBasicMaterial({ color: 0x2a2018 })
 	  );
-	  socket.position.set(treeLampX, treeLampY + 2.35, treeLampZ);
-	  treeLamp.add(socket);
-
 	  const treeBulbMat = new MeshBasicMaterial({
 	    color: 0xffc46a,
 	    transparent: true,
@@ -52414,24 +52413,42 @@ void main() {
 	    toneMapped: false,
 	  });
 	  const treeBulb = new Mesh(new SphereGeometry(0.21, 8, 6), treeBulbMat);
-	  treeBulb.position.set(treeLampX, treeLampY + 2.2, treeLampZ);
 	  treeBulb.renderOrder = 3;
-	  treeLamp.add(treeBulb);
-
 	  const treeLight = new PointLight(0xffb060, 0, 15, 2);
-	  treeLight.position.set(treeLampX, treeLampY + 2.14, treeLampZ);
-
 	  const shade = new Mesh(
 	    new ConeGeometry(0.30, 0.22, 8),
 	    new MeshBasicMaterial({ color: 0x2a2018 })
 	  );
-	  shade.position.set(treeLampX, treeLampY + 2.44, treeLampZ);
-	  treeLamp.add(shade);
-	  treeLamp.add(treeLight);
-
+	  treeLamp.add(cord, socket, treeBulb, shade, treeLight);
 	  group.add(treeLamp);
 
-	  // ---------- 农舍 ----------
+	  const treeBox = new Box3();
+	  function updateTreeLamp() {
+	    if (!pastureTree) { treeLamp.visible = false; return; }
+	    treeLamp.visible = true;
+	    treeBox.setFromObject(pastureTree);
+	    const min = treeBox.min, max = treeBox.max;
+	    const h = Math.max(0.8, max.y - min.y);
+	    const cx = (min.x + max.x) * 0.5;
+	    const cz = (min.z + max.z) * 0.5;
+	    const rx = Math.max(0.6, (max.x - min.x) * 0.5);
+	    const rz = Math.max(0.6, (max.z - min.z) * 0.5);
+	    const x = cx + rx * 0.72;
+	    const z = cz + rz * 0.78;
+	    const gy = groundAt(x, z);
+	    const bulbY = gy + h * 0.34;
+	    const cordTop = gy + h * 0.58;
+	    const cordLen = Math.max(0.7, cordTop - bulbY - 0.1);
+	    cord.scale.y = cordLen / cordH;
+	    cord.position.set(x, cordTop - cordLen * 0.5, z);
+	    socket.position.set(x, bulbY + 0.13, z);
+	    treeBulb.position.set(x, bulbY, z);
+	    shade.position.set(x, bulbY + 0.24, z);
+	    treeLight.position.set(x, bulbY - 0.06, z);
+	  }
+	  updateTreeLamp();
+
+	  // ---------- 农舍 ----------  // ---------- 农舍 ----------
 	  const house = BUILDINGS.farmhouse;
 	  const hy = groundAt(house.x, house.z);
 	  const hw = 11, hd = 13;
@@ -52516,6 +52533,7 @@ void main() {
 	      wl.light.visible = winOpacity > 0.06;
 	    }
 
+	    updateTreeLamp();
 	    // 树吊灯：白天保留暗黄玻璃，夜里点亮
 	    treeBulb.material.opacity = 0.72 + winOpacity * 0.28;
 	    treeBulb.visible = true;
