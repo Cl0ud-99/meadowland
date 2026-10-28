@@ -21,7 +21,7 @@ import { buildForest, buildScatterTrees } from './world/forest.js';
 import { buildGrassTufts } from './world/grass.js';
 import { buildFarm } from './world/farm.js';
 import { buildFields } from './world/fields.js';
-import { BUILDINGS, TRUCK, PASTURE, TREE_SPECS, BIG_TREE, WOODPILE, WELL } from './world/layout.js';
+import { BUILDINGS, TRUCK, PASTURE, TREE_SPECS, BIG_TREE, WOODPILE, WELL, WORKSHOP } from './world/layout.js';
 import { buildTruck, TRUCK_STYLES } from './world/truck.js';
 import { buildNightLights } from './world/nightlights.js';
 import { buildRoad, buildCar } from './world/road.js';
@@ -194,8 +194,15 @@ function boot() {
   const well = buildWell(terrainModel, rng, { x: WELL.x, z: WELL.z });
   world.add(well);
 
-  // 农舍东侧：修理棚工作区
-  const workshop = buildWorkshop(terrainModel, rng);
+  // 农舍东侧：修理棚工作区（整体旋转，和农舍平行）
+  const workshopInner = buildWorkshop(terrainModel, rng);
+  workshopInner.position.set(-66, 0, -2);   // 把原有绝对坐标收回到自己中心
+  const workshop = new THREE.Group();
+  workshop.name = 'workshop';
+  workshop.position.set(WORKSHOP.x, 0, WORKSHOP.z);
+  workshop.rotation.y = WORKSHOP.rot;
+  workshop.add(workshopInner);
+  workshop.userData.setNight = (t) => workshopInner.userData.setNight(t);
   world.add(workshop);
 
   // 另外 3 棵不同品种的树（有大有小，丰富场景）

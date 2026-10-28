@@ -44,6 +44,9 @@ export const WOODPILE = { x: 6.5, z: -16 };
 // 水井：两个雪人 (8,4) / (14,30) 的中点
 export const WELL = { x: 11, z: 17, r: 2.3 };
 
+// 修理棚工作区：与农舍平行（farmhouse.rot = 0.34）
+export const WORKSHOP = { x: 68, z: -8, rot: 0.34 };
+
 export const BUILDINGS = {
   barn:       { x: -30, z: 0,   w: 13, d: 20, rot: -0.22 },
   farmhouse:  { x: 30,  z: -18, w: 11, d: 13, rot: 0.34 },
