@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { makeBirch, makeOak, makeSpruce, makeAutumnTree, setSkipFallenLeaves } from './treeDemo.js';
-import { makeBroadleaf, BIG_TREE_KINDS as BIG_TREE_DEMO } from './bigTreeDemo.js';
+import { BIG_TREE_KINDS as BIG_TREE_LOWPOLY } from './bigtreesLowpoly.js';
 import { tint, merge } from '../util/geo.js';
 import { toonLambert } from '../render/toon.js';
 
@@ -131,10 +131,9 @@ export function buildBigTree(model, rng, center = { x: -2, z: -18 }) {
   //     这里做【非等比缩放】：高度 ×1.40 到 25，横向 ×0.80 收到 24.6，
   //     让地标恢复成"高大于宽"的挺拔比例。
   setSkipFallenLeaves(true);
-  const geo = mergeBigTreeGroup(makeBroadleaf());
+  const broadleafEntry = BIG_TREE_LOWPOLY.find((k) => k.id === 'broadleaf');
+  const geo = normalizeBigTreeGeo(mergeBigTreeGroup(broadleafEntry.make()));
   setSkipFallenLeaves(false);
-  geo.scale(0.80, 1.40, 0.80);
-  geo.computeBoundingBox();
   // shared:false —— setSeason 会在运行时改这个材质的 color / emissive，
   // 必须独占，绝不能和别的网格共用（否则一换季全场一起变色）。
   const mat = toonLambert({
@@ -250,14 +249,7 @@ export function buildBigTree(model, rng, center = { x: -2, z: -18 }) {
     return outlineRef;
   };
 
-  // ---------- 参天大树换品种（新版 9 种体素巨树）----------
-  //   按品种单独算缩放：新版原始高 16.8~31.2 差异大，统一乘一个倍数会大小不一。
-  const BIG_SCALE = {
-    broadleaf: 1.40, poinciana: 1.49, cactus: 1.40,
-    purple: 1.31, autumn: 1.20, golden: 1.22, pink: 1.25, greengold: 1.22,
-  };
-  const BIG_SQUEEZE_XZ = 0.80;
-
+  // ---------- 参天大树换品种（8 种低多边形巨树）----------
   // ★ 几何体缓存：切换品种时优先复用，避免重复构建（构建本身 30~340ms）
   //   缓存值 = 缩放后的 BufferGeometry 的 clone()（每次 clone 约 3~8ms，
   //   远低于重新跑一遍体素方块生成）。
@@ -266,30 +258,33 @@ export function buildBigTree(model, rng, center = { x: -2, z: -18 }) {
   function geoForBigKind(kind) {
     const cached = geoCache.get(kind);
     if (cached) return cached.clone();
-    const entry = BIG_TREE_DEMO.find((k) => k.id === kind);
+    const entry = BIG_TREE_LOWPOLY.find((k) => k.id === kind);
     if (!entry) return null;
     setSkipFallenLeaves(true);
-    const g = mergeBigTreeGroup(entry.make());
+    const g = normalizeBigTreeGeo(mergeBigTreeGroup(entry.make()));
     setSkipFallenLeaves(false);
-    const sy = BIG_SCALE[kind] || 1.4;
-    g.scale(BIG_SQUEEZE_XZ * sy, sy, BIG_SQUEEZE_XZ * sy);
-    g.computeBoundingBox();
     geoCache.set(kind, g);
     return g.clone();
   }
 
+  const BIG_TREE_ALIASES = {
+    autumn: 'ginkgo', golden: 'ginkgo', pink: 'acacia', greengold: 'acacia',
+  };
+
   group.userData.setKind = (newKind) => {
-    const newGeo = geoForBigKind(newKind);
+    const kind = BIG_TREE_ALIASES[newKind] || newKind;
+    const newGeo = geoForBigKind(kind);
     if (!newGeo) return false;
     outlineRef = findOutline();
     if (outlineRef) outlineRef.geometry = newGeo;
     mesh.geometry.dispose();
     mesh.geometry = newGeo;
-    group.userData.kind = newKind;
+    group.userData.kind = kind;
     // 雪花贴着旧几何体表面撒的，换形状必须重撒
     if (typeof rebuildBigSnow === 'function') rebuildBigSnow();
     return true;
   };
+
   group.userData.getKind = () => group.userData.kind || 'broadleaf';
   group.userData.kind = 'broadleaf';
 
@@ -526,13 +521,6 @@ function makeMapleParts(scale) {
 //
 // ★ 用法：新版返回 Group（多 mesh），需要合并成单个几何体。
 // ---------------------------------------------------------------------------
-// 参天大树用【旧版】造型（体量 26 米的地标，新版模型撑不起来）
-const BIG_TREE_KINDS = {
-  oak: makeOakParts,
-  birch: makeBirchParts,
-  maple: makeMapleParts,
-};
-
 // 场景里的四棵小树用【新版】体素模型
 const TREE_KINDS = {
   oak: makeOak,
@@ -541,8 +529,8 @@ const TREE_KINDS = {
   autumn: makeAutumnTree,
 };
 
-// 参天大树可选品种（新版 9 种体素巨树）
-export const BIG_TREE_SPECIES = BIG_TREE_DEMO.map((k) => ({
+// 参天大树可选品种（8 种低多边形巨树）
+export const BIG_TREE_SPECIES = BIG_TREE_LOWPOLY.map((k) => ({
   kind: k.id,
   name: k.name,
   desc: '参天巨树',
@@ -557,6 +545,20 @@ export const TREE_SPECIES = [
 ];
 
 // 把【新版巨树】Group 里的所有 mesh 合并成单个几何体（保留顶点色）
+const BIG_TARGET_H = 25;
+const BIG_MAX_W = 28;
+
+function normalizeBigTreeGeo(geo) {
+  geo.computeBoundingBox();
+  const size = new THREE.Vector3();
+  geo.boundingBox.getSize(size);
+  const sy = BIG_TARGET_H / Math.max(1e-3, size.y);
+  const sxz = Math.min(sy, BIG_MAX_W / Math.max(1e-3, size.x, size.z));
+  geo.scale(sxz, sy, sxz);
+  geo.computeBoundingBox();
+  return geo;
+}
+
 function mergeBigTreeGroup(group) {
   group.updateMatrixWorld(true);
   const geos = [];
@@ -566,7 +568,14 @@ function mergeBigTreeGroup(group) {
     g.applyMatrix4(o.matrixWorld);
     if (!g.attributes.color) {
       const n = g.attributes.position.count;
-      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+      const src = (o.material && o.material.color) ? o.material.color : new THREE.Color(1, 1, 1);
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        arr[i * 3] = src.r;
+        arr[i * 3 + 1] = src.g;
+        arr[i * 3 + 2] = src.b;
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
     }
     geos.push(g);
   });
@@ -603,7 +612,7 @@ function mergeTreeGroup(group) {
 //
 // ★ 做法：每个品种先乘一个修正系数，把高度拉回同一个基准（橡树 8.09），
 //   再乘树自己的 scale。这样换品种只换形态，不换体量。
-//   参天大树用的是同一套思路（见 BIG_SCALE）。
+//   参天大树用的是同一套思路（统一高度 25、最大宽度 28）。
 //   实测基准高度（scale=1 时的模型总高）：
 //     橡树 8.09 / 白桦 8.12 / 云杉 11.37 / 秋树 6.14
 //   参考高度取橡树的 8.09 —— 场景里橡树和白桦的现有 scale 是按它调的，

@@ -577,8 +577,8 @@ export function createHud(app) {
     // ★ 传入树冠障碍列表 —— 相机落点若钻进别的树冠，rig 会自动偏转方位角
     app.rig.flyTo(center, dist, { radius, avoidTrees: collectTreeObstacles });
 
-    // ---------- 参天大树：9 种新版体素巨树 ----------
-    //   ★ 单独一个面板（9 个品种），和普通树的 4 品种区分开。
+    // ---------- 参天大树：8 种低多边形巨树 ----------
+    //   ★ 单独一个面板（8 个品种），和普通树的 4 品种区分开。
     if (root.name === 'bigtree' && root.userData.setKind) {
       const curKind = root.userData.getKind();
       const curName = BIG_TREE_SPECIES.find(s => s.kind === curKind)?.name || '参天大树';
@@ -998,7 +998,7 @@ export function createHud(app) {
   const TREE_ICON = { oak: '🌳', birch: '🍃', spruce: '🌲', autumn: '🍁' };
   const BIG_TREE_ICON = {
     broadleaf: '🌳', poinciana: '🌺', cactus: '🌵', purple: '🟣',
-    autumn: '🍁', golden: '🌟', pink: '🌸', greengold: '🌿',
+    baobab: '🪵', fir: '🌲', acacia: '🌿', ginkgo: '🌟',
   };
   const ANIMAL_ICON = {
     cow: '🐄', sheep: '🐑', chicken: '🐔', horse: '🐴', alpaca: '🦙',
@@ -1437,7 +1437,7 @@ export function createHud(app) {
       }
 
       if (d.bigtreeKind && app.bigtree && app.bigtree.userData.setKind) {
-        // ★ 参天大树用 BIG_TREE_SPECIES（9 种），不是 TREE_SPECIES（4 种）
+        // ★ setKind 内部兼容旧存档的品种名
         if (BIG_TREE_SPECIES.some(sp => sp.kind === d.bigtreeKind)) {
           try { app.bigtree.userData.setKind(d.bigtreeKind); } catch (e) {}
         }
