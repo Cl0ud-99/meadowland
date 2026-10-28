@@ -95,9 +95,9 @@ canvas#scene.hoverable { cursor: var(--cursor-pointer, pointer) 8 6, pointer; }
   text-align: center;
   padding: 0 24px;
   /* 轻微毛玻璃景深：让标题从背后场景中“浮”出来 */
-  background: rgba(159, 208, 234, 0.22);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
+  background: rgba(159, 208, 234, 0.12);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
   /* 进入时随镜头推进慢慢淡出（约 2.4s），而不是瞬间消失 */
   transition: opacity 2.4s ease, visibility 2.4s;
 }

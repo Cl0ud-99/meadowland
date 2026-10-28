@@ -130,10 +130,11 @@ export function createCameraRig(renderer, model) {
     const fx = CAMERA.introFrom.x;
     const fz = CAMERA.introFrom.z;
     const groundY = model.heightAt(fx, fz);
-    intro.from.set(fx, Math.max(groundY + 5, 10), fz);
+    intro.from.set(fx, Math.max(groundY + 6, 10), fz);
 
     intro.to.set(CAMERA.introTo.x, CAMERA.introTo.y, CAMERA.introTo.z);
-    intro.fromTarget.set(0, 12, 0);
+    const look = CAMERA.introLook || { x: 0, y: 12, z: 0 };
+    intro.fromTarget.set(look.x, look.y, look.z);
     intro.toTarget.set(CAMERA.target.x, CAMERA.target.y, CAMERA.target.z);
   }
 
