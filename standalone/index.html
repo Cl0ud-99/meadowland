@@ -54157,6 +54157,29 @@ void main() {
 	    ...STONE_COLLIDERS,
 	  ];
 
+	  // 判断某个方向前方一小段是否被树、石头或围栏挡住。
+	  // 动物在真正撞上前就开始转弯，不再顶着障碍继续走。
+	  const headingBlocked = (u, heading, distance) => {
+	    const px = u.curX + Math.sin(heading) * distance;
+	    const pz = u.curZ + Math.cos(heading) * distance;
+	    if (!circleInsidePolygon(px, pz, u.bodyR, u.poly, 0.35)) return true;
+	    for (const ob of staticObstacles) {
+	      if (Math.hypot(px - ob.x, pz - ob.z) < ob.r + u.bodyR + 0.15) return true;
+	    }
+	    return false;
+	  };
+
+	  // 优先走偏转最小的可行方向；左右都尝试，最后才掉头。
+	  const pickTurnHeading = (u) => {
+	    const probe = Math.max(0.55, u.speed * 0.7);
+	    const offsets = [0.55, -0.55, 1.05, -1.05, 1.55, -1.55, 2.2, -2.2, Math.PI];
+	    for (const off of offsets) {
+	      const h = u.heading + off;
+	      if (!headingBlocked(u, h, probe)) return h;
+	    }
+	    return u.heading + Math.PI;
+	  };
+
 	  const spawnIn = (factory, kind, count, poly, opts) => {
 	    const bodyR = BODY_R[kind];
 	    let placed = 0, breedIdx = 0;
@@ -54325,10 +54348,18 @@ void main() {
 	        if (u.heading > Math.PI) u.heading -= Math.PI * 2;
 	        else if (u.heading < -Math.PI) u.heading += Math.PI * 2;
 	      } else if (u.state === WALK) {
-	        // 朝 heading 直线前进（u.speed 就是世界单位/秒，个体差异用 walkSpeed 微调）
-	        const spd = u.speed * u.walkSpeed;
-	        u.curX += Math.sin(u.heading) * spd * dt;
-	        u.curZ += Math.cos(u.heading) * spd * dt;
+	        // 先探测前方：快撞上围栏/树/石头时立刻转一个可行方向。
+	        const probe = Math.max(0.6, u.speed * 0.65);
+	        if (headingBlocked(u, u.heading, probe)) {
+	          u.targetHeading = pickTurnHeading(u);
+	          u.state = TURN;
+	          u.stateTimer = 0.3 + rng.next() * 0.25;
+	        } else {
+	          // 朝 heading 直线前进（u.speed 就是世界单位/秒，个体差异用 walkSpeed 微调）
+	          const spd = u.speed * u.walkSpeed;
+	          u.curX += Math.sin(u.heading) * spd * dt;
+	          u.curZ += Math.cos(u.heading) * spd * dt;
+	        }
 	      }
 	      // PAUSE：位置不变
 	    }
