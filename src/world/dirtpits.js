@@ -93,14 +93,15 @@ export function buildDirtPits(model, rng, count = 10) {
     }
     if (!best) continue;
 
-    const cluster = 1 + Math.floor(rng.next() * 3);
+    const isCoop = poly === COOP;
+    const cluster = 1 + Math.floor(rng.next() * (isCoop ? 2 : 3));
     for (let c = 0; c < cluster; c++) {
       const a = rng.next() * Math.PI * 2;
       const off = c === 0 ? 0 : rng.range(0.45, 1.8);
       const cx = best.x + Math.cos(a) * off;
       const cz = best.z + Math.sin(a) * off;
       if (!pointInPolygon(cx, cz, poly) || distToPolygonEdge(cx, cz, poly) < 1.2) continue;
-      const radius = rng.range(0.38, 1.15) * (c === 0 ? 1.15 : 0.9);
+      const radius = rng.range(0.38, 1.15) * (c === 0 ? 1.15 : 0.9) * (isCoop ? 0.52 : 1);
       const mesh = new THREE.Mesh(makePatch(model, cx, cz, radius, rng.next() * 10), mat);
       mesh.receiveShadow = true;
       mesh.name = 'dirt-pit';

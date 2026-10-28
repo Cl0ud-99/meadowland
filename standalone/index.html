@@ -44994,14 +44994,15 @@ void main() {
 	    }
 	    if (!best) continue;
 
-	    const cluster = 1 + Math.floor(rng.next() * 3);
+	    const isCoop = poly === COOP;
+	    const cluster = 1 + Math.floor(rng.next() * (isCoop ? 2 : 3));
 	    for (let c = 0; c < cluster; c++) {
 	      const a = rng.next() * Math.PI * 2;
 	      const off = c === 0 ? 0 : rng.range(0.45, 1.8);
 	      const cx = best.x + Math.cos(a) * off;
 	      const cz = best.z + Math.sin(a) * off;
 	      if (!pointInPolygon(cx, cz, poly) || distToPolygonEdge(cx, cz, poly) < 1.2) continue;
-	      const radius = rng.range(0.38, 1.15) * (c === 0 ? 1.15 : 0.9);
+	      const radius = rng.range(0.38, 1.15) * (c === 0 ? 1.15 : 0.9) * (isCoop ? 0.52 : 1);
 	      const mesh = new Mesh(makePatch(model, cx, cz, radius, rng.next() * 10), mat);
 	      mesh.receiveShadow = true;
 	      mesh.name = 'dirt-pit';
@@ -60751,7 +60752,13 @@ void main() {
 	    hintTimer = setTimeout(() => hint.classList.remove('show'), ms);
 	  }
 
-	  const state = { audioOn: false, seasonIdx: 1, autoRotate: true, fencesHidden: false };
+	  const state = { audioOn: true, seasonIdx: 1, autoRotate: true, fencesHidden: false };
+
+	  function setAudioEnabled(on) {
+	    state.audioOn = on;
+	    app.ambient.setMuted(!on);
+	    if (btnAudio) btnAudio.classList.toggle('off', !on);
+	  }
 
 	  // ★ 隐藏加载动画时【必须】同时取消 index.html 里的兜底超时 ——
 	  //   那个 guard 在 8 秒后检查 loader 是否还有 hidden 类，
@@ -60773,6 +60780,8 @@ void main() {
 	    intro.addEventListener('click', () => {
 	      if (intro.classList.contains('hidden')) return;
 	      app.ambient.unlock();
+	      // 进入游玩时默认开启环境音/背景音乐，并同步按钮状态
+	      setAudioEnabled(true);
 	      intro.classList.add('hidden');
 	      app.rig.playIntro(() => {
 	        if (header) header.classList.add('visible');
@@ -60784,13 +60793,11 @@ void main() {
 
 	  // ---------- 声音 ----------
 	  if (btnAudio) {
-	    btnAudio.classList.add('off');
+	    btnAudio.classList.toggle('off', !state.audioOn);
 	    btnAudio.addEventListener('click', () => {
-	      state.audioOn = !state.audioOn;
 	      // 顺序很重要：先 unlock（可能创建 AudioContext），再设静音状态
 	      app.ambient.unlock();
-	      app.ambient.setMuted(!state.audioOn);
-	      btnAudio.classList.toggle('off', !state.audioOn);
+	      setAudioEnabled(!state.audioOn);
 	      showHint(state.audioOn ? '环境音 开' : '环境音 关', 1600);
 	      if (app.markDirty) app.markDirty();
 	    });

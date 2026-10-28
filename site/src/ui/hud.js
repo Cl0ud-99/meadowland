@@ -42,7 +42,13 @@ export function createHud(app) {
     hintTimer = setTimeout(() => hint.classList.remove('show'), ms);
   }
 
-  const state = { audioOn: false, seasonIdx: 1, autoRotate: true, fencesHidden: false };
+  const state = { audioOn: true, seasonIdx: 1, autoRotate: true, fencesHidden: false };
+
+  function setAudioEnabled(on) {
+    state.audioOn = on;
+    app.ambient.setMuted(!on);
+    if (btnAudio) btnAudio.classList.toggle('off', !on);
+  }
 
   // ★ 隐藏加载动画时【必须】同时取消 index.html 里的兜底超时 ——
   //   那个 guard 在 8 秒后检查 loader 是否还有 hidden 类，
@@ -64,6 +70,8 @@ export function createHud(app) {
     intro.addEventListener('click', () => {
       if (intro.classList.contains('hidden')) return;
       app.ambient.unlock();
+      // 进入游玩时默认开启环境音/背景音乐，并同步按钮状态
+      setAudioEnabled(true);
       intro.classList.add('hidden');
       app.rig.playIntro(() => {
         if (header) header.classList.add('visible');
@@ -75,13 +83,11 @@ export function createHud(app) {
 
   // ---------- 声音 ----------
   if (btnAudio) {
-    btnAudio.classList.add('off');
+    btnAudio.classList.toggle('off', !state.audioOn);
     btnAudio.addEventListener('click', () => {
-      state.audioOn = !state.audioOn;
       // 顺序很重要：先 unlock（可能创建 AudioContext），再设静音状态
       app.ambient.unlock();
-      app.ambient.setMuted(!state.audioOn);
-      btnAudio.classList.toggle('off', !state.audioOn);
+      setAudioEnabled(!state.audioOn);
       showHint(state.audioOn ? '环境音 开' : '环境音 关', 1600);
       if (app.markDirty) app.markDirty();
     });
