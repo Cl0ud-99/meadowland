@@ -52,6 +52,15 @@ export function waterSinkFor(seasonT) {
 }
 
 export function createTerrainModel(seed = 20240521) {
+  // ★ 0.6.1-flat：整张地图压平，没有山丘、没有水池坑。
+  //   所有贴地物体通过 heightAt 采样都会落在同一高度。
+  return {
+    heightAt: () => PLATEAU_Y,
+    groundAt: () => PLATEAU_Y,
+    slopeAt: () => 0,
+    raw: () => PLATEAU_Y,
+  };
+
   const fbm = makeFbm(seed, 5, 2.05, 0.5);
   const fbmDetail = makeFbm(seed + 91, 3, 2.4, 0.45);
 

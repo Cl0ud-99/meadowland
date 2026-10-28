@@ -4,11 +4,9 @@ import './style.css';
 import { LIGHT, DUSK_T, PALETTE, SEASON } from './config.js';
 import { makeRng } from './util/rng.js';
 import { detectDevice, getQuality, logDeviceInfo } from './util/quality.js';
-import { createTerrainModel, buildTerrain, buildPond } from './world/terrain.js';
-import { buildPondLife } from './world/pond.js';
+import { createTerrainModel, buildTerrain } from './world/terrain.js';
 import { buildSeasonFX } from './world/seasonfx.js';
 import { buildCampfire } from './world/campfire.js';
-import { buildWatermill } from './world/watermill.js';
 import { buildOwl, refreshWatertowerPerch, refreshWindmillPerch } from './world/owl.js';
 import { buildBigTree, buildTree } from './world/bigtree.js';
 import { buildWoodpile } from './world/woodpile.js';
@@ -122,8 +120,16 @@ function boot() {
   const fields = buildFields(terrainModel, rng);
   world.add(fields);
 
-  const pond = buildPond(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r);
-  world.add(pond);
+  // ★ 0.6.1-flat：水池整体删除（连坑一起抹平）
+  const pond = new THREE.Group();
+  pond.name = 'pond';
+  pond.visible = false;
+  const pondLife = new THREE.Group();
+  pondLife.name = 'pondLife';
+  pondLife.visible = false;
+  pondLife.userData.update = () => {};
+  pondLife.userData.setWaterLevel = () => {};
+  const watermill = null;
 
   // 季节特效：樱花/落叶/雪 + 蝴蝶/蜜蜂 + 南瓜/雪人
   const seasonFX = buildSeasonFX(terrainModel, rng, quality);
@@ -132,10 +138,6 @@ function boot() {
   // 篝火露营区（农舍南侧开阔地）
   const campfire = buildCampfire(terrainModel, rng, { x: 26, z: 8 });
   world.add(campfire);
-
-  // 水车（水池西侧）
-  const watermill = buildWatermill(terrainModel, rng, { x: -93, z: 2 });
-  world.add(watermill);
 
   // 猫头鹰彩蛋（双峰致敬）：随机停在谷仓/农舍/水塔/风车屋顶
   const owl = buildOwl(terrainModel, rng);
@@ -166,15 +168,6 @@ function boot() {
   extraTrees.add(scatterTrees);
 
   world.add(extraTrees);
-
-  // 水池生态：鱼 + 荷叶 + 浮藻
-  const pondLife = buildPondLife(
-    terrainModel,
-    { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z },
-    BUILDINGS.pond.r,
-    rng
-  );
-  world.add(pondLife);
 
   const road = buildRoad(terrainModel, ROAD_POINTS, 5.5);
   world.add(road);
@@ -940,7 +933,7 @@ function loop() {
 
   // 云朵：绕世界原点缓慢飘动。
   app.birds.userData.update(elapsed, dt, app.rig.camera);
-  app.pondLife.userData.update(elapsed, dt);
+  if (app.pondLife) app.pondLife.userData.update(elapsed, dt);
   app.seasonFX.userData.tick(dt, elapsed);
 
   // 篝火：只在夜晚点亮（t > 0.55 开始，0.85 全亮）
@@ -972,7 +965,7 @@ function loop() {
   }
 
   // 水面波动
-  if (app.pond.userData.waterMat) {
+  if (app.pond && app.pond.userData.waterMat) {
     const wm = app.pond.userData.waterMat;
     wm.uniforms.uTime.value = elapsed;
     wm.uniforms.uNight.value = app.mode.t;
