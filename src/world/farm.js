@@ -763,6 +763,7 @@ export function buildFarm(model) {
       });
     }
     const nm = fence(slot.points, slot.height, model, true, style);
+    nm.visible = !slot.hidden;
     nm.name = slot.namePrefix + '-' + style;
     nm.userData.fenceKind = kind;
     nm.userData.fenceStyle = style;
@@ -773,24 +774,25 @@ export function buildFarm(model) {
   }
 
   // 注册一道围栏
-  function registerFence(kind, namePrefix, points, height, style) {
+  function registerFence(kind, namePrefix, points, height, style, hidden = false) {
     const nm = fence(points, height, model, true, style);
+    nm.visible = !hidden;
     nm.name = namePrefix + '-' + style;
     nm.userData.fenceKind = kind;
     nm.userData.fenceStyle = style;
     group.add(nm);
-    const slot = { kind, namePrefix, points, height, style, mesh: nm };
+    const slot = { kind, namePrefix, points, height, style, hidden, mesh: nm };
     fenceSlots.push(slot);
     return nm;
   }
 
-  registerFence('pasture', 'fence-pasture', PASTURE, 1.5, FENCE_STYLE_PASTURE);
+  registerFence('pasture', 'fence-pasture', PASTURE, 1.5, FENCE_STYLE_PASTURE, true);
   registerFence('coop', 'fence-coop', COOP, 1.0, FENCE_STYLE_COOP);
 
   // 每块田地的围栏
   for (let fi = 0; fi < FIELD_RECTS.length; fi++) {
     const corners = fieldCorners(FIELD_RECTS[fi]);
-    registerFence('field-' + fi, 'field-fence', corners, 0.95, FENCE_STYLE_FIELD);
+    registerFence('field-' + fi, 'field-fence', corners, 0.95, FENCE_STYLE_FIELD, !!FIELD_RECTS[fi].fenceOnly);
   }
 
   // 暴露给外部（hud 的点击面板用）
