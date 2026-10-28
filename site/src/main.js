@@ -5,19 +5,23 @@ import { makeRng } from './util/rng.js';
 import { detectDevice, getQuality, logDeviceInfo } from './util/quality.js';
 import { createTerrainModel, buildTerrain, buildPond } from './world/terrain.js';
 import { buildPondLife } from './world/pond.js';
+import { buildPondStones } from './world/pondstones.js';
+import { buildWatermill } from './world/watermill.js';
 import { buildSeasonFX } from './world/seasonfx.js';
 import { buildCampfire } from './world/campfire.js';
-import { buildWatermill } from './world/watermill.js';
 import { buildOwl, refreshWatertowerPerch, refreshWindmillPerch } from './world/owl.js';
 import { buildBigTree, buildTree } from './world/bigtree.js';
 import { buildWoodpile } from './world/woodpile.js';
+import { buildWell } from './world/well.js';
+import { buildWorkshop } from './world/workshop.js';
+import { buildContactShadows } from './world/contactshadows.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
 import { buildForest, buildScatterTrees } from './world/forest.js';
 import { buildGrassTufts } from './world/grass.js';
 import { buildFarm } from './world/farm.js';
 import { buildFields } from './world/fields.js';
-import { BUILDINGS, TRUCK, PASTURE, TREE_SPECS, BIG_TREE, WOODPILE } from './world/layout.js';
+import { BUILDINGS, TRUCK, PASTURE, TREE_SPECS, BIG_TREE, WOODPILE, WELL, WORKSHOP } from './world/layout.js';
 import { buildTruck, TRUCK_STYLES } from './world/truck.js';
 import { buildNightLights } from './world/nightlights.js';
 import { buildRoad, buildCar } from './world/road.js';
@@ -121,8 +125,42 @@ function boot() {
   const fields = buildFields(terrainModel, rng);
   world.add(fields);
 
+  // ★ 池塘：就在坐着的人 (-78,-23) 正前方，池心 (-78,2)
   const pond = buildPond(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r);
+  // 水面用正圆收边：岸坡环保留但隐藏，水盘半径略小于地形水线，
+  // 这样水边是光滑圆弧，不是地形粗网格切出来的锯齿。
+  const pondBank = pond.getObjectByName('pondBank');
+  if (pondBank) pondBank.visible = false;
+  const waterMesh = pond.children.find((c) => c.isMesh && c.material && c.material.uniforms && c.material.uniforms.uTime);
+  if (waterMesh) {
+    const desiredR = BUILDINGS.pond.r * 0.95;
+    const baseR = pond.userData.waterR || desiredR;
+    const wScale = desiredR / baseR;
+    waterMesh.scale.set(wScale, 1, wScale);
+    waterMesh.material.uniforms.uRadius.value = desiredR;
+    const baseSeason = pond.userData.setSeason;
+    pond.userData.setSeason = (t) => {
+      baseSeason(t);
+      waterMesh.scale.set(wScale, 1, wScale);
+      waterMesh.material.uniforms.uRadius.value = desiredR;
+    };
+    pond.userData.setSeason(0);
+  }
   world.add(pond);
+
+  // 池边石圈：大小/高低错落，水车那侧自动留缺口
+  const stoneWaterY = pond.userData.waterY ?? 5.35;
+  world.add(buildPondStones(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r, rng, stoneWaterY));
+
+
+  // 水池生态：鱼 + 荷叶 + 水藻
+  const pondLife = buildPondLife(
+    terrainModel,
+    { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z },
+    BUILDINGS.pond.r,
+    rng
+  );
+  world.add(pondLife);
 
   // 季节特效：樱花/落叶/雪 + 蝴蝶/蜜蜂 + 南瓜/雪人
   const seasonFX = buildSeasonFX(terrainModel, rng, quality);
@@ -132,7 +170,7 @@ function boot() {
   const campfire = buildCampfire(terrainModel, rng, { x: 26, z: 8 });
   world.add(campfire);
 
-  // 水车（水池西侧）
+  // 水车（池塘西侧）
   const watermill = buildWatermill(terrainModel, rng, { x: -93, z: 2 });
   world.add(watermill);
 
@@ -152,6 +190,24 @@ function boot() {
   const woodpile = buildWoodpile(terrainModel, rng, { x: WOODPILE.x, z: WOODPILE.z });
   world.add(woodpile);
 
+  // 水井：木材堆另一边
+  const well = buildWell(terrainModel, rng, { x: WELL.x, z: WELL.z });
+  world.add(well);
+
+  // 农舍东侧：修理棚工作区（整体旋转，和农舍平行）
+  const workshopInner = buildWorkshop(terrainModel, rng);
+  workshopInner.position.set(-66, 0, -2);   // 把原有绝对坐标收回到自己中心
+  const workshop = new THREE.Group();
+  workshop.name = 'workshop';
+  workshop.position.set(WORKSHOP.x, 0, WORKSHOP.z);
+  workshop.rotation.y = WORKSHOP.rot;
+  workshop.add(workshopInner);
+  workshop.userData.setNight = (t) => workshopInner.userData.setNight(t);
+  workshop.userData.getStyle = () => workshopInner.userData.getStyle();
+  workshop.userData.setStyle = (idx) => workshopInner.userData.setStyle(idx);
+  workshop.userData.styleNames = workshopInner.userData.styleNames;
+  world.add(workshop);
+
   // 另外 3 棵不同品种的树（有大有小，丰富场景）
   // 位置都经过间隙检查（≥3 单位），不会穿模
   const extraTrees = new THREE.Group();
@@ -166,14 +222,34 @@ function boot() {
 
   world.add(extraTrees);
 
-  // 水池生态：鱼 + 荷叶 + 浮藻
-  const pondLife = buildPondLife(
-    terrainModel,
-    { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z },
-    BUILDINGS.pond.r,
-    rng
-  );
-  world.add(pondLife);
+  // 接触阴影：建筑脚下、树根、围栏脚边
+  {
+    const buildings = [
+      { x: BUILDINGS.barn.x, z: BUILDINGS.barn.z, sx: 16, sz: 23, rot: BUILDINGS.barn.rot },
+      { x: BUILDINGS.farmhouse.x, z: BUILDINGS.farmhouse.z, sx: 14, sz: 16, rot: BUILDINGS.farmhouse.rot },
+      { x: BUILDINGS.silo1.x, z: BUILDINGS.silo1.z, sx: 9, sz: 9 },
+      { x: BUILDINGS.silo2.x, z: BUILDINGS.silo2.z, sx: 9, sz: 9 },
+      { x: BUILDINGS.watertower.x, z: BUILDINGS.watertower.z, sx: 11, sz: 11 },
+      { x: BUILDINGS.windmill.x, z: BUILDINGS.windmill.z, sx: 8, sz: 8 },
+      { x: workshop.position.x, z: workshop.position.z, sx: 15, sz: 10, rot: WORKSHOP.rot },
+      { x: watermill.position.x, z: watermill.position.z, sx: 10, sz: 6 },
+      { x: WELL.x, z: WELL.z, sx: 4.5, sz: 4.5 },
+      { x: BIG_TREE.x, z: BIG_TREE.z, sx: 8.5, sz: 8.5 },
+    ];
+    const trees = [];
+    extraTrees.traverse((tr) => {
+      if (!tr.userData || !tr.userData.kind || !tr.userData.scale) return;
+      if (!tr.name || !tr.name.startsWith('tree-')) return;
+      const sc = tr.userData.scale || 1;
+      trees.push({ x: tr.position.x, z: tr.position.z, sx: 2.05 * sc, sz: 2.05 * sc });
+    });
+    const contactShadows = buildContactShadows(terrainModel, {
+      buildings,
+      trees,
+      fences: farm.userData.fenceSlots || [],
+    });
+    world.add(contactShadows);
+  }
 
   const road = buildRoad(terrainModel, ROAD_POINTS, 5.5);
   world.add(road);
@@ -242,7 +318,7 @@ function boot() {
 
   Object.assign(app, {
     renderer, scene, terrainModel, terrain, sky, stars, clouds, birds, lighting, rig, device, quality,
-    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
+    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, well, workshop, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
     // 默认从中午开始（t=0.5），滑杆向左是早晨迷雾，向右是夜晚
     mode: { t: 0.5, target: 0.5 },
     // 调试/调参用：描边雾衰减（farScale<1 更早入雾，power<1 更早饱和）
@@ -780,7 +856,11 @@ function applySeason(t) {
   // 草簇：直接设色（冬季跟着草地一起变白，否则雪地上会留一圈绿草刺）
   if (app.grass && app.grass.material) {
     const gc = srgbOf(grassA);
-    app.grass.material.color.setRGB(gc.r, gc.g, gc.b, THREE.SRGBColorSpace);
+    // 草簇和地面同步压暗；冬季雪量上来后逐步恢复白色
+    const grassK = 1 - 0.30 * (1 - snowAmount);
+    app.grass.material.color.setRGB(
+      gc.r * grassK, gc.g * grassK, gc.b * grassK, THREE.SRGBColorSpace
+    );
   }
 
   // 地形：草地主体 + 冬季积雪。
@@ -890,6 +970,10 @@ function loop() {
 
   if (app.rig.introActive) {
     app.rig.updateIntro(performance.now());
+  } else if (app.rig.introPending) {
+    // 开屏待机：相机固定在世界边界机位上。
+    // 不能走 controls.update()/applyParallax —— 开屏机位在 maxDistance 之外，
+    // OrbitControls 会把相机拉回，而视差又按远距离放大，鼠标一动就抖/撕裂。
   } else {
     // ★ 关键：飞行期间【不能】调用 controls.update()。
     //   OrbitControls.update() 即使 enabled=false 也会执行，
@@ -935,11 +1019,14 @@ function loop() {
   app.logLady.userData.update(elapsed, dt);
   app.car.userData.update(dt);
   app.truck.userData.update(dt);
+  if (app.truck.userData.setNight) app.truck.userData.setNight(app.mode.t);
+  if (app.well && app.well.userData.setNight) app.well.userData.setNight(app.mode.t);
+  if (app.workshop && app.workshop.userData.setNight) app.workshop.userData.setNight(app.mode.t);
   app.farm.userData.windmill.userData.blades.rotation.z += dt * 0.55;
 
   // 云朵：绕世界原点缓慢飘动。
   app.birds.userData.update(elapsed, dt, app.rig.camera);
-  app.pondLife.userData.update(elapsed, dt);
+  if (app.pondLife) app.pondLife.userData.update(elapsed, dt);
   app.seasonFX.userData.tick(dt, elapsed);
 
   // 篝火：只在夜晚点亮（t > 0.55 开始，0.85 全亮）
@@ -971,7 +1058,7 @@ function loop() {
   }
 
   // 水面波动
-  if (app.pond.userData.waterMat) {
+  if (app.pond && app.pond.userData.waterMat) {
     const wm = app.pond.userData.waterMat;
     wm.uniforms.uTime.value = elapsed;
     wm.uniforms.uNight.value = app.mode.t;

@@ -157,6 +157,7 @@ export function windmill(style = 'ranch') {
 
   group.name = 'windmill';
   group.userData.blades = blades;
+  blades.traverse((o) => { if (o.isMesh) o.castShadow = false; });
   group.userData.windmillStyle = style;
   group.userData.spinSpeed = spec.spin;
   group.userData.scaleFactor = spec.scale || 1;
@@ -373,6 +374,7 @@ export function fence(points, height = 1.5, model = null, closed = true, style =
 
   const m = meshFrom(parts, { flatShading: false });
   m.name = 'fence-' + style;
+  m.castShadow = false;   // 细长横杆/尖桩在雪地上会拉出很长的"十字线"，改由接触阴影压地
   // ★ 围栏的横杆只有 0.16~0.24 宽，用建筑级的描边厚度会把它整根吞掉，
   //   在薄雾里就变成一条粗黑虚线。单独调细。
   m.userData.outlineThickness = 0.014;
@@ -763,6 +765,7 @@ export function buildFarm(model) {
       });
     }
     const nm = fence(slot.points, slot.height, model, true, style);
+    nm.visible = !slot.hidden;
     nm.name = slot.namePrefix + '-' + style;
     nm.userData.fenceKind = kind;
     nm.userData.fenceStyle = style;
@@ -773,24 +776,25 @@ export function buildFarm(model) {
   }
 
   // 注册一道围栏
-  function registerFence(kind, namePrefix, points, height, style) {
+  function registerFence(kind, namePrefix, points, height, style, hidden = false, livestock = false) {
     const nm = fence(points, height, model, true, style);
+    nm.visible = !hidden;
     nm.name = namePrefix + '-' + style;
     nm.userData.fenceKind = kind;
     nm.userData.fenceStyle = style;
     group.add(nm);
-    const slot = { kind, namePrefix, points, height, style, mesh: nm };
+    const slot = { kind, namePrefix, points, height, style, hidden, livestock, mesh: nm };
     fenceSlots.push(slot);
     return nm;
   }
 
-  registerFence('pasture', 'fence-pasture', PASTURE, 1.5, FENCE_STYLE_PASTURE);
+  registerFence('pasture', 'fence-pasture', PASTURE, 1.5, FENCE_STYLE_PASTURE, false, true);
   registerFence('coop', 'fence-coop', COOP, 1.0, FENCE_STYLE_COOP);
 
   // 每块田地的围栏
   for (let fi = 0; fi < FIELD_RECTS.length; fi++) {
     const corners = fieldCorners(FIELD_RECTS[fi]);
-    registerFence('field-' + fi, 'field-fence', corners, 0.95, FENCE_STYLE_FIELD);
+    registerFence('field-' + fi, 'field-fence', corners, 0.95, FENCE_STYLE_FIELD, false, !!FIELD_RECTS[fi].fenceOnly);
   }
 
   // 暴露给外部（hud 的点击面板用）
@@ -799,6 +803,18 @@ export function buildFarm(model) {
     const s = fenceSlots.find((x) => x.kind === kind);
     return s ? s.style : null;
   };
+  // 隐藏/显示牛羊 + 羊驼牧场的围栏（按钮调用）
+  group.userData.setLivestockFencesHidden = (hidden) => {
+    const h = !!hidden;
+    for (const slot of fenceSlots) {
+      if (!slot.livestock) continue;
+      slot.hidden = h;
+      if (slot.mesh) slot.mesh.visible = !h;
+    }
+    group.userData.livestockFencesHidden = h;
+  };
+  group.userData.livestockFencesHidden = false;
+
   group.userData.setFenceStyle = (kind, style) => {
     if (!FENCE_STYLES.includes(style)) return false;
     const ok = rebuildFence(kind, style);

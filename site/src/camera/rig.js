@@ -126,14 +126,29 @@ export function createCameraRig(renderer, model) {
     onDone: null,
   };
 
+  function pickIntroSpot() {
+    if (intro.spot) return intro.spot;
+    const spots = CAMERA.introSpots;
+    intro.spot = (Array.isArray(spots) && spots.length)
+      ? spots[Math.floor(Math.random() * spots.length)]
+      : Object.assign({ look: CAMERA.introLook }, CAMERA.introFrom);
+    return intro.spot;
+  }
+
   function computeIntroPoints() {
-    const fx = CAMERA.introFrom.x;
-    const fz = CAMERA.introFrom.z;
+    const spot = pickIntroSpot();
+    const fx = spot.x;
+    const fz = spot.z;
     const groundY = model.heightAt(fx, fz);
-    intro.from.set(fx, Math.max(groundY + 5, 10), fz);
+    // 开屏机位可以在地形边界之外；此时 y 作为绝对高度使用。
+    const configuredY = Number(spot.y);
+    intro.from.set(fx, Number.isFinite(configuredY) && configuredY > 0
+      ? configuredY
+      : Math.max(groundY + 8, 10), fz);
 
     intro.to.set(CAMERA.introTo.x, CAMERA.introTo.y, CAMERA.introTo.z);
-    intro.fromTarget.set(0, 12, 0);
+    const look = spot.look || CAMERA.introLook || { x: 0, y: 12, z: 0 };
+    intro.fromTarget.set(look.x, look.y, look.z);
     intro.toTarget.set(CAMERA.target.x, CAMERA.target.y, CAMERA.target.z);
   }
 
@@ -141,8 +156,12 @@ export function createCameraRig(renderer, model) {
 
   function placeAtIntroStart() {
     computeIntroPoints();
+    intro.pending = true;
     camera.position.copy(intro.from);
     controls.target.copy(intro.fromTarget);
+    // 开屏机位在世界边界之外，必须先放开 OrbitControls 的距离上限，
+    // 否则下一次 controls.update() 会把相机硬拉回 maxDistance=240。
+    controls.maxDistance = Math.max(CAMERA.maxDistance, camera.position.distanceTo(controls.target) + 2);
     camera.lookAt(intro.fromTarget);
   }
 
@@ -153,6 +172,7 @@ export function createCameraRig(renderer, model) {
   // （之前每次都 copy(intro.from)，如果相机被别的东西移动过，
   //   就会先"啪"地弹回起点再飞出去。）
   function playIntro(onDone) {
+    intro.pending = false;
     computeIntroPoints();
 
     // 起点 = 当前相机位置（点击那一刻的画面）
@@ -188,8 +208,11 @@ export function createCameraRig(renderer, model) {
 
     if (raw >= 1) {
       intro.active = false;
+      intro.pending = false;
 
       // 交接帧：先关阻尼同步一次 OrbitControls，再恢复阻尼
+      // 同时把开屏时临时放开的距离上限收回正常值。
+      controls.maxDistance = CAMERA.maxDistance;
       const prevDamping = controls.enableDamping;
       controls.enableDamping = false;
       controls.enabled = true;
@@ -611,10 +634,12 @@ export function createCameraRig(renderer, model) {
   // WASD 自由移动
   //   W/S 前后，A/D 左右（相对当前镜头朝向的水平面）
   //   Q/E 升降 target（相当于整体上下平移视角）
-  //   Shift 加速，空格 上升，Ctrl 下降
+  //   Shift 加速，空格/E 上升，Q/C 下降
+  //   ★ 不用 Ctrl 下降：Ctrl+W 是浏览器关闭标签页的快捷键，
+  //     网页无法拦截，按住 Ctrl+WASD 会直接把页面关掉（看起来像闪退）。
   // ---------------------------------------------------------------------------
   const keys = new Set();
-  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', ' ', 'control', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'c', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 
   function onKeyDown(e) {
     const k = e.key.toLowerCase();
@@ -632,6 +657,19 @@ export function createCameraRig(renderer, model) {
     keys.clear();
   }
 
+  // ★ Ctrl+W 是浏览器级快捷键，网页无法 preventDefault。
+  //   这里做最后一道保险：一旦检测到 Ctrl+W，关闭前弹确认框，
+  //   用户可以选择留在页面，不会"啪"一下闪退。
+  let ctrlWGuard = false;
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'w') ctrlWGuard = true;
+  }, true);
+  window.addEventListener('beforeunload', (e) => {
+    if (!ctrlWGuard) return;
+    e.preventDefault();
+    e.returnValue = '';
+    setTimeout(() => { ctrlWGuard = false; }, 0);
+  });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
@@ -843,7 +881,7 @@ export function createCameraRig(renderer, model) {
     if (keys.has('d') || keys.has('arrowright')) _delta.add(_right);
     if (keys.has('a') || keys.has('arrowleft')) _delta.sub(_right);
     if (keys.has('e') || keys.has(' ')) _delta.y += 1;
-    if (keys.has('q') || keys.has('control')) _delta.y -= 1;
+    if (keys.has('q') || keys.has('c')) _delta.y -= 1;
 
     if (_delta.lengthSq() < 1e-6) return;
 
@@ -875,6 +913,7 @@ export function createCameraRig(renderer, model) {
     camera, controls, updateFov, playIntro, placeAtIntroStart, updateIntro,
     flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
     get introActive() { return intro.active; },
+    get introPending() { return intro.pending; },
     get flyActive() { return fly.active; },
     get resetActive() { return resetAnim.active; },
     get moving() { return moveState.active; },

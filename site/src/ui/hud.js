@@ -30,6 +30,7 @@ export function createHud(app) {
   const btnRotate = $('btn-rotate');
   const btnReset = $('btn-reset');
   const btnRandom = $('btn-random');
+  const btnFences = $('btn-fences');
 
   let hintTimer = 0;
   function showHint(text, ms = 3000) {
@@ -40,7 +41,7 @@ export function createHud(app) {
     hintTimer = setTimeout(() => hint.classList.remove('show'), ms);
   }
 
-  const state = { audioOn: false, seasonIdx: 1, autoRotate: true };
+  const state = { audioOn: false, seasonIdx: 1, autoRotate: true, fencesHidden: false };
 
   // ★ 隐藏加载动画时【必须】同时取消 index.html 里的兜底超时 ——
   //   那个 guard 在 8 秒后检查 loader 是否还有 hidden 类，
@@ -275,6 +276,30 @@ export function createHud(app) {
     });
   }
 
+  // ---------- 隐藏 / 显示牧场围栏 ----------
+  function applyFencesHidden(hidden) {
+    state.fencesHidden = !!hidden;
+    const h = state.fencesHidden;
+    if (app.farm && app.farm.userData.setLivestockFencesHidden) {
+      app.farm.userData.setLivestockFencesHidden(h);
+    }
+    if (app.animals && app.animals.userData.setRoamScale) {
+      app.animals.userData.setRoamScale(h ? 1.6 : 1);
+    }
+    if (btnFences) {
+      btnFences.classList.toggle('off', h);
+      btnFences.title = h ? '显示牧场围栏' : '隐藏牧场围栏';
+      btnFences.setAttribute('aria-label', btnFences.title);
+    }
+  }
+  if (btnFences) {
+    btnFences.addEventListener('click', () => {
+      wakeBar();
+      applyFencesHidden(!state.fencesHidden);
+    });
+  }
+  applyFencesHidden(false);
+
   // 使用底部 UI 时保持常驻，移出后 2 秒收起
   if (timeBar) {
     timeBar.addEventListener('pointerenter', wakeBar);
@@ -329,7 +354,7 @@ export function createHud(app) {
     app.farm, app.fields, app.truck, app.car,
     app.animals, app.people, app.pets, app.logLady,
     app.pondLife, app.pond, app.watermill, app.campfire,
-    app.owl, app.bigtree, app.extraTrees, app.woodpile, app.seasonFX,
+    app.owl, app.bigtree, app.extraTrees, app.woodpile, app.well, app.workshop, app.seasonFX,
   ].filter(Boolean);
 
   // ---------- 树冠障碍（供相机落点避障）----------
@@ -454,9 +479,16 @@ export function createHud(app) {
     //     子网格只是它的零件。
     //     而 farm / animals / fields / trees / people / pets / pondLife
     //     都是"集合"，子对象才是被点的那个，绝不能上溯。
-    const SINGLE_GROUPS = ['truck', 'car', 'watermill', 'campfire', 'owl', 'pond', 'woodpile', 'bigtree'];
+    const SINGLE_GROUPS = ['truck', 'car', 'watermill', 'campfire', 'owl', 'pond', 'woodpile', 'bigtree', 'well'];
     if (root.parent && SINGLE_GROUPS.includes(root.parent.name)) {
       root = root.parent;
+    }
+
+    // 工作区是两层组（pivot → inner），点击零件后统一归到 workshop 根
+    if (app.workshop) {
+      let wp = root;
+      while (wp && wp !== app.workshop) wp = wp.parent;
+      if (wp === app.workshop) root = app.workshop;
     }
 
     if (!root || !root.parent) return;
@@ -514,6 +546,8 @@ export function createHud(app) {
       owl:        { label: 'Owl',      distMul: 6.5 },
       bigtree:    { label: '参天大树',  distMul: 2.4 },
       woodpile:   { label: '木材堆',    distMul: 4.0 },
+      well:       { label: '水井',      distMul: 2.7 },
+      workshop:   { label: '修理棚',    distMul: 2.5 },
       snowman:    { label: '雪人',      distMul: 2.8 },
       wheel:      { label: '水车',     distMul: 3.0 },
       mill:       { label: '小磨坊',   distMul: 3.0 },
@@ -779,6 +813,36 @@ export function createHud(app) {
         app.farm.userData.setWindmillStyle(pickStyle);
 
         if (app.markDirty) app.markDirty();
+      });
+      return;
+    }
+
+    // ---------- 水井：换配色 ----------
+    if (root.name === 'well' && app.well?.userData?.setStyle) {
+      const info = app.well.userData.getStyle();
+      const names = app.well.userData.styleNames || [];
+      const swatches = ['#8d8d87', '#a85442', '#6f7f7a', '#d2ccbc'];
+      app.focusedBuilding = { kind: 'well' };
+      const items = names.map((name, i) => ({ id: String(i), name, swatch: swatches[i] || '#888' }));
+      app.showOptionPanel('水井 配色', items, info.idx, (pick) => {
+        if (app.well.userData.setStyle(Number(pick))) {
+          if (app.markDirty) app.markDirty();
+        }
+      });
+      return;
+    }
+
+    // ---------- 修理棚：换配色 ----------
+    if (root.name === 'workshop' && app.workshop?.userData?.setStyle) {
+      const info = app.workshop.userData.getStyle();
+      const names = app.workshop.userData.styleNames || [];
+      const swatches = ['#8a6a44', '#6f7a4a', '#5a6f86', '#b08a58'];
+      app.focusedBuilding = { kind: 'workshop' };
+      const items = names.map((name, i) => ({ id: String(i), name, swatch: swatches[i] || '#888' }));
+      app.showOptionPanel('修理棚 配色', items, info.idx, (pick) => {
+        if (app.workshop.userData.setStyle(Number(pick))) {
+          if (app.markDirty) app.markDirty();
+        }
       });
       return;
     }
@@ -1328,6 +1392,12 @@ export function createHud(app) {
       if (app.watermill && app.watermill.userData.getStyle) {
         s.watermillStyle = app.watermill.userData.getStyle().idx;
       }
+      if (app.well && app.well.userData.getStyle) {
+        s.wellStyle = app.well.userData.getStyle().idx;
+      }
+      if (app.workshop && app.workshop.userData.getStyle) {
+        s.workshopStyle = app.workshop.userData.getStyle().idx;
+      }
 
       // 雪人风格（每个雪人独立）
       if (app.seasonFX && Array.isArray(app.seasonFX.userData.snowmen)) {
@@ -1407,6 +1477,12 @@ export function createHud(app) {
       }
       if (typeof d.watermillStyle === 'number' && app.watermill && app.watermill.userData.setStyle) {
         try { app.watermill.userData.setStyle(d.watermillStyle); } catch (e) {}
+      }
+      if (typeof d.wellStyle === 'number' && app.well && app.well.userData.setStyle) {
+        try { app.well.userData.setStyle(d.wellStyle); } catch (e) {}
+      }
+      if (typeof d.workshopStyle === 'number' && app.workshop && app.workshop.userData.setStyle) {
+        try { app.workshop.userData.setStyle(d.workshopStyle); } catch (e) {}
       }
       if (Array.isArray(d.snowmenStyles) && app.seasonFX && Array.isArray(app.seasonFX.userData.snowmen)) {
         d.snowmenStyles.forEach((style, i) => {

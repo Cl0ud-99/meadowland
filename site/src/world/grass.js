@@ -1,5 +1,6 @@
 import * as THREE from '../../vendor/three/three.module.js';
 import { WORLD } from '../config.js';
+import { BUILDINGS } from './layout.js';
 import { toonLambert } from '../render/toon.js';
 
 // 近景草丛：只在台地附近撒，用实例化的小三角片，保证治愈的"毛茸茸"边缘
@@ -12,10 +13,25 @@ export function buildGrassTufts(model, rng, count = 2600) {
   geo.setAttribute('position', src.attributes.position);
   geo.setAttribute('normal', src.attributes.normal);
 
+  // 草簇根部压暗：从根部的 0.62 渐变到叶尖的 1.0
+  {
+    const pos = src.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const t = Math.min(1, Math.max(0, pos.getY(i) / 0.9));
+      const f = 0.54 + 0.46 * t;
+      colors[i * 3] = f;
+      colors[i * 3 + 1] = f;
+      colors[i * 3 + 2] = f;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  }
+
   // shared:false —— 下面覆盖 onBeforeCompile 挂风摆，且 main.js 每季改 color
   const mat = toonLambert({
     color: 0x8fbe5e,
     flatShading: true,
+    vertexColors: true,
     side: THREE.DoubleSide,
     transparent: true,     // 距离淡出需要
     depthWrite: true,
@@ -76,6 +92,9 @@ export function buildGrassTufts(model, rng, count = 2600) {
     const x = Math.cos(ang) * rad;
     const z = Math.sin(ang) * rad;
     if (Math.abs(x) > WORLD.size * 0.45 || Math.abs(z) > WORLD.size * 0.45) continue;
+    // 水里不长草：池塘范围直接跳过
+    const pond = BUILDINGS.pond;
+    if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
     const y = model.heightAt(x, z);
     if (model.slopeAt(x, z) > 0.7) continue;
     p.set(x, y, z);

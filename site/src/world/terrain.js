@@ -79,6 +79,12 @@ export function createTerrainModel(seed = 20240521) {
     const rim = smoothstep(RIM_START, HALF * 0.98, dist);
     h += rim * rim * 74;
 
+    // 池塘周围局部做平：保留外围山峰，但池边必须是平地，
+    // 否则地形噪声会顶穿水面，水线出现锯齿。
+    const pd = Math.hypot(x - POND.x, z - POND.z);
+    const pondFlat = 1 - smoothstep(POND.r * 1.0, POND.r * 2.2, pd);
+    h = lerpN(h, PLATEAU_Y, pondFlat);
+
     // 先记下"挖坑前"的地面高度（水面高度要用它）
     lastGroundY = h;
 
@@ -92,31 +98,15 @@ export function createTerrainModel(seed = 20240521) {
     //
     // 实测：R*0.95 处地形高度差 0.54（4.27~4.81），
     // 所以坑要挖到 R*1.15 以外，且在水面半径处保持足够深度。
-    const pd = Math.hypot(x - POND.x, z - POND.z);
-    if (pd < POND.r * 1.5) {
-      // 内圈（0 ~ 1.05R）保持满深度，外圈（1.05R ~ 1.5R）平滑升到地面
-      const k = 1 - smoothstep(POND.r * 1.05, POND.r * 1.5, pd);
+    if (pd < POND.r) {
+      // 大平底 + 陡岸：水面可以铺满坑，岸上马上回到平地
+      const inner = POND.r * 0.84;
+      let k = 1;
+      if (pd > inner) k = 1 - smoothstep(inner, POND.r, pd);
       const bowl = k * k * (3 - 2 * k);
-      h -= bowl * 2.2;
+      h -= bowl * 2.8;
     }
 
-    // ---------- 池内兜底：保证地形永远不会顶穿池底 ----------
-    // ★ 这是"俯瞰水池时水底凸起一块地"的真正原因：
-    //   上面只挖 2.2，但台地原始高度带噪声（5.5±0.7），
-    //   挖完仍有 3.32~4.70 的起伏；而岸坡平底是固定值
-    //   outsideAvg-2.2 ≈ 3.63。地形比池底高 1 米的地方就直接
-    //   从半透明水面下顶出来，看起来像水底鼓起一块地。
-    //
-    //   这里在池内（pd < 1.2R）把地形硬压到"池底以下 0.35"，
-    //   用 smoothstep 过渡到 1.5R 之外的自然地形，不留硬边。
-    if (pd < POND.r * 1.5) {
-      const inner = 1 - smoothstep(POND.r * 1.15, POND.r * 1.5, pd);
-      if (inner > 0.001) {
-        const floorY = PLATEAU_Y - 2.55;    // 比岸坡平底再低 0.35
-        const clamped = Math.min(h, floorY);
-        h = lerpN(h, clamped, inner);
-      }
-    }
 
     return h;
   }
@@ -157,12 +147,32 @@ function makeGroundColor() {
   const tmp = new THREE.Color();
   const tmp2 = new THREE.Color();
   const fbmPatch = makeFbm(777, 3, 2.1, 0.5);
+  const fbmMid = makeFbm(4242, 3, 2.2, 0.5);
 
   // 返回 { r, g, b }，坐标是世界坐标
-  return function groundColorAt(x, z, y) {
+  return function groundColorAt(x, z, y, slope = 0, concave = 0) {
     const patch = fbmPatch(x * 0.012, z * 0.012) * 0.5 + 0.5;
     tmp.copy(cGrassA).lerp(cGrassB, clamp(patch * 1.3 - 0.15, 0, 1));
     tmp.lerp(cGrassC, clamp((1 - patch) * 0.75, 0, 1) * 0.55);
+
+    // 中频草色团块：约 0.06~0.1 的 fbm，制造 10~20 米尺度的草色起伏
+    const mid = fbmMid(x * 0.085, z * 0.085);
+    const midMul = 1 + mid * 0.08;
+    tmp.r = clamp(tmp.r * midMul, 0, 1);
+    tmp.g = clamp(tmp.g * midMul, 0, 1);
+    tmp.b = clamp(tmp.b * midMul, 0, 1);
+
+    // 坡度/低洼 baked 阴影：坡上略压暗，凹下去的草色更沉
+    const shade = clamp(1 - slope * 0.075 - concave * 0.20, 0.68, 1);
+    tmp.r = clamp(tmp.r * shade, 0, 1);
+    tmp.g = clamp(tmp.g * shade, 0, 1);
+    tmp.b = clamp(tmp.b * shade, 0, 1);
+
+    // 草地整体明度下调 30%（泥斑/岩石在后面叠加，不受影响）
+    const GRASS_BRIGHTNESS = 0.70;
+    tmp.r = clamp(tmp.r * GRASS_BRIGHTNESS, 0, 1);
+    tmp.g = clamp(tmp.g * GRASS_BRIGHTNESS, 0, 1);
+    tmp.b = clamp(tmp.b * GRASS_BRIGHTNESS, 0, 1);
 
     const dirtMask = smoothstep(0.55, 0.78, fbmPatch(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
     if (dirtMask > 0.01) {
@@ -241,8 +251,16 @@ export function buildTerrain(model, segments = WORLD.segments) {
     const y = model.heightAt(x, z);
     pos.setY(i, y);
 
-    // 颜色：三层草地 + 土壤斑块 + 高处岩石（和池塘岸坡共用同一套）
-    const c = groundColorAt(x, z, y);
+    // 颜色：三层草地 + 土壤斑块 + 中频团块 + 坡度/低洼阴影
+    // 用四邻域采样估局部坡度与凹陷程度，烘进顶点色里。
+    const d = 3.2;
+    const hL = model.heightAt(x - d, z);
+    const hR = model.heightAt(x + d, z);
+    const hD = model.heightAt(x, z - d);
+    const hU = model.heightAt(x, z + d);
+    const slope = Math.hypot(hR - hL, hU - hD) / (2 * d);
+    const concave = clamp(((hL + hR + hD + hU) / 4 - y) / 2.5, 0, 1);
+    const c = groundColorAt(x, z, y, slope, concave);
     colors[i * 3] = c.r;
     colors[i * 3 + 1] = c.g;
     colors[i * 3 + 2] = c.b;
@@ -264,6 +282,60 @@ export function buildTerrain(model, segments = WORLD.segments) {
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
   mesh.userData.snowUniform = snowUniform;
+  return mesh;
+}
+
+// 池塘浅岸：水线到草地之间的一圈泥坡。
+// 地面是平的，所以外圈可以贴着地形同高、同色，不会出现独立网格的缝。
+export function buildPondShore(model, center, radius, waterY) {
+  const segs = 96;
+  const rings = 6;
+  const innerR = radius * 0.945;
+  const outerR = radius * 1.06;
+  const pos = [], col = [], idx = [];
+  const groundColorAt = makeGroundColor();
+  const cMud = { r: 0.30, g: 0.24, b: 0.15 };
+  const cTmp = new THREE.Color();
+
+  for (let j = 0; j <= rings; j++) {
+    const t = j / rings;
+    const rr = innerR + (outerR - innerR) * t;
+    const y = (waterY - 0.04) + (PLATEAU_Y + 0.012 - (waterY - 0.04)) * (t * t * (3 - 2 * t));
+    for (let i = 0; i < segs; i++) {
+      const a = (i / segs) * Math.PI * 2;
+      const wx = center.x + Math.cos(a) * rr;
+      const wz = center.z + Math.sin(a) * rr;
+      pos.push(Math.cos(a) * rr, y, Math.sin(a) * rr);
+      const g = groundColorAt(wx, wz, PLATEAU_Y);
+      const k = smoothstep(0.18, 0.72, t);
+      cTmp.setRGB(
+        cMud.r + (g.r - cMud.r) * k,
+        cMud.g + (g.g - cMud.g) * k,
+        cMud.b + (g.b - cMud.b) * k,
+        THREE.LinearSRGBColorSpace
+      );
+      col.push(cTmp.r, cTmp.g, cTmp.b);
+    }
+  }
+  for (let j = 0; j < rings; j++) {
+    for (let i = 0; i < segs; i++) {
+      const a = j * segs + i;
+      const b = j * segs + (i + 1) % segs;
+      const c = (j + 1) * segs + i;
+      const d = (j + 1) * segs + (i + 1) % segs;
+      idx.push(a, b, c, b, d, c);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mat = toonLambert({ vertexColors: true, shared: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'pondShore';
+  mesh.position.set(center.x, 0, center.z);
+  mesh.receiveShadow = true;
   return mesh;
 }
 

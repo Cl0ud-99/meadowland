@@ -1,7 +1,7 @@
 import * as THREE from '../../vendor/three/three.module.js';
 import { box, tint, meshFrom } from '../util/geo.js';
 import { makeQuadruped, makeSheepRig, makeHuman, makeSittingHuman, randomLook } from './character.js';
-import { PASTURE, COOP, BUILDINGS, HAY_BALES, PEOPLE_PATHS, FIELD_RECTS, HORSE_PASTURE, TREE_SPECS, BIG_TREE } from './layout.js';
+import { PASTURE, COOP, BUILDINGS, HAY_BALES, PEOPLE_PATHS, FIELD_RECTS, HORSE_PASTURE, TREE_SPECS, BIG_TREE, WELL } from './layout.js';
 import { SCATTER_SPOTS } from './forest.js';
 import { pointInPolygon, circleInsidePolygon, distToPolygonEdge } from '../util/poly.js';
 
@@ -474,7 +474,7 @@ export function buildAnimals(model, rng, counts = null) {
         speed: opts.speed,
         radius,
         graze: opts.graze !== false,
-        poly, bodyR,
+        poly, basePoly: poly, bodyR,
         clearance: spot.clearance,
         breed: breed.name,
         kind,
@@ -745,6 +745,32 @@ export function buildAnimals(model, rng, counts = null) {
     }
   };
 
+  // 围栏隐藏后，牛羊/羊驼的活动范围整体放大（scale=1.6 表示线性扩大 60%）
+  group.userData.setRoamScale = (scale) => {
+    const k = Number.isFinite(scale) ? Math.max(1, scale) : 1;
+    const cache = new Map();
+    for (const a of list) {
+      const u = a.userData;
+      if (!u) continue;
+      if (u.kind !== 'cow' && u.kind !== 'sheep' && u.kind !== 'alpaca') continue;
+      const base = u.basePoly || u.poly;
+      if (!base) continue;
+      u.basePoly = base;
+      if (k === 1) { u.poly = base; continue; }
+      let out = cache.get(base);
+      if (!out) {
+        let cx = 0, cz = 0;
+        for (const [px, pz] of base) { cx += px; cz += pz; }
+        cx /= base.length; cz /= base.length;
+        out = base.map(([px, pz]) => [cx + (px - cx) * k, cz + (pz - cz) * k]);
+        cache.set(base, out);
+      }
+      u.poly = out;
+    }
+    group.userData.roamScale = k;
+  };
+  group.userData.setRoamScale(1);
+
   return group;
 }
 
@@ -777,6 +803,8 @@ export function buildPeople(model, rng) {
     for (const [hx, hz, hr] of HAY_BALES) {
       if (Math.hypot(x - hx, z - hz) < hr + pad) return false;
     }
+    // 水井体积碰撞：不能走进井口
+    if (Math.hypot(x - WELL.x, z - WELL.z) < WELL.r + pad) return false;
     // ★ 树的体积碰撞：不能走进树干
     for (const tr of TREE_OBSTACLES) {
       if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
@@ -819,6 +847,8 @@ export function buildPeople(model, rng) {
     for (const [hx, hz, hr] of HAY_BALES) {
       if (Math.hypot(x - hx, z - hz) < hr + pad) return false;
     }
+    // 水井体积碰撞：不能走进井口
+    if (Math.hypot(x - WELL.x, z - WELL.z) < WELL.r + pad) return false;
     // ★ 树的体积碰撞：不能穿过树干
     for (const tr of TREE_OBSTACLES) {
       if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;

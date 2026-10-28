@@ -114,7 +114,7 @@ function makeLampPost(height = 6) {
   const poleMat = toonLambert({ color: 0x4a4038 });
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, height, 6), poleMat);
   pole.position.y = height / 2;
-  pole.castShadow = true;
+  pole.castShadow = false;   // 细杆的长投影在雪地上像一根黑线
   group.add(pole);
 
   const shade = new THREE.Mesh(

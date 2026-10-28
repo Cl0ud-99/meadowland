@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Meadowland — 治愈系低多边形农场</title>
-  <meta name="description" content="A cozy low-poly farm experience built with three.js" />
+  <meta name="description" content="治愈系低多边形农场 · 三处山脊随机开屏 · 修理棚/水井特写与配色 · 冬季雪景" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#9fd0ea" />
@@ -52,6 +52,12 @@
       <button id="btn-rotate" class="tool" aria-label="自动环绕" title="自动环绕">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <button id="btn-fences" class="tool" aria-label="隐藏牧场围栏" title="隐藏牧场围栏">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M4 8h16M4 14h16M7 5v14M12 5v14M17 5v14"/>
+          <path class="fence-slash" d="M4 20L20 4"/>
+        </svg>
+      </button>
       <button id="btn-audio" class="tool off" aria-label="环境音" title="环境音">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
@@ -85,7 +91,7 @@
         </svg>
       </div>
       <h2 class="about-name">Cloud99</h2>
-      <p class="about-sub">Meadowland · A cozy low-poly farm</p>
+      <p class="about-sub">Meadowland · 0.7.0 · 边界山脊 / 修理棚 / 水井</p>
     </div>
     <button class="about-close" id="about-close" type="button" aria-label="关闭">×</button>
   </div>
@@ -350,9 +356,9 @@ canvas#scene.hoverable { cursor: var(--cursor-pointer, pointer) 8 6, pointer; }
   text-align: center;
   padding: 0 24px;
   /* 轻微毛玻璃景深：让标题从背后场景中“浮”出来 */
-  background: rgba(159, 208, 234, 0.22);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
+  background: rgba(159, 208, 234, 0.12);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
   /* 进入时随镜头推进慢慢淡出（约 2.4s），而不是瞬间消失 */
   transition: opacity 2.4s ease, visibility 2.4s;
 }
@@ -711,6 +717,8 @@ canvas#scene.hoverable { cursor: var(--cursor-pointer, pointer) 8 6, pointer; }
 }
 #time-bar .tool:active { transform: scale(0.92); }
 #time-bar .tool.off { opacity: 0.38; }
+#btn-fences .fence-slash { display: none; }
+#btn-fences.off .fence-slash { display: block; }
 #time-bar.night .tool { color: #dbe6ff; }
 
 /* ---------- 矮屏（横屏但窗口很矮）---------- */
@@ -35492,6 +35500,68 @@ void main() {
 
 	}
 
+	class DodecahedronGeometry extends PolyhedronGeometry {
+
+		constructor( radius = 1, detail = 0 ) {
+
+			const t = ( 1 + Math.sqrt( 5 ) ) / 2;
+			const r = 1 / t;
+
+			const vertices = [
+
+				// (±1, ±1, ±1)
+				-1, -1, -1,	-1, -1, 1,
+				-1, 1, -1, -1, 1, 1,
+				1, -1, -1, 1, -1, 1,
+				1, 1, -1, 1, 1, 1,
+
+				// (0, ±1/φ, ±φ)
+				0, - r, - t, 0, - r, t,
+				0, r, - t, 0, r, t,
+
+				// (±1/φ, ±φ, 0)
+				- r, - t, 0, - r, t, 0,
+				r, - t, 0, r, t, 0,
+
+				// (±φ, 0, ±1/φ)
+				- t, 0, - r, t, 0, - r,
+				- t, 0, r, t, 0, r
+			];
+
+			const indices = [
+				3, 11, 7, 	3, 7, 15, 	3, 15, 13,
+				7, 19, 17, 	7, 17, 6, 	7, 6, 15,
+				17, 4, 8, 	17, 8, 10, 	17, 10, 6,
+				8, 0, 16, 	8, 16, 2, 	8, 2, 10,
+				0, 12, 1, 	0, 1, 18, 	0, 18, 16,
+				6, 10, 2, 	6, 2, 13, 	6, 13, 15,
+				2, 16, 18, 	2, 18, 3, 	2, 3, 13,
+				18, 1, 9, 	18, 9, 11, 	18, 11, 3,
+				4, 14, 12, 	4, 12, 0, 	4, 0, 8,
+				11, 9, 5, 	11, 5, 19, 	11, 19, 7,
+				19, 5, 14, 	19, 14, 4, 	19, 4, 17,
+				1, 12, 14, 	1, 14, 5, 	1, 5, 9
+			];
+
+			super( vertices, indices, radius, detail );
+
+			this.type = 'DodecahedronGeometry';
+
+			this.parameters = {
+				radius: radius,
+				detail: detail
+			};
+
+		}
+
+		static fromJSON( data ) {
+
+			return new DodecahedronGeometry( data.radius, data.detail );
+
+		}
+
+	}
+
 	class Shape extends Path {
 
 		constructor( points ) {
@@ -38040,7 +38110,14 @@ void main() {
 	  // 原来 600 比「相机到地形最远角」的 643 还小，远山直接被裁成背景色。
 	  far: 1200,
 	  // 开场：从山脊背后升起
-	  introFrom: { x: -96, z: 118 },
+	  // 开屏随机机位：都在地形边界之外，前景有山坡/松林遮挡
+	  introSpots: [
+	    { x: -330, y: 120, z: 250, look: { x: 0, y: 22, z: 0 } },
+	    { x: -300, y: 120, z: -300, look: { x: 0, y: 22, z: 0 } },
+	    { x: 330, y: 120, z: 250, look: { x: 0, y: 20, z: 0 } },
+	  ],
+	  introFrom: { x: -330, y: 120, z: 250 },
+	  introLook: { x: 0, y: 22, z: 0 },
 	  // 全景视角：距离 168、俯角 8.5°
 	  //
 	  // 为什么从 y=88 降到 y=40：
@@ -38774,6 +38851,12 @@ void main() {
 	    const rim = smoothstep$1(RIM_START, HALF * 0.98, dist);
 	    h += rim * rim * 74;
 
+	    // 池塘周围局部做平：保留外围山峰，但池边必须是平地，
+	    // 否则地形噪声会顶穿水面，水线出现锯齿。
+	    const pd = Math.hypot(x - POND.x, z - POND.z);
+	    const pondFlat = 1 - smoothstep$1(POND.r * 1.0, POND.r * 2.2, pd);
+	    h = lerpN(h, PLATEAU_Y, pondFlat);
+
 	    // 先记下"挖坑前"的地面高度（水面高度要用它）
 	    lastGroundY = h;
 
@@ -38787,31 +38870,15 @@ void main() {
 	    //
 	    // 实测：R*0.95 处地形高度差 0.54（4.27~4.81），
 	    // 所以坑要挖到 R*1.15 以外，且在水面半径处保持足够深度。
-	    const pd = Math.hypot(x - POND.x, z - POND.z);
-	    if (pd < POND.r * 1.5) {
-	      // 内圈（0 ~ 1.05R）保持满深度，外圈（1.05R ~ 1.5R）平滑升到地面
-	      const k = 1 - smoothstep$1(POND.r * 1.05, POND.r * 1.5, pd);
+	    if (pd < POND.r) {
+	      // 大平底 + 陡岸：水面可以铺满坑，岸上马上回到平地
+	      const inner = POND.r * 0.84;
+	      let k = 1;
+	      if (pd > inner) k = 1 - smoothstep$1(inner, POND.r, pd);
 	      const bowl = k * k * (3 - 2 * k);
-	      h -= bowl * 2.2;
+	      h -= bowl * 2.8;
 	    }
 
-	    // ---------- 池内兜底：保证地形永远不会顶穿池底 ----------
-	    // ★ 这是"俯瞰水池时水底凸起一块地"的真正原因：
-	    //   上面只挖 2.2，但台地原始高度带噪声（5.5±0.7），
-	    //   挖完仍有 3.32~4.70 的起伏；而岸坡平底是固定值
-	    //   outsideAvg-2.2 ≈ 3.63。地形比池底高 1 米的地方就直接
-	    //   从半透明水面下顶出来，看起来像水底鼓起一块地。
-	    //
-	    //   这里在池内（pd < 1.2R）把地形硬压到"池底以下 0.35"，
-	    //   用 smoothstep 过渡到 1.5R 之外的自然地形，不留硬边。
-	    if (pd < POND.r * 1.5) {
-	      const inner = 1 - smoothstep$1(POND.r * 1.15, POND.r * 1.5, pd);
-	      if (inner > 0.001) {
-	        const floorY = PLATEAU_Y - 2.55;    // 比岸坡平底再低 0.35
-	        const clamped = Math.min(h, floorY);
-	        h = lerpN(h, clamped, inner);
-	      }
-	    }
 
 	    return h;
 	  }
@@ -38852,12 +38919,32 @@ void main() {
 	  const tmp = new Color();
 	  const tmp2 = new Color();
 	  const fbmPatch = makeFbm(777, 3, 2.1, 0.5);
+	  const fbmMid = makeFbm(4242, 3, 2.2, 0.5);
 
 	  // 返回 { r, g, b }，坐标是世界坐标
-	  return function groundColorAt(x, z, y) {
+	  return function groundColorAt(x, z, y, slope = 0, concave = 0) {
 	    const patch = fbmPatch(x * 0.012, z * 0.012) * 0.5 + 0.5;
 	    tmp.copy(cGrassA).lerp(cGrassB, clamp(patch * 1.3 - 0.15, 0, 1));
 	    tmp.lerp(cGrassC, clamp((1 - patch) * 0.75, 0, 1) * 0.55);
+
+	    // 中频草色团块：约 0.06~0.1 的 fbm，制造 10~20 米尺度的草色起伏
+	    const mid = fbmMid(x * 0.085, z * 0.085);
+	    const midMul = 1 + mid * 0.08;
+	    tmp.r = clamp(tmp.r * midMul, 0, 1);
+	    tmp.g = clamp(tmp.g * midMul, 0, 1);
+	    tmp.b = clamp(tmp.b * midMul, 0, 1);
+
+	    // 坡度/低洼 baked 阴影：坡上略压暗，凹下去的草色更沉
+	    const shade = clamp(1 - slope * 0.075 - concave * 0.20, 0.68, 1);
+	    tmp.r = clamp(tmp.r * shade, 0, 1);
+	    tmp.g = clamp(tmp.g * shade, 0, 1);
+	    tmp.b = clamp(tmp.b * shade, 0, 1);
+
+	    // 草地整体明度下调 30%（泥斑/岩石在后面叠加，不受影响）
+	    const GRASS_BRIGHTNESS = 0.70;
+	    tmp.r = clamp(tmp.r * GRASS_BRIGHTNESS, 0, 1);
+	    tmp.g = clamp(tmp.g * GRASS_BRIGHTNESS, 0, 1);
+	    tmp.b = clamp(tmp.b * GRASS_BRIGHTNESS, 0, 1);
 
 	    const dirtMask = smoothstep$1(0.55, 0.78, fbmPatch(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
 	    if (dirtMask > 0.01) {
@@ -38934,8 +39021,16 @@ void main() {
 	    const y = model.heightAt(x, z);
 	    pos.setY(i, y);
 
-	    // 颜色：三层草地 + 土壤斑块 + 高处岩石（和池塘岸坡共用同一套）
-	    const c = groundColorAt(x, z, y);
+	    // 颜色：三层草地 + 土壤斑块 + 中频团块 + 坡度/低洼阴影
+	    // 用四邻域采样估局部坡度与凹陷程度，烘进顶点色里。
+	    const d = 3.2;
+	    const hL = model.heightAt(x - d, z);
+	    const hR = model.heightAt(x + d, z);
+	    const hD = model.heightAt(x, z - d);
+	    const hU = model.heightAt(x, z + d);
+	    const slope = Math.hypot(hR - hL, hU - hD) / (2 * d);
+	    const concave = clamp(((hL + hR + hD + hU) / 4 - y) / 2.5, 0, 1);
+	    const c = groundColorAt(x, z, y, slope, concave);
 	    colors[i * 3] = c.r;
 	    colors[i * 3 + 1] = c.g;
 	    colors[i * 3 + 2] = c.b;
@@ -39869,6 +39964,73 @@ void main() {
 	  return group;
 	}
 
+	// 池塘石圈：参考图里那种大小/高低错落的圆石，围着水线摆一圈。
+	// 石头单独成组，方便以后调数量、尺寸或做交互。
+	function buildPondStones(model, center, radius, rng, waterY) {
+	  const group = new Group();
+	  group.name = 'pondStones';
+
+	  // 几种低模圆石，随机挑，避免一圈看起来是同一个模型
+	  const geos = [
+	    new DodecahedronGeometry(1, 0),
+	    new IcosahedronGeometry(1, 0),
+	    new DodecahedronGeometry(1, 0),
+	  ];
+
+	  const stoneMat = toonLambert({ color: 0xb9bec3, flatShading: true, shared: false });
+	  const bigMat = toonLambert({ color: 0xaeb4ba, flatShading: true, shared: false });
+
+	  // 水车在池塘西侧，留一个缺口，避免石头穿进水车轮
+	  const wheel = { x: -93, z: 2 };
+
+	  const count = 38;
+	  for (let i = 0; i < count; i++) {
+	    const a = (i / count) * Math.PI * 2 + rng.range(-0.055, 0.055);
+	    const big = i % 6 === 2 || i % 11 === 0;
+	    const scale = big ? rng.range(1.25, 1.85) : rng.range(0.52, 1.05);
+	    const rr = radius * (big ? rng.range(0.995, 1.045) : rng.range(0.975, 1.02));
+
+	    const x = center.x + Math.cos(a) * rr;
+	    const z = center.z + Math.sin(a) * rr;
+	    if (Math.hypot(x - wheel.x, z - wheel.z) < 4.0) continue;
+
+	    const g = geos[i % geos.length];
+	    const mesh = new Mesh(g, big ? bigMat : stoneMat);
+	    const sy = scale * rng.range(0.52, 0.78);
+	    mesh.scale.set(scale * rng.range(0.9, 1.25), sy, scale * rng.range(0.9, 1.25));
+	    mesh.rotation.set(rng.range(-0.18, 0.18), rng.range(0, Math.PI * 2), rng.range(-0.14, 0.14));
+
+	    const ground = model.heightAt(x, z);
+	    const base = Math.max(ground, waterY - 0.18);
+	    mesh.position.set(x, base + sy * 0.48, z);
+	    mesh.castShadow = true;
+	    mesh.receiveShadow = true;
+	    mesh.name = big ? 'pond-stone-big' : 'pond-stone';
+	    group.add(mesh);
+	  }
+
+	  // 补一些小石子，填主石之间的缝，让边缘更像参考图
+	  for (let i = 0; i < 14; i++) {
+	    const a = rng.next() * Math.PI * 2;
+	    const rr = radius * rng.range(0.982, 1.03);
+	    const x = center.x + Math.cos(a) * rr;
+	    const z = center.z + Math.sin(a) * rr;
+	    if (Math.hypot(x - wheel.x, z - wheel.z) < 4.0) continue;
+	    const mesh = new Mesh(geos[i % geos.length], stoneMat);
+	    const s = rng.range(0.24, 0.46);
+	    mesh.scale.set(s * 1.2, s * 0.55, s * 1.1);
+	    mesh.rotation.y = rng.range(0, Math.PI * 2);
+	    const base = Math.max(model.heightAt(x, z), waterY - 0.18);
+	    mesh.position.set(x, base + s * 0.28, z);
+	    mesh.castShadow = true;
+	    mesh.receiveShadow = true;
+	    mesh.name = 'pond-pebble';
+	    group.add(mesh);
+	  }
+
+	  return group;
+	}
+
 	// ---------------------------------------------------------------------------
 	// 几何小工具：所有静态建筑都靠这些拼，最后合并成一个 BufferGeometry，
 	// 这样一栋房子只占 1 个 draw call
@@ -39889,7 +40051,7 @@ void main() {
 	  return geo;
 	}
 
-	function box(w, h, d, color, x = 0, y = 0, z = 0) {
+	function box$1(w, h, d, color, x = 0, y = 0, z = 0) {
 	  const g = new BoxGeometry(w, h, d);
 	  g.translate(x, y + h / 2, z);
 	  return tint(g, color);
@@ -40017,6 +40179,460 @@ void main() {
 
 	  if (changed) colorAttr.needsUpdate = true;
 	  return changed;
+	}
+
+	// ---------------------------------------------------------------------------
+	// 建筑风格：5 套配色方案
+	//
+	// 每套风格定义谷仓、农舍、风车、水车、水塔的颜色。
+	// 点击建筑特写时，画面上会出现"换风格"按钮，循环切换。
+	//
+	// 设计思路：
+	//   - 每套风格有明确的色相主题，不是随便换颜色
+	//   - 保持低多边形风格，颜色饱和度适中（避免 Bloom 过曝）
+	//   - 屋顶/墙面/装饰三层次分明
+	// ---------------------------------------------------------------------------
+
+	const BUILDING_STYLES = [
+	  {
+	    name: '经典红',
+	    desc: '经典美式农场，红墙白边',
+	    // 谷仓：红墙 + 深色屋顶
+	    barn: {
+	      wall: 0xb5543c,       // 红墙
+	      trim: 0xe8e2d2,       // 白色装饰线
+	      roof: 0x6a3a2e,       // 深棕屋顶
+	      door: 0x8b5836,       // 木门
+	      doorTrim: 0xe8e2d2,
+	      path: 0xc9a878,
+	    },
+	    // 农舍：米黄墙 + 红屋顶
+	    house: {
+	      wall: 0xe0cdb4,
+	      trim: 0x8b5836,
+	      roof: 0xb5543c,
+	      door: 0x8b5836,
+	      path: 0xc9a878,
+	    },
+	    // 风车：木色
+	    windmill: { tower: 0xd8cdb8, blade: 0xe8e2d2, hub: 0x8b5836 },
+	    // 水车：深木色
+	    watermill: { wood: 0x6a5240, blade: 0x7a6248, roof: 0x8a4a38 },
+	    // 水塔：金属 + 木
+	    watertower: { tank: 0xc7ccd2, roof: 0x6c8fb5, leg: 0x8b5836 },
+	    // 筒仓：银灰金属
+	    silo: { body: 0xc7ccd2, band: 0xa8aeb4, cap: 0xb8bec4 },
+	  },
+
+	  {
+	    name: '北欧蓝',
+	    desc: '北欧风格，蓝灰墙 + 白屋顶',
+	    barn: {
+	      wall: 0x7a95b5,       // 蓝灰
+	      trim: 0xf0f4f8,       // 亮白装饰
+	      roof: 0x3a4a5e,       // 深蓝屋顶
+	      door: 0x5a6a7a,
+	      doorTrim: 0xf0f4f8,
+	      path: 0xb8c8d8,
+	    },
+	    house: {
+	      wall: 0xe8eef4,
+	      trim: 0x7a95b5,
+	      roof: 0x4a6a8a,
+	      door: 0x5a6a7a,
+	      path: 0xb8c8d8,
+	    },
+	    windmill: { tower: 0xe8eef4, blade: 0xa8c0d8, hub: 0x5a6a7a },
+	    watermill: { wood: 0x5a6a7a, blade: 0x7a8a9a, roof: 0x4a6a8a },
+	    watertower: { tank: 0xd8e4f0, roof: 0x4a6a8a, leg: 0x5a6a7a },
+	    silo: { body: 0xd8e4f0, band: 0xb8c8d8, cap: 0xc8d8e8 },
+	  },
+
+	  {
+	    name: '秋日橙',
+	    desc: '秋季丰收，橙褐墙 + 深红屋顶',
+	    barn: {
+	      wall: 0xd88a3a,       // 橙
+	      trim: 0xf0e0c8,
+	      roof: 0x8a3a28,       // 深红屋顶
+	      door: 0x7a4a2a,
+	      doorTrim: 0xf0e0c8,
+	      path: 0xd8b888,
+	    },
+	    house: {
+	      wall: 0xf0e0c8,
+	      trim: 0xa86a3a,
+	      roof: 0x9a4a2a,
+	      door: 0x7a4a2a,
+	      path: 0xd8b888,
+	    },
+	    windmill: { tower: 0xf0e0c8, blade: 0xe0c090, hub: 0x7a4a2a },
+	    watermill: { wood: 0x7a4a2a, blade: 0x9a6a3a, roof: 0x9a4a2a },
+	    watertower: { tank: 0xe0c090, roof: 0x8a3a28, leg: 0x7a4a2a },
+	    silo: { body: 0xe0c090, band: 0xc8a878, cap: 0xd8b898 },
+	  },
+
+	  {
+	    name: '森林绿',
+	    desc: '森林小屋，墨绿墙 + 木色屋顶',
+	    barn: {
+	      wall: 0x4a6a4a,       // 墨绿
+	      trim: 0xd8e0d0,
+	      roof: 0x3a4a3a,       // 深绿屋顶
+	      door: 0x6a5a3a,
+	      doorTrim: 0xd8e0d0,
+	      path: 0xa8b898,
+	    },
+	    house: {
+	      wall: 0xd8e0d0,
+	      trim: 0x4a6a4a,
+	      roof: 0x5a7a5a,
+	      door: 0x6a5a3a,
+	      path: 0xa8b898,
+	    },
+	    windmill: { tower: 0xd8e0d0, blade: 0xa8c0a8, hub: 0x4a6a4a },
+	    watermill: { wood: 0x5a4a3a, blade: 0x7a6a4a, roof: 0x4a6a4a },
+	    watertower: { tank: 0xc8d8c8, roof: 0x3a4a3a, leg: 0x6a5a3a },
+	    silo: { body: 0xc8d8c8, band: 0xa8b8a8, cap: 0xb8c8b8 },
+	  },
+
+	  {
+	    name: '海盐白',
+	    desc: '海岸风格，纯白墙 + 蓝顶',
+	    barn: {
+	      wall: 0xf0f0ec,       // 近白
+	      trim: 0xa8c0d0,
+	      roof: 0x5a8aa8,       // 海蓝屋顶
+	      door: 0x8a9aa8,
+	      doorTrim: 0xa8c0d0,
+	      path: 0xd8d8d0,
+	    },
+	    house: {
+	      wall: 0xf4f4f0,
+	      trim: 0x8aa8b8,
+	      roof: 0x6a9ab8,
+	      door: 0x8a9aa8,
+	      path: 0xd8d8d0,
+	    },
+	    windmill: { tower: 0xf4f4f0, blade: 0xc8dce8, hub: 0x6a8a9a },
+	    watermill: { wood: 0x8a7a6a, blade: 0xa89a8a, roof: 0x5a8aa8 },
+	    watertower: { tank: 0xe8f0f4, roof: 0x5a8aa8, leg: 0x8a7a6a },
+	    silo: { body: 0xf0f4f8, band: 0xd0dce4, cap: 0xe0e8f0 },
+	  },
+	];
+
+	// ---------------------------------------------------------------------------
+	// 水车
+	//
+	// 位置：水池西侧边缘。水池在 (-78, 2)，半径 16。
+	// 水车放在池边 (-93, 2)，半浸在水里。
+	//
+	// 构成：
+	//   - 支架：两根斜柱 + 一根横梁（A 字形）
+	//   - 水车：16 片叶片的圆轮，半径 3.2
+	//   - 水花：叶片入水时溅起的白色小点
+	//   - 涟漪：水面上扩散的圆环
+	//   - 小磨坊：旁边的木屋 + 转动的屋顶小风车
+	// ---------------------------------------------------------------------------
+
+	function makeWheel(rng) {
+	  const group = new Group();
+	  group.name = 'wheel';
+
+	  const R = 3.2;          // 轮半径
+	  const bladeCount = 16;  // 叶片数
+
+	  // ---------- 两个圆环（轮缘） ----------
+	  const rimMat = toonLambert({ color: 0x6a5240, flatShading: true });
+	  for (const zOff of [-0.55, 0.55]) {
+	    const torus = new Mesh(
+	      new TorusGeometry(R, 0.12, 6, 24),
+	      rimMat
+	    );
+	    torus.position.z = zOff;
+	    group.add(torus);
+	  }
+
+	  // ---------- 辐条 ----------
+	  for (let i = 0; i < 8; i++) {
+	    const a = (i / 8) * Math.PI * 2;
+	    const spoke = new Mesh(
+	      new BoxGeometry(R * 2, 0.09, 0.09),
+	      rimMat
+	    );
+	    spoke.rotation.z = a;
+	    group.add(spoke);
+	  }
+
+	  // ---------- 叶片 ----------
+	  const bladeMat = toonLambert({ color: 0x7a6248, flatShading: true });
+	  const bladeGeo = new BoxGeometry(0.9, 0.9, 1.3);
+	  for (let i = 0; i < bladeCount; i++) {
+	    const a = (i / bladeCount) * Math.PI * 2;
+	    const blade = new Mesh(bladeGeo, bladeMat);
+	    blade.position.set(Math.cos(a) * R, Math.sin(a) * R, 0);
+	    blade.rotation.z = a;
+	    blade.castShadow = true;
+	    group.add(blade);
+	  }
+
+	  // ---------- 中心轴 ----------
+	  const axle = new Mesh(
+	    new CylinderGeometry(0.22, 0.22, 2.2, 8),
+	    toonLambert({ color: 0x4a3a2a, flatShading: true })
+	  );
+	  axle.rotation.x = Math.PI / 2;
+	  group.add(axle);
+
+	  return group;
+	}
+
+	function buildWatermill(model, rng, center = { x: -93, z: 2 }) {
+	  const group = new Group();
+	  group.name = 'watermill';
+
+	  const gy = model.heightAt(center.x, center.z);
+
+	  // 水位（必须和 terrain.js 的 buildPond 完全一致）
+	  //
+	  // ★ 这里是水位计算过时导致的连锁问题：
+	  //   terrain.js 现在用 shoreY = outsideMin（地形最低值）作岸顶，
+	  //   水位 = shoreY - WATER_SINK_x；
+	  //   而这边还在用 outsideAvg（平均值）- 0.55，
+	  //   两者差了 0.32，水车轮心因此被抬到水面以上 4 米（悬空）。
+	  //
+	  //   现在按同一套规则重算：取 1.55R 一圈的【最低值】当岸顶。
+	  const pond = { x: -78, z: 2, r: 16 };
+	  let outsideMin = Infinity;
+	  for (let i = 0; i < 24; i++) {
+	    const a = (i / 24) * Math.PI * 2;
+	    const h = model.heightAt(pond.x + Math.cos(a) * pond.r * 1.55, pond.z + Math.sin(a) * pond.r * 1.55);
+	    if (h < outsideMin) outsideMin = h;
+	  }
+	  const waterY = outsideMin - 0.55;   // 和 WATER_SINK_LOW 一致
+
+	  // ---------- 支架（A 字形）----------
+	  const woodMat = toonLambert({ color: 0x6a5240, flatShading: true });
+	  toonLambert({ color: 0x5a4432, flatShading: true });
+
+	  // ★ wheelY 是【世界高度】，但 wheel.position.y 是【组内坐标】，
+	  //   group 自己放在 gy 高度，所以要减掉 gy。
+	  //   之前直接用 worldWaterY + 1.2，实际世界高度变成 gy + waterY + 1.2，
+	  //   轮心被抬到 9.1（高出水面 3.75）—— 水车悬在半空。
+	  const wheelWorldY = waterY + 3.8;        // 轮底略高于岸边（轮半径 3.2，中心高出水面约 3.8）
+	  const wheelY = wheelWorldY - gy;          // 换算成组内坐标
+	  const postH = wheelWorldY - gy + 1.0;
+
+	  // 支架放在轮子两侧（Z 方向），不要挡住轮面
+	  for (const side of [-1, 1]) {
+	    const post = new Mesh(new BoxGeometry(0.28, postH, 0.28), woodMat);
+	    post.position.set(0, postH / 2, side * 1.1);
+	    post.castShadow = true;
+	    group.add(post);
+	  }
+	  // 横梁（连接两柱，沿 Z 方向）
+	  const beam = new Mesh(new BoxGeometry(0.24, 0.24, 2.6), woodMat);
+	  beam.position.y = postH * 0.78;
+	  group.add(beam);
+
+	  // ---------- 水车 ----------
+	  // makeWheel 里所有部件都在 XY 平面，轮面朝 Z 轴，
+	  // 绕 Z 轴自转就是"立着转"（像摩天轮）。
+	  // 不要再加 rotation.y，否则轮面会侧对相机，看起来像一摞桶。
+	  const wheel = makeWheel();
+	  wheel.position.set(0, wheelY, 0);
+	  group.add(wheel);
+
+	  // ---------- 水花 ----------
+	  const splashCount = 16;
+	  const splashGeo = new BufferGeometry();
+	  const splashPos = new Float32Array(splashCount * 3);
+	  splashGeo.setAttribute('position', new BufferAttribute(splashPos, 3));
+	  const splashMat = new PointsMaterial({
+	    color: 0xd8ecf8, size: 0.22, transparent: true, opacity: 0.85,
+	    depthWrite: false, sizeAttenuation: true,
+	  });
+	  const splash = new Points(splashGeo, splashMat);
+	  splash.frustumCulled = false;
+	  group.add(splash);
+
+	  const splashState = [];
+	  for (let i = 0; i < splashCount; i++) {
+	    splashState.push({
+	      life: rng.next(),
+	      speed: 0.8 + rng.next() * 0.8,
+	      ang: rng.next() * Math.PI * 2,
+	    });
+	  }
+
+	  // ---------- 涟漪 ----------
+	  const ripples = [];
+	  const RIPPLE_COUNT = 4;
+	  for (let i = 0; i < RIPPLE_COUNT; i++) {
+	    const geo = new RingGeometry(0.55, 0.78, 24);
+	    geo.rotateX(-Math.PI / 2);
+	    const mat = new MeshBasicMaterial({
+	      color: 0xc8e4f4, transparent: true, opacity: 0,
+	      depthWrite: false, side: DoubleSide,
+	    });
+	    const ring = new Mesh(geo, mat);
+	    // 波纹贴在【水面】上：直接按 group 原点（gy）换算，
+	    // 不能再用 wheelY —— 轮子抬高后 waterY-wheelY 会把波纹压到水下。
+	    ring.position.set(0, waterY - gy + 0.06, 0);
+	    ring.userData.phase = i / RIPPLE_COUNT;
+	    group.add(ring);
+	    ripples.push(ring);
+	  }
+
+	  // ---------- 小磨坊 ----------
+	  const millGroup = new Group();
+	  // 磨坊挪到岸上（水池在东边，所以往西挪）
+	  // ★ 离水车要够远，否则屋顶会穿进轮子（轮半径 3.2 + 屋顶半径 2.2）。
+	  //   往西再挪 1.5，总距离 6.0，两件刚好不碰。
+	  const MILL_OFFSET_X = -6;
+	  const MILL_OFFSET_Z = 1.5;
+	  // ★ y 必须按【磨坊自己脚下的地形高度】算，不能用水车中心的 gy。
+	  //   磨坊离水车 4.5 米，那里地面高 3.10，而水车处只有 2.95 ——
+	  //   差 0.15，房子就直接陷进地里了。
+	  const millGroundY = model.heightAt(center.x + MILL_OFFSET_X, center.z + MILL_OFFSET_Z);
+	  // group 的原点在 gy，所以要减去 gy 换算成组内坐标
+	  millGroup.position.set(MILL_OFFSET_X, millGroundY - gy, MILL_OFFSET_Z);
+
+	  // 墙体
+	  const wallMat = toonLambert({ color: 0xc8b89c, flatShading: true });
+	  const walls = new Mesh(new BoxGeometry(2.6, 2.4, 2.4), wallMat);
+	  walls.position.y = 1.2;
+	  walls.castShadow = true;
+	  millGroup.add(walls);
+
+	  // 屋顶（四棱锥）
+	  const roofMat = toonLambert({ color: 0x8a4a38, flatShading: true });
+	  const roof = new Mesh(new ConeGeometry(2.2, 1.4, 4), roofMat);
+	  roof.position.y = 3.1;
+	  roof.rotation.y = Math.PI / 4;
+	  roof.castShadow = true;
+	  millGroup.add(roof);
+
+	  // 门
+	  const door = new Mesh(
+	    new BoxGeometry(0.7, 1.2, 0.1),
+	    toonLambert({ color: 0x5a4432, flatShading: true })
+	  );
+	  door.position.set(0, 0.6, 1.22);
+	  millGroup.add(door);
+
+	  // 屋顶小风车（4 片）
+	  const vaneGroup = new Group();
+	  vaneGroup.position.set(0, 3.9, 0);
+	  for (let i = 0; i < 4; i++) {
+	    const vane = new Mesh(
+	      new BoxGeometry(0.12, 1.0, 0.06),
+	      toonLambert({ color: 0xd8d0c0, flatShading: true })
+	    );
+	    vane.position.y = 0.5;
+	    vane.rotation.z = (i / 4) * Math.PI * 2;
+	    // 绕中心旋转：先把叶片移到半径上
+	    const holder = new Group();
+	    holder.rotation.z = (i / 4) * Math.PI * 2;
+	    holder.add(vane);
+	    vaneGroup.add(holder);
+	  }
+	  millGroup.add(vaneGroup);
+
+	  group.add(millGroup);
+
+	  // ---------- 位置 ----------
+	  group.position.set(center.x, gy, center.z);
+	  // 不旋转整组：wheel 自己已经绕 Y 转了 90°，
+	  // 整组保持默认朝向，磨坊在 -X 方向（岸上）
+	  group.rotation.y = 0;
+
+	  group.userData.wheel = wheel;
+	  group.userData.splash = splash;
+	  group.userData.splashGeo = splashGeo;
+	  group.userData.splashState = splashState;
+	  group.userData.ripples = ripples;
+	  group.userData.vane = vaneGroup;
+	  group.userData.waterY = waterY;
+
+	  // ---------- 更新 ----------
+	  // ---------- 风格切换（独立）----------
+	  let styleIdx = 0;
+	  function setStyle(idx) {
+	    const n = BUILDING_STYLES.length;
+	    styleIdx = ((idx % n) + n) % n;
+	    const style = BUILDING_STYLES[styleIdx];
+	    if (!style || !style.watermill) return null;
+	    const s = style.watermill;
+	    const m = new Map();
+	    const hex = (v) => {
+	      const c = new Color(v);
+	      return c.r.toFixed(4) + ',' + c.g.toFixed(4) + ',' + c.b.toFixed(4);
+	    };
+	    m.set(hex(0x6a5240), s.wood);     // 支架/轮缘
+	    m.set(hex(0x7a6248), s.blade);    // 叶片
+	    m.set(hex(0x8a4a38), s.roof);     // 磨坊屋顶
+	    m.set(hex(0x5a4432), s.wood);     // 门/轴
+	    m.set(hex(0xc8b89c), s.wood);     // 磨坊墙
+	    m.set(hex(0xd8d0c0), s.blade);    // 屋顶小风车
+
+	    group.traverse((o) => {
+	      if (!o.isMesh) return;
+	      // 水车大多数部件是普通 color 材质（没有 colorSlots），
+	      // 旧实现只处理 colorSlots，导致改色失效 —— 这里补一条按材质颜色匹配的路径。
+	      if (o.userData.colorSlots) {
+	        recolorMesh(o, m);
+	      } else if (o.material && o.material.color) {
+	        const c = o.material.color;
+	        const key = c.r.toFixed(4) + ',' + c.g.toFixed(4) + ',' + c.b.toFixed(4);
+	        const nv = m.get(key);
+	        if (nv !== undefined) c.setHex(nv);
+	      }
+	    });
+	    return style;
+	  }
+	  group.userData.setStyle = setStyle;
+	  group.userData.nextStyle = () => setStyle(styleIdx + 1);
+	  group.userData.getStyle = () => ({
+	    idx: styleIdx,
+	    name: BUILDING_STYLES[styleIdx].name,
+	    count: BUILDING_STYLES.length,
+	  });
+	  // 兼容旧接口
+	  group.userData.applyStyle = setStyle;
+
+	  group.userData.update = (t, dt) => {
+	    // 水车转动（绕 Z 轴）
+	    wheel.rotation.z += dt * 0.55;
+
+	    // 屋顶小风车
+	    vaneGroup.rotation.z += dt * 1.2;
+
+	    // 水花：从轮子底部溅起
+	    const arr = splashGeo.attributes.position.array;
+	    for (let i = 0; i < splashState.length; i++) {
+	      const s = splashState[i];
+	      s.life += dt * s.speed;
+	      if (s.life > 1) s.life -= 1;
+	      const l = s.life;
+	      // 抛物线：从底部向上再落下
+	      const h = Math.sin(l * Math.PI) * 1.1;
+	      // 轮面朝 Z 轴，水花在轮子底部（y 最低点）向四周溅
+	      arr[i * 3] = Math.cos(s.ang) * (0.4 + l * 1.1);
+	      arr[i * 3 + 1] = waterY - gy + h + 0.1;
+	      arr[i * 3 + 2] = Math.sin(s.ang) * (0.3 + l * 0.6);
+	    }
+	    splashGeo.attributes.position.needsUpdate = true;
+
+	    // 涟漪：扩散 + 淡出
+	    for (const ring of ripples) {
+	      const ph = ((t * 0.45 + ring.userData.phase) % 1);
+	      ring.scale.setScalar(1.0 + ph * 5.0);
+	      ring.material.opacity = (1 - ph) * 0.55;
+	    }
+	  };
+
+	  return group;
 	}
 
 	// ===========================================================================
@@ -41112,460 +41728,6 @@ void main() {
 	}
 
 	// ---------------------------------------------------------------------------
-	// 建筑风格：5 套配色方案
-	//
-	// 每套风格定义谷仓、农舍、风车、水车、水塔的颜色。
-	// 点击建筑特写时，画面上会出现"换风格"按钮，循环切换。
-	//
-	// 设计思路：
-	//   - 每套风格有明确的色相主题，不是随便换颜色
-	//   - 保持低多边形风格，颜色饱和度适中（避免 Bloom 过曝）
-	//   - 屋顶/墙面/装饰三层次分明
-	// ---------------------------------------------------------------------------
-
-	const BUILDING_STYLES = [
-	  {
-	    name: '经典红',
-	    desc: '经典美式农场，红墙白边',
-	    // 谷仓：红墙 + 深色屋顶
-	    barn: {
-	      wall: 0xb5543c,       // 红墙
-	      trim: 0xe8e2d2,       // 白色装饰线
-	      roof: 0x6a3a2e,       // 深棕屋顶
-	      door: 0x8b5836,       // 木门
-	      doorTrim: 0xe8e2d2,
-	      path: 0xc9a878,
-	    },
-	    // 农舍：米黄墙 + 红屋顶
-	    house: {
-	      wall: 0xe0cdb4,
-	      trim: 0x8b5836,
-	      roof: 0xb5543c,
-	      door: 0x8b5836,
-	      path: 0xc9a878,
-	    },
-	    // 风车：木色
-	    windmill: { tower: 0xd8cdb8, blade: 0xe8e2d2, hub: 0x8b5836 },
-	    // 水车：深木色
-	    watermill: { wood: 0x6a5240, blade: 0x7a6248, roof: 0x8a4a38 },
-	    // 水塔：金属 + 木
-	    watertower: { tank: 0xc7ccd2, roof: 0x6c8fb5, leg: 0x8b5836 },
-	    // 筒仓：银灰金属
-	    silo: { body: 0xc7ccd2, band: 0xa8aeb4, cap: 0xb8bec4 },
-	  },
-
-	  {
-	    name: '北欧蓝',
-	    desc: '北欧风格，蓝灰墙 + 白屋顶',
-	    barn: {
-	      wall: 0x7a95b5,       // 蓝灰
-	      trim: 0xf0f4f8,       // 亮白装饰
-	      roof: 0x3a4a5e,       // 深蓝屋顶
-	      door: 0x5a6a7a,
-	      doorTrim: 0xf0f4f8,
-	      path: 0xb8c8d8,
-	    },
-	    house: {
-	      wall: 0xe8eef4,
-	      trim: 0x7a95b5,
-	      roof: 0x4a6a8a,
-	      door: 0x5a6a7a,
-	      path: 0xb8c8d8,
-	    },
-	    windmill: { tower: 0xe8eef4, blade: 0xa8c0d8, hub: 0x5a6a7a },
-	    watermill: { wood: 0x5a6a7a, blade: 0x7a8a9a, roof: 0x4a6a8a },
-	    watertower: { tank: 0xd8e4f0, roof: 0x4a6a8a, leg: 0x5a6a7a },
-	    silo: { body: 0xd8e4f0, band: 0xb8c8d8, cap: 0xc8d8e8 },
-	  },
-
-	  {
-	    name: '秋日橙',
-	    desc: '秋季丰收，橙褐墙 + 深红屋顶',
-	    barn: {
-	      wall: 0xd88a3a,       // 橙
-	      trim: 0xf0e0c8,
-	      roof: 0x8a3a28,       // 深红屋顶
-	      door: 0x7a4a2a,
-	      doorTrim: 0xf0e0c8,
-	      path: 0xd8b888,
-	    },
-	    house: {
-	      wall: 0xf0e0c8,
-	      trim: 0xa86a3a,
-	      roof: 0x9a4a2a,
-	      door: 0x7a4a2a,
-	      path: 0xd8b888,
-	    },
-	    windmill: { tower: 0xf0e0c8, blade: 0xe0c090, hub: 0x7a4a2a },
-	    watermill: { wood: 0x7a4a2a, blade: 0x9a6a3a, roof: 0x9a4a2a },
-	    watertower: { tank: 0xe0c090, roof: 0x8a3a28, leg: 0x7a4a2a },
-	    silo: { body: 0xe0c090, band: 0xc8a878, cap: 0xd8b898 },
-	  },
-
-	  {
-	    name: '森林绿',
-	    desc: '森林小屋，墨绿墙 + 木色屋顶',
-	    barn: {
-	      wall: 0x4a6a4a,       // 墨绿
-	      trim: 0xd8e0d0,
-	      roof: 0x3a4a3a,       // 深绿屋顶
-	      door: 0x6a5a3a,
-	      doorTrim: 0xd8e0d0,
-	      path: 0xa8b898,
-	    },
-	    house: {
-	      wall: 0xd8e0d0,
-	      trim: 0x4a6a4a,
-	      roof: 0x5a7a5a,
-	      door: 0x6a5a3a,
-	      path: 0xa8b898,
-	    },
-	    windmill: { tower: 0xd8e0d0, blade: 0xa8c0a8, hub: 0x4a6a4a },
-	    watermill: { wood: 0x5a4a3a, blade: 0x7a6a4a, roof: 0x4a6a4a },
-	    watertower: { tank: 0xc8d8c8, roof: 0x3a4a3a, leg: 0x6a5a3a },
-	    silo: { body: 0xc8d8c8, band: 0xa8b8a8, cap: 0xb8c8b8 },
-	  },
-
-	  {
-	    name: '海盐白',
-	    desc: '海岸风格，纯白墙 + 蓝顶',
-	    barn: {
-	      wall: 0xf0f0ec,       // 近白
-	      trim: 0xa8c0d0,
-	      roof: 0x5a8aa8,       // 海蓝屋顶
-	      door: 0x8a9aa8,
-	      doorTrim: 0xa8c0d0,
-	      path: 0xd8d8d0,
-	    },
-	    house: {
-	      wall: 0xf4f4f0,
-	      trim: 0x8aa8b8,
-	      roof: 0x6a9ab8,
-	      door: 0x8a9aa8,
-	      path: 0xd8d8d0,
-	    },
-	    windmill: { tower: 0xf4f4f0, blade: 0xc8dce8, hub: 0x6a8a9a },
-	    watermill: { wood: 0x8a7a6a, blade: 0xa89a8a, roof: 0x5a8aa8 },
-	    watertower: { tank: 0xe8f0f4, roof: 0x5a8aa8, leg: 0x8a7a6a },
-	    silo: { body: 0xf0f4f8, band: 0xd0dce4, cap: 0xe0e8f0 },
-	  },
-	];
-
-	// ---------------------------------------------------------------------------
-	// 水车
-	//
-	// 位置：水池西侧边缘。水池在 (-78, 2)，半径 16。
-	// 水车放在池边 (-93, 2)，半浸在水里。
-	//
-	// 构成：
-	//   - 支架：两根斜柱 + 一根横梁（A 字形）
-	//   - 水车：16 片叶片的圆轮，半径 3.2
-	//   - 水花：叶片入水时溅起的白色小点
-	//   - 涟漪：水面上扩散的圆环
-	//   - 小磨坊：旁边的木屋 + 转动的屋顶小风车
-	// ---------------------------------------------------------------------------
-
-	function makeWheel(rng) {
-	  const group = new Group();
-	  group.name = 'wheel';
-
-	  const R = 3.2;          // 轮半径
-	  const bladeCount = 16;  // 叶片数
-
-	  // ---------- 两个圆环（轮缘） ----------
-	  const rimMat = toonLambert({ color: 0x6a5240, flatShading: true });
-	  for (const zOff of [-0.55, 0.55]) {
-	    const torus = new Mesh(
-	      new TorusGeometry(R, 0.12, 6, 24),
-	      rimMat
-	    );
-	    torus.position.z = zOff;
-	    group.add(torus);
-	  }
-
-	  // ---------- 辐条 ----------
-	  for (let i = 0; i < 8; i++) {
-	    const a = (i / 8) * Math.PI * 2;
-	    const spoke = new Mesh(
-	      new BoxGeometry(R * 2, 0.09, 0.09),
-	      rimMat
-	    );
-	    spoke.rotation.z = a;
-	    group.add(spoke);
-	  }
-
-	  // ---------- 叶片 ----------
-	  const bladeMat = toonLambert({ color: 0x7a6248, flatShading: true });
-	  const bladeGeo = new BoxGeometry(0.9, 0.9, 1.3);
-	  for (let i = 0; i < bladeCount; i++) {
-	    const a = (i / bladeCount) * Math.PI * 2;
-	    const blade = new Mesh(bladeGeo, bladeMat);
-	    blade.position.set(Math.cos(a) * R, Math.sin(a) * R, 0);
-	    blade.rotation.z = a;
-	    blade.castShadow = true;
-	    group.add(blade);
-	  }
-
-	  // ---------- 中心轴 ----------
-	  const axle = new Mesh(
-	    new CylinderGeometry(0.22, 0.22, 2.2, 8),
-	    toonLambert({ color: 0x4a3a2a, flatShading: true })
-	  );
-	  axle.rotation.x = Math.PI / 2;
-	  group.add(axle);
-
-	  return group;
-	}
-
-	function buildWatermill(model, rng, center = { x: -93, z: 2 }) {
-	  const group = new Group();
-	  group.name = 'watermill';
-
-	  const gy = model.heightAt(center.x, center.z);
-
-	  // 水位（必须和 terrain.js 的 buildPond 完全一致）
-	  //
-	  // ★ 这里是水位计算过时导致的连锁问题：
-	  //   terrain.js 现在用 shoreY = outsideMin（地形最低值）作岸顶，
-	  //   水位 = shoreY - WATER_SINK_x；
-	  //   而这边还在用 outsideAvg（平均值）- 0.55，
-	  //   两者差了 0.32，水车轮心因此被抬到水面以上 4 米（悬空）。
-	  //
-	  //   现在按同一套规则重算：取 1.55R 一圈的【最低值】当岸顶。
-	  const pond = { x: -78, z: 2, r: 16 };
-	  let outsideMin = Infinity;
-	  for (let i = 0; i < 24; i++) {
-	    const a = (i / 24) * Math.PI * 2;
-	    const h = model.heightAt(pond.x + Math.cos(a) * pond.r * 1.55, pond.z + Math.sin(a) * pond.r * 1.55);
-	    if (h < outsideMin) outsideMin = h;
-	  }
-	  const waterY = outsideMin - 0.55;   // 和 WATER_SINK_LOW 一致
-
-	  // ---------- 支架（A 字形）----------
-	  const woodMat = toonLambert({ color: 0x6a5240, flatShading: true });
-	  toonLambert({ color: 0x5a4432, flatShading: true });
-
-	  // ★ wheelY 是【世界高度】，但 wheel.position.y 是【组内坐标】，
-	  //   group 自己放在 gy 高度，所以要减掉 gy。
-	  //   之前直接用 worldWaterY + 1.2，实际世界高度变成 gy + waterY + 1.2，
-	  //   轮心被抬到 9.1（高出水面 3.75）—— 水车悬在半空。
-	  const wheelWorldY = waterY + 3.8;        // 轮底略高于岸边（轮半径 3.2，中心高出水面约 3.8）
-	  const wheelY = wheelWorldY - gy;          // 换算成组内坐标
-	  const postH = wheelWorldY - gy + 1.0;
-
-	  // 支架放在轮子两侧（Z 方向），不要挡住轮面
-	  for (const side of [-1, 1]) {
-	    const post = new Mesh(new BoxGeometry(0.28, postH, 0.28), woodMat);
-	    post.position.set(0, postH / 2, side * 1.1);
-	    post.castShadow = true;
-	    group.add(post);
-	  }
-	  // 横梁（连接两柱，沿 Z 方向）
-	  const beam = new Mesh(new BoxGeometry(0.24, 0.24, 2.6), woodMat);
-	  beam.position.y = postH * 0.78;
-	  group.add(beam);
-
-	  // ---------- 水车 ----------
-	  // makeWheel 里所有部件都在 XY 平面，轮面朝 Z 轴，
-	  // 绕 Z 轴自转就是"立着转"（像摩天轮）。
-	  // 不要再加 rotation.y，否则轮面会侧对相机，看起来像一摞桶。
-	  const wheel = makeWheel();
-	  wheel.position.set(0, wheelY, 0);
-	  group.add(wheel);
-
-	  // ---------- 水花 ----------
-	  const splashCount = 16;
-	  const splashGeo = new BufferGeometry();
-	  const splashPos = new Float32Array(splashCount * 3);
-	  splashGeo.setAttribute('position', new BufferAttribute(splashPos, 3));
-	  const splashMat = new PointsMaterial({
-	    color: 0xd8ecf8, size: 0.22, transparent: true, opacity: 0.85,
-	    depthWrite: false, sizeAttenuation: true,
-	  });
-	  const splash = new Points(splashGeo, splashMat);
-	  splash.frustumCulled = false;
-	  group.add(splash);
-
-	  const splashState = [];
-	  for (let i = 0; i < splashCount; i++) {
-	    splashState.push({
-	      life: rng.next(),
-	      speed: 0.8 + rng.next() * 0.8,
-	      ang: rng.next() * Math.PI * 2,
-	    });
-	  }
-
-	  // ---------- 涟漪 ----------
-	  const ripples = [];
-	  const RIPPLE_COUNT = 4;
-	  for (let i = 0; i < RIPPLE_COUNT; i++) {
-	    const geo = new RingGeometry(0.55, 0.78, 24);
-	    geo.rotateX(-Math.PI / 2);
-	    const mat = new MeshBasicMaterial({
-	      color: 0xc8e4f4, transparent: true, opacity: 0,
-	      depthWrite: false, side: DoubleSide,
-	    });
-	    const ring = new Mesh(geo, mat);
-	    // 波纹贴在【水面】上：直接按 group 原点（gy）换算，
-	    // 不能再用 wheelY —— 轮子抬高后 waterY-wheelY 会把波纹压到水下。
-	    ring.position.set(0, waterY - gy + 0.06, 0);
-	    ring.userData.phase = i / RIPPLE_COUNT;
-	    group.add(ring);
-	    ripples.push(ring);
-	  }
-
-	  // ---------- 小磨坊 ----------
-	  const millGroup = new Group();
-	  // 磨坊挪到岸上（水池在东边，所以往西挪）
-	  // ★ 离水车要够远，否则屋顶会穿进轮子（轮半径 3.2 + 屋顶半径 2.2）。
-	  //   往西再挪 1.5，总距离 6.0，两件刚好不碰。
-	  const MILL_OFFSET_X = -6;
-	  const MILL_OFFSET_Z = 1.5;
-	  // ★ y 必须按【磨坊自己脚下的地形高度】算，不能用水车中心的 gy。
-	  //   磨坊离水车 4.5 米，那里地面高 3.10，而水车处只有 2.95 ——
-	  //   差 0.15，房子就直接陷进地里了。
-	  const millGroundY = model.heightAt(center.x + MILL_OFFSET_X, center.z + MILL_OFFSET_Z);
-	  // group 的原点在 gy，所以要减去 gy 换算成组内坐标
-	  millGroup.position.set(MILL_OFFSET_X, millGroundY - gy, MILL_OFFSET_Z);
-
-	  // 墙体
-	  const wallMat = toonLambert({ color: 0xc8b89c, flatShading: true });
-	  const walls = new Mesh(new BoxGeometry(2.6, 2.4, 2.4), wallMat);
-	  walls.position.y = 1.2;
-	  walls.castShadow = true;
-	  millGroup.add(walls);
-
-	  // 屋顶（四棱锥）
-	  const roofMat = toonLambert({ color: 0x8a4a38, flatShading: true });
-	  const roof = new Mesh(new ConeGeometry(2.2, 1.4, 4), roofMat);
-	  roof.position.y = 3.1;
-	  roof.rotation.y = Math.PI / 4;
-	  roof.castShadow = true;
-	  millGroup.add(roof);
-
-	  // 门
-	  const door = new Mesh(
-	    new BoxGeometry(0.7, 1.2, 0.1),
-	    toonLambert({ color: 0x5a4432, flatShading: true })
-	  );
-	  door.position.set(0, 0.6, 1.22);
-	  millGroup.add(door);
-
-	  // 屋顶小风车（4 片）
-	  const vaneGroup = new Group();
-	  vaneGroup.position.set(0, 3.9, 0);
-	  for (let i = 0; i < 4; i++) {
-	    const vane = new Mesh(
-	      new BoxGeometry(0.12, 1.0, 0.06),
-	      toonLambert({ color: 0xd8d0c0, flatShading: true })
-	    );
-	    vane.position.y = 0.5;
-	    vane.rotation.z = (i / 4) * Math.PI * 2;
-	    // 绕中心旋转：先把叶片移到半径上
-	    const holder = new Group();
-	    holder.rotation.z = (i / 4) * Math.PI * 2;
-	    holder.add(vane);
-	    vaneGroup.add(holder);
-	  }
-	  millGroup.add(vaneGroup);
-
-	  group.add(millGroup);
-
-	  // ---------- 位置 ----------
-	  group.position.set(center.x, gy, center.z);
-	  // 不旋转整组：wheel 自己已经绕 Y 转了 90°，
-	  // 整组保持默认朝向，磨坊在 -X 方向（岸上）
-	  group.rotation.y = 0;
-
-	  group.userData.wheel = wheel;
-	  group.userData.splash = splash;
-	  group.userData.splashGeo = splashGeo;
-	  group.userData.splashState = splashState;
-	  group.userData.ripples = ripples;
-	  group.userData.vane = vaneGroup;
-	  group.userData.waterY = waterY;
-
-	  // ---------- 更新 ----------
-	  // ---------- 风格切换（独立）----------
-	  let styleIdx = 0;
-	  function setStyle(idx) {
-	    const n = BUILDING_STYLES.length;
-	    styleIdx = ((idx % n) + n) % n;
-	    const style = BUILDING_STYLES[styleIdx];
-	    if (!style || !style.watermill) return null;
-	    const s = style.watermill;
-	    const m = new Map();
-	    const hex = (v) => {
-	      const c = new Color(v);
-	      return c.r.toFixed(4) + ',' + c.g.toFixed(4) + ',' + c.b.toFixed(4);
-	    };
-	    m.set(hex(0x6a5240), s.wood);     // 支架/轮缘
-	    m.set(hex(0x7a6248), s.blade);    // 叶片
-	    m.set(hex(0x8a4a38), s.roof);     // 磨坊屋顶
-	    m.set(hex(0x5a4432), s.wood);     // 门/轴
-	    m.set(hex(0xc8b89c), s.wood);     // 磨坊墙
-	    m.set(hex(0xd8d0c0), s.blade);    // 屋顶小风车
-
-	    group.traverse((o) => {
-	      if (!o.isMesh) return;
-	      // 水车大多数部件是普通 color 材质（没有 colorSlots），
-	      // 旧实现只处理 colorSlots，导致改色失效 —— 这里补一条按材质颜色匹配的路径。
-	      if (o.userData.colorSlots) {
-	        recolorMesh(o, m);
-	      } else if (o.material && o.material.color) {
-	        const c = o.material.color;
-	        const key = c.r.toFixed(4) + ',' + c.g.toFixed(4) + ',' + c.b.toFixed(4);
-	        const nv = m.get(key);
-	        if (nv !== undefined) c.setHex(nv);
-	      }
-	    });
-	    return style;
-	  }
-	  group.userData.setStyle = setStyle;
-	  group.userData.nextStyle = () => setStyle(styleIdx + 1);
-	  group.userData.getStyle = () => ({
-	    idx: styleIdx,
-	    name: BUILDING_STYLES[styleIdx].name,
-	    count: BUILDING_STYLES.length,
-	  });
-	  // 兼容旧接口
-	  group.userData.applyStyle = setStyle;
-
-	  group.userData.update = (t, dt) => {
-	    // 水车转动（绕 Z 轴）
-	    wheel.rotation.z += dt * 0.55;
-
-	    // 屋顶小风车
-	    vaneGroup.rotation.z += dt * 1.2;
-
-	    // 水花：从轮子底部溅起
-	    const arr = splashGeo.attributes.position.array;
-	    for (let i = 0; i < splashState.length; i++) {
-	      const s = splashState[i];
-	      s.life += dt * s.speed;
-	      if (s.life > 1) s.life -= 1;
-	      const l = s.life;
-	      // 抛物线：从底部向上再落下
-	      const h = Math.sin(l * Math.PI) * 1.1;
-	      // 轮面朝 Z 轴，水花在轮子底部（y 最低点）向四周溅
-	      arr[i * 3] = Math.cos(s.ang) * (0.4 + l * 1.1);
-	      arr[i * 3 + 1] = waterY - gy + h + 0.1;
-	      arr[i * 3 + 2] = Math.sin(s.ang) * (0.3 + l * 0.6);
-	    }
-	    splashGeo.attributes.position.needsUpdate = true;
-
-	    // 涟漪：扩散 + 淡出
-	    for (const ring of ripples) {
-	      const ph = ((t * 0.45 + ring.userData.phase) % 1);
-	      ring.scale.setScalar(1.0 + ph * 5.0);
-	      ring.material.opacity = (1 - ph) * 0.55;
-	    }
-	  };
-
-	  return group;
-	}
-
-	// ---------------------------------------------------------------------------
 	// 猫头鹰彩蛋（致敬《双峰》）
 	//
 	// 只有一只，随机停落在谷仓 / 农舍 / 水塔 / 风车 其中一处屋顶。
@@ -42446,7 +42608,7 @@ void main() {
 	// 通用材质 / 几何辅助
 	// ---------------------------------------------------------------------------
 	const _mats = new Map();
-	function mat(color) {
+	function mat$1(color) {
 	  if (!_mats.has(color)) {
 	    _mats.set(color, toonLambert({ color, flatShading: true, shared: false }));
 	  }
@@ -42510,7 +42672,7 @@ void main() {
 	  const len = dir.length();
 	  if (len < 1e-4) return null;
 	  const geo = new CylinderGeometry(r2, r1, len, radial, 1, false);
-	  const mesh = new Mesh(geo, mat(color));
+	  const mesh = new Mesh(geo, mat$1(color));
 	  mesh.position.copy(a).add(b).multiplyScalar(0.5);
 	  mesh.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize());
 	  mesh.castShadow = true;
@@ -42522,7 +42684,7 @@ void main() {
 	// 低多边形叶团
 	function blob(group, x, y, z, rx, ry, rz, color, detail = 1, ryRot = 0) {
 	  const geo = new IcosahedronGeometry(1, detail);
-	  const mesh = new Mesh(geo, mat(color));
+	  const mesh = new Mesh(geo, mat$1(color));
 	  mesh.position.set(x, y, z);
 	  mesh.scale.set(rx, ry, rz);
 	  mesh.rotation.y = ryRot;
@@ -42533,7 +42695,7 @@ void main() {
 	}
 
 	function trunkBase(group, h, rBottom, rTop, color = 0x6b4a32, radial = 7) {
-	  addMesh(group, new CylinderGeometry(rTop, rBottom, h, radial), mat(color), 0, h / 2, 0);
+	  addMesh(group, new CylinderGeometry(rTop, rBottom, h, radial), mat$1(color), 0, h / 2, 0);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -42612,10 +42774,10 @@ void main() {
 	  const spineColor = 0xe8dfa0;
 
 	  // 主柱
-	  addMesh(g, new CylinderGeometry(1.35, 1.65, 15.5, 10), mat(green), 0, 7.75, 0);
-	  addMesh(g, new SphereGeometry(1.35, 10, 7), mat(green), 0, 15.5, 0);
+	  addMesh(g, new CylinderGeometry(1.35, 1.65, 15.5, 10), mat$1(green), 0, 7.75, 0);
+	  addMesh(g, new SphereGeometry(1.35, 10, 7), mat$1(green), 0, 15.5, 0);
 	  // 根部裙边
-	  addMesh(g, new CylinderGeometry(1.7, 2.0, 0.7, 10), mat(dark), 0, 0.35, 0);
+	  addMesh(g, new CylinderGeometry(1.7, 2.0, 0.7, 10), mat$1(dark), 0, 0.35, 0);
 
 	  // 竖向棱线
 	  const ribCount = 10;
@@ -42634,7 +42796,7 @@ void main() {
 	    c.rotateZ(-Math.PI / 2);
 	    c.rotateY(-a);
 	    c.translate(Math.cos(a) * (r + 0.08), y, Math.sin(a) * (r + 0.08));
-	    addMesh(g, c, mat(spineColor), 0, 0, 0);
+	    addMesh(g, c, mat$1(spineColor), 0, 0, 0);
 	  };
 	  const heights = [2.8, 5.2, 7.6, 10.0, 12.4, 14.2];
 	  for (const y of heights) {
@@ -42655,9 +42817,9 @@ void main() {
 	  for (const a of arms) {
 	    const x = a.side * a.out;
 	    branch(g, 0, a.h, 0, x, a.h, 0, a.r, a.r, green, 8);
-	    addMesh(g, new SphereGeometry(a.r * 1.02, 8, 6), mat(green), x, a.h, 0);
+	    addMesh(g, new SphereGeometry(a.r * 1.02, 8, 6), mat$1(green), x, a.h, 0);
 	    branch(g, x, a.h, 0, x, a.h + a.up, 0, a.r, a.r * 0.82, green, 8);
-	    addMesh(g, new SphereGeometry(a.r * 0.84, 8, 6), mat(light), x, a.h + a.up, 0);
+	    addMesh(g, new SphereGeometry(a.r * 0.84, 8, 6), mat$1(light), x, a.h + a.up, 0);
 	    // 手臂棱线
 	    for (let k = 0; k < 4; k++) {
 	      const ang = (k / 4) * Math.PI * 2;
@@ -42743,9 +42905,9 @@ void main() {
 	  const barkDark = 0x5e4229;
 
 	  // 瓶形树干
-	  addMesh(g, new CylinderGeometry(2.7, 3.5, 5.2, 10), mat(bark), 0, 2.6, 0);
-	  addMesh(g, new CylinderGeometry(1.7, 2.7, 4.4, 10), mat(bark), 0, 7.4, 0);
-	  addMesh(g, new SphereGeometry(2.4, 9, 7), mat(bark), 0, 1.4, 0);
+	  addMesh(g, new CylinderGeometry(2.7, 3.5, 5.2, 10), mat$1(bark), 0, 2.6, 0);
+	  addMesh(g, new CylinderGeometry(1.7, 2.7, 4.4, 10), mat$1(bark), 0, 7.4, 0);
+	  addMesh(g, new SphereGeometry(2.4, 9, 7), mat$1(bark), 0, 1.4, 0);
 
 	  // 板根
 	  for (let i = 0; i < 5; i++) {
@@ -42755,7 +42917,7 @@ void main() {
 	  // 树皮环带（比竖条自然）
 	  for (const ry of [2.2, 4.0, 5.8, 7.6]) {
 	    const rr = 3.5 - (ry / 9.6) * 1.8;
-	    addMesh(g, new CylinderGeometry(rr + 0.03, rr + 0.03, 0.16, 10), mat(barkDark), 0, ry, 0);
+	    addMesh(g, new CylinderGeometry(rr + 0.03, rr + 0.03, 0.16, 10), mat$1(barkDark), 0, ry, 0);
 	  }
 	  // 树瘤
 	  for (let i = 0; i < 9; i++) {
@@ -42817,12 +42979,12 @@ void main() {
 	    const y = 8.4 + t * 13.2;
 	    const r = 7.8 * (1 - t * 0.88) + 0.35;
 	    const h = 4.6 * (1 - t * 0.30) + 0.6;
-	    addMesh(g, new ConeGeometry(r, h, 9), mat(greens[i % 3]), 0, y, 0);
-	    const sub = addMesh(g, new ConeGeometry(r * 0.86, h * 0.80, 9), mat(greens[(i + 1) % 3]), 0, y - 0.9, 0);
+	    addMesh(g, new ConeGeometry(r, h, 9), mat$1(greens[i % 3]), 0, y, 0);
+	    const sub = addMesh(g, new ConeGeometry(r * 0.86, h * 0.80, 9), mat$1(greens[(i + 1) % 3]), 0, y - 0.9, 0);
 	    sub.rotation.y = 0.34;
 	  }
-	  addMesh(g, new ConeGeometry(1.0, 2.6, 8), mat(greens[1]), 0, 23.8, 0);
-	  addMesh(g, new ConeGeometry(0.55, 1.6, 7), mat(greens[3]), 0, 25.0, 0);
+	  addMesh(g, new ConeGeometry(1.0, 2.6, 8), mat$1(greens[1]), 0, 23.8, 0);
+	  addMesh(g, new ConeGeometry(0.55, 1.6, 7), mat$1(greens[3]), 0, 25.0, 0);
 
 	  return g;
 	}
@@ -42940,8 +43102,8 @@ void main() {
 	  const barkLight = 0x5c4a60;
 
 	  // 扭曲主干：两段错位
-	  addMesh(g, new CylinderGeometry(1.45, 1.85, 7.2, 9), mat(bark), 0, 3.6, 0);
-	  addMesh(g, new CylinderGeometry(0.95, 1.45, 4.6, 9), mat(barkLight), 0.28, 8.9, 0.18);
+	  addMesh(g, new CylinderGeometry(1.45, 1.85, 7.2, 9), mat$1(bark), 0, 3.6, 0);
+	  addMesh(g, new CylinderGeometry(0.95, 1.45, 4.6, 9), mat$1(barkLight), 0.28, 8.9, 0.18);
 	  for (let i = 0; i < 5; i++) {
 	    const a = (i / 5) * Math.PI * 2 + 0.4;
 	    branch(g, 0, 2.6, 0, Math.cos(a) * 2.3, 0.1, Math.sin(a) * 2.3, 0.8, 0.2, barkDark, 5);
@@ -42961,7 +43123,7 @@ void main() {
 	  const rnd = makeRng(8844);
 	  const shard = (x, y, z, s) => {
 	    const geo = new TetrahedronGeometry(1, 0);
-	    const m = addMesh(g, geo, mat(purples[Math.floor(rnd() * purples.length)]),
+	    const m = addMesh(g, geo, mat$1(purples[Math.floor(rnd() * purples.length)]),
 	      x, y, z, rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
 	    m.scale.set(s * (0.9 + rnd() * 0.5), s * (0.9 + rnd() * 0.5), s * (0.3 + rnd() * 0.25));
 	  };
@@ -43814,6 +43976,720 @@ void main() {
 	  group.rotation.y = 0.4;
 
 	  group.userData.kind = 'woodpile';
+	  return group;
+	}
+
+	// 水井：石砌井口 + 木架 + 小坡屋顶 + 吊桶。
+	// 放在参天大树的木材堆另一侧，尺寸控制在 4 米内，不挡主路。
+	function buildWell(model, rng, opts = {}) {
+	  const group = new Group();
+	  group.name = 'well';
+	  const cx = opts.x ?? 12;
+	  const cz = opts.z ?? -21;
+	  const gy = model.heightAt(cx, cz);
+	  group.position.set(cx, gy, cz);
+
+	  const stoneMats = [0x9a9a94, 0x8d8d87, 0xa7a7a0].map((c) =>
+	    toonLambert({ color: c, flatShading: true, shared: false })
+	  );
+	  const woodMat = toonLambert({ color: 0x8a6a44, flatShading: true, shared: false });
+	  const darkWood = toonLambert({ color: 0x6f5236, flatShading: true, shared: false });
+	  const roofMat = toonLambert({ color: 0x7a4a38, flatShading: true, shared: false });
+	  const waterMat = toonLambert({ color: 0x2f5f6a, flatShading: true, shared: false });
+	  const ropeMat = toonLambert({ color: 0x4a3a28, flatShading: true, shared: false });
+	  const metalMat = toonLambert({ color: 0x5a5a58, flatShading: true, shared: false });
+
+	  // 四套配色：石头 / 木架 / 屋顶 / 井水
+	  const WELL_THEMES = [
+	    { name: '石砌木井', stone: [0x9a9a94, 0x8d8d87, 0xa7a7a0], wood: 0x8a6a44, dark: 0x6f5236, roof: 0x7a4a38, water: 0x2f5f6a },
+	    { name: '红砖井',   stone: [0xa85442, 0x944536, 0xb86650], wood: 0x7a5a3a, dark: 0x5f4330, roof: 0x5a6570, water: 0x35697a },
+	    { name: '青石井',   stone: [0x7f8b86, 0x6e7a75, 0x8f9b96], wood: 0x6f5b40, dark: 0x51402c, roof: 0x4f6152, water: 0x2f5a68 },
+	    { name: '白灰井',   stone: [0xd2ccbc, 0xbdb7a7, 0xe0dacc], wood: 0x9a7a54, dark: 0x6f5540, roof: 0x8a5a4a, water: 0x426f78 },
+	  ];
+	  let styleIdx = 0;
+	  function setStyle(idx) {
+	    const t = WELL_THEMES[idx];
+	    if (!t) return false;
+	    styleIdx = idx;
+	    stoneMats.forEach((m, k) => m.color.setHex(t.stone[k]));
+	    woodMat.color.setHex(t.wood);
+	    darkWood.color.setHex(t.dark);
+	    roofMat.color.setHex(t.roof);
+	    waterMat.color.setHex(t.water);
+	    return true;
+	  }
+
+	  // 井壁
+	  const outer = new Mesh(
+	    new CylinderGeometry(1.55, 1.65, 0.72, 16, 1, true),
+	    stoneMats[0]
+	  );
+	  outer.position.y = 0.36;
+	  outer.castShadow = true;
+	  outer.receiveShadow = true;
+	  group.add(outer);
+
+	  const inner = new Mesh(
+	    new CylinderGeometry(1.2, 1.2, 0.72, 16, 1, true),
+	    stoneMats[1]
+	  );
+	  inner.position.y = 0.36;
+	  inner.material.side = DoubleSide;
+	  group.add(inner);
+
+	  // 井水
+	  const water = new Mesh(new CircleGeometry(1.12, 16), waterMat);
+	  water.rotation.x = -Math.PI / 2;
+	  water.position.y = 0.42;
+	  group.add(water);
+
+	  // 井口石块：高低大小错落
+	  for (let i = 0; i < 14; i++) {
+	    const a = (i / 14) * Math.PI * 2 + rng.range(-0.06, 0.06);
+	    const r = 1.5 + rng.range(-0.06, 0.08);
+	    const w = rng.range(0.5, 0.72);
+	    const h = rng.range(0.34, 0.52);
+	    const d = rng.range(0.38, 0.52);
+	    const st = new Mesh(new BoxGeometry(w, h, d), stoneMats[i % stoneMats.length]);
+	    st.position.set(Math.cos(a) * r, 0.66 + h * 0.35 + rng.range(-0.04, 0.04), Math.sin(a) * r);
+	    st.rotation.y = -a + Math.PI / 2 + rng.range(-0.12, 0.12);
+	    st.rotation.x = rng.range(-0.05, 0.05);
+	    st.castShadow = true;
+	    st.receiveShadow = true;
+	    group.add(st);
+	  }
+
+	  // 两根木柱
+	  for (const sx of [-1.5, 1.5]) {
+	    const post = new Mesh(new BoxGeometry(0.22, 2.9, 0.22), woodMat);
+	    post.position.set(sx, 0.7 + 1.45, 0);
+	    post.castShadow = true;
+	    group.add(post);
+	    const brace = new Mesh(new BoxGeometry(0.12, 0.55, 0.12), darkWood);
+	    brace.position.set(sx * 0.86, 0.7 + 0.28, 0);
+	    brace.rotation.z = sx > 0 ? -0.55 : 0.55;
+	    group.add(brace);
+	  }
+
+	  // 横梁 + 卷轴
+	  const beam = new Mesh(new BoxGeometry(3.5, 0.2, 0.2), darkWood);
+	  beam.position.y = 3.35;
+	  beam.castShadow = true;
+	  group.add(beam);
+	  const axle = new Mesh(new CylinderGeometry(0.075, 0.075, 3.1, 6), metalMat);
+	  axle.rotation.z = Math.PI / 2;
+	  axle.position.y = 2.55;
+	  group.add(axle);
+
+	  // 摇柄
+	  const crank = new Mesh(new BoxGeometry(0.5, 0.09, 0.09), darkWood);
+	  crank.position.set(1.72, 2.55, 0.28);
+	  crank.rotation.y = Math.PI / 2;
+	  group.add(crank);
+	  const knob = new Mesh(new CylinderGeometry(0.07, 0.07, 0.24, 6), woodMat);
+	  knob.rotation.z = Math.PI / 2;
+	  knob.position.set(1.72, 2.55, 0.62);
+	  group.add(knob);
+
+	  // 四坡小屋顶
+	  const roof = new Mesh(new ConeGeometry(2.55, 1.35, 4), roofMat);
+	  roof.position.y = 4.0;
+	  roof.rotation.y = Math.PI / 4;
+	  roof.castShadow = true;
+	  group.add(roof);
+	  const finial = new Mesh(new BoxGeometry(0.16, 0.3, 0.16), darkWood);
+	  finial.position.y = 4.72;
+	  group.add(finial);
+
+	  // 屋顶下挂一盏小灯
+	  const lampGlowMat = new MeshBasicMaterial({
+	    color: 0xffd39a, transparent: true, opacity: 0, side: DoubleSide, depthWrite: false,
+	  });
+	  const lampFrameMat = toonLambert({ color: 0x3a3a38, flatShading: true, shared: false });
+	  const lampGroup = new Group();
+	  lampGroup.position.set(0, 3.02, 0);
+	  const chain = new Mesh(new CylinderGeometry(0.012, 0.012, 0.42, 4), lampFrameMat);
+	  chain.position.y = 0.24;
+	  lampGroup.add(chain);
+	  const cap = new Mesh(new BoxGeometry(0.34, 0.08, 0.34), lampFrameMat);
+	  cap.position.y = 0.03;
+	  lampGroup.add(cap);
+	  const glass = new Mesh(new BoxGeometry(0.22, 0.28, 0.22), lampGlowMat);
+	  glass.position.y = -0.14;
+	  lampGroup.add(glass);
+	  const bottom = new Mesh(new BoxGeometry(0.3, 0.06, 0.3), lampFrameMat);
+	  bottom.position.y = -0.31;
+	  lampGroup.add(bottom);
+	  group.add(lampGroup);
+
+	  const lampLight = new PointLight(0xffc080, 0, 9, 2);
+	  lampLight.position.set(0, 3.0, 0);
+	  group.add(lampLight);
+
+	  group.userData.setNight = (t) => {
+	    const k = Math.max(0, Math.min(1, (t - 0.72) / 0.23));
+	    const w = k * k * (3 - 2 * k);
+	    lampGlowMat.opacity = w * 0.95;
+	    lampGroup.visible = w > 0.04;
+	    lampLight.intensity = w * 12;
+	    lampLight.visible = w > 0.04;
+	  };
+	  group.userData.setNight(0);
+
+	  // 吊绳 + 木桶
+	  const rope = new Mesh(new CylinderGeometry(0.018, 0.018, 1.45, 4), ropeMat);
+	  rope.position.set(0.35, 1.82, 0);
+	  group.add(rope);
+	  const bucket = new Mesh(new CylinderGeometry(0.26, 0.21, 0.38, 8, 1, true), woodMat);
+	  bucket.position.set(0.35, 1.05, 0);
+	  bucket.castShadow = true;
+	  group.add(bucket);
+	  const bucketBottom = new Mesh(new CircleGeometry(0.21, 8), darkWood);
+	  bucketBottom.rotation.x = Math.PI / 2;
+	  bucketBottom.position.set(0.35, 0.86, 0);
+	  group.add(bucketBottom);
+	  const handle = new Mesh(new TorusGeometry(0.24, 0.025, 5, 10, Math.PI), metalMat);
+	  handle.position.set(0.35, 1.24, 0);
+	  handle.rotation.z = Math.PI;
+	  group.add(handle);
+
+	  group.castShadow = true;
+	  group.userData.styleNames = WELL_THEMES.map((t) => t.name);
+	  group.userData.getStyle = () => ({ idx: styleIdx, name: WELL_THEMES[styleIdx].name });
+	  group.userData.setStyle = setStyle;
+	  setStyle(0);
+	  return group;
+	}
+
+	// 农舍东侧的修理棚工作区：
+	// 木架铁皮单坡顶 + 工作台 + 台钳 + 工具墙 + 零件箱/油桶/轮胎。
+	// 重点是“看起来真的有人在这里干活”，而不是设备堆场。
+
+	const mat = (color) => toonLambert({ color, flatShading: true, shared: false });
+	const box = (w, h, d, material) => new Mesh(new BoxGeometry(w, h, d), material);
+
+	function makeToolWall(model, x, z) {
+	  const g = new Group();
+	  const y = model.heightAt(x, z);
+	  g.position.set(x, y, z);
+
+	  const boardMat = mat(0x2f3d39);
+	  const holeMat = mat(0x3a3028);
+	  const steel = mat(0xbfc4c8);
+	  const darkSteel = mat(0x6f767c);
+	  const handleMat = mat(0x8a5a32);
+	  const redMat = mat(0xb5543c);
+	  const yellowMat = mat(0xd8b04a);
+
+	  const board = box(8.0, 1.8, 0.10, boardMat);
+	  board.position.set(0, 2.15, 0);
+	  board.castShadow = true;
+	  g.add(board);
+
+	  // 木框，让挂板从远处也能看出边界
+	  const frameMat = mat(0x8a6a44);
+	  for (const yy of [1.25, 3.05]) {
+	    const rail = box(8.15, 0.07, 0.12, frameMat);
+	    rail.position.set(0, yy, 0.02);
+	    g.add(rail);
+	  }
+	  for (const xx of [-4.05, 4.05]) {
+	    const stile = box(0.07, 1.87, 0.12, frameMat);
+	    stile.position.set(xx, 2.15, 0.02);
+	    g.add(stile);
+	  }
+
+	  // 挂板孔
+	  for (let ix = 0; ix < 12; ix++) {
+	    for (let iy = 0; iy < 4; iy++) {
+	      const hole = box(0.035, 0.035, 0.02, holeMat);
+	      hole.position.set(-3.4 + ix * 0.62, 1.6 + iy * 0.38, 0.06);
+	      g.add(hole);
+	    }
+	  }
+
+	  const zf = 0.10;
+	  // 锤子
+	  const hammer = new Group();
+	  const hh = box(0.06, 0.72, 0.06, handleMat);
+	  hh.position.y = -0.28;
+	  hammer.add(hh);
+	  const hhead = box(0.32, 0.14, 0.14, darkSteel);
+	  hhead.position.y = 0.10;
+	  hammer.add(hhead);
+	  hammer.position.set(-2.8, 2.5, zf);
+	  hammer.rotation.z = -0.12;
+	  g.add(hammer);
+
+	  // 锯
+	  const saw = new Group();
+	  const blade = box(0.04, 0.42, 0.72, steel);
+	  blade.position.z = -0.1;
+	  saw.add(blade);
+	  const sawHandle = box(0.06, 0.26, 0.28, handleMat);
+	  sawHandle.position.set(0, 0.18, -0.42);
+	  saw.add(sawHandle);
+	  saw.position.set(-1.7, 2.45, zf);
+	  saw.rotation.y = 0.08;
+	  g.add(saw);
+
+	  // 扳手
+	  const wrench = new Group();
+	  const shaft = box(0.06, 0.65, 0.06, steel);
+	  wrench.add(shaft);
+	  const jaw = box(0.20, 0.12, 0.06, steel);
+	  jaw.position.y = 0.33;
+	  wrench.add(jaw);
+	  wrench.position.set(-0.5, 2.5, zf);
+	  g.add(wrench);
+
+	  // 螺丝刀
+	  for (let i = 0; i < 3; i++) {
+	    const sd = new Group();
+	    const rod = new Mesh(new CylinderGeometry(0.018, 0.018, 0.38, 5), steel);
+	    rod.position.y = 0.10;
+	    sd.add(rod);
+	    const handle = new Mesh(new CylinderGeometry(0.055, 0.055, 0.22, 6), i === 0 ? redMat : i === 1 ? yellowMat : handleMat);
+	    handle.position.y = -0.18;
+	    sd.add(handle);
+	    sd.position.set(0.55 + i * 0.25, 2.55, zf);
+	    sd.rotation.z = i === 1 ? 0.08 : -0.04;
+	    g.add(sd);
+	  }
+
+	  // 钳子（交叉两条）
+	  for (const s of [-1, 1]) {
+	    const p = box(0.05, 0.58, 0.05, darkSteel);
+	    p.position.set(1.6, 2.55, zf);
+	    p.rotation.z = s * 0.22;
+	    g.add(p);
+	  }
+
+	  // 卷尺
+	  const tape = box(0.22, 0.20, 0.12, yellowMat);
+	  tape.position.set(2.5, 2.45, zf);
+	  g.add(tape);
+	  const tapeRing = new Mesh(new TorusGeometry(0.11, 0.025, 5, 10), darkSteel);
+	  tapeRing.position.set(2.5, 2.45, zf + 0.06);
+	  g.add(tapeRing);
+
+	  return g;
+	}
+
+	function makeShed(model) {
+	  const g = new Group();
+	  const y = model.heightAt(66, 0);
+	  g.position.set(66, y, 0);
+
+	  const wood = mat(0x8a6a44);
+	  const darkWood = mat(0x6f5236);
+	  const roofMat = mat(0x5f6f78);
+	  const roofEdge = mat(0x46545c);
+
+	  // 四根木柱
+	  for (const x of [-5.8, 5.8]) {
+	    for (const z of [-2.8, 2.5]) {
+	      const post = box(0.24, 3.3, 0.24, wood);
+	      post.position.set(x, 1.65, z);
+	      post.castShadow = true;
+	      g.add(post);
+	    }
+	  }
+
+	  // 背墙横板
+	  for (let i = 0; i < 5; i++) {
+	    const plank = box(11.6, 0.44, 0.12, i % 2 ? wood : darkWood);
+	    plank.position.set(0, 0.45 + i * 0.55, -2.78);
+	    plank.castShadow = true;
+	    g.add(plank);
+	  }
+	  // 侧墙各两块，留出前面开口
+	  for (const x of [-5.8, 5.8]) {
+	    for (let i = 0; i < 3; i++) {
+	      const plank = box(0.12, 0.44, 5.2, i % 2 ? wood : darkWood);
+	      plank.position.set(x, 0.45 + i * 0.55, -0.15);
+	      g.add(plank);
+	    }
+	  }
+
+	  // 单坡铁皮顶：后高前低
+	  const roof = new Group();
+	  roof.position.set(0, 3.58, -0.2);
+	  roof.rotation.x = 0.12;
+	  const sheet = box(12.8, 0.14, 6.2, roofMat);
+	  sheet.castShadow = true;
+	  roof.add(sheet);
+	  for (let i = 0; i < 13; i++) {
+	    const rib = box(0.05, 0.07, 6.16, roofEdge);
+	    rib.position.set(-6 + i * 1.0, 0.09, 0);
+	    roof.add(rib);
+	  }
+	  for (const z of [-3.1, 3.1]) {
+	    const trim = box(12.9, 0.16, 0.10, roofEdge);
+	    trim.position.z = z;
+	    roof.add(trim);
+	  }
+	  g.add(roof);
+
+	  // 工作台
+	  const benchTop = box(8.2, 0.16, 1.35, wood);
+	  benchTop.position.set(0, 0.96, -1.55);
+	  benchTop.castShadow = true;
+	  g.add(benchTop);
+	  for (const x of [-3.6, 3.6]) {
+	    for (const z of [-2.05, -1.05]) {
+	      const leg = box(0.16, 0.9, 0.16, darkWood);
+	      leg.position.set(x, 0.45, z);
+	      g.add(leg);
+	    }
+	  }
+	  const shelf = box(7.8, 0.10, 1.1, darkWood);
+	  shelf.position.set(0, 0.35, -1.55);
+	  g.add(shelf);
+
+	  // 台钳
+	  const vise = box(0.52, 0.24, 0.38, mat(0x5a646a));
+	  vise.position.set(3.1, 1.14, -1.45);
+	  g.add(vise);
+	  const viseJaw = box(0.22, 0.16, 0.42, mat(0x7a848a));
+	  viseJaw.position.set(3.35, 1.22, -1.45);
+	  g.add(viseJaw);
+
+	  // 台下工具柜
+	  const chest = box(2.7, 0.78, 1.05, mat(0xa84832));
+	  chest.position.set(-2.4, 0.43, -1.55);
+	  chest.castShadow = true;
+	  g.add(chest);
+	  for (let i = 0; i < 4; i++) {
+	    const drawer = box(2.4, 0.03, 0.03, mat(0x6f2f24));
+	    drawer.position.set(-2.4, 0.22 + i * 0.18, -1.02);
+	    g.add(drawer);
+	    const handle = box(0.35, 0.04, 0.03, mat(0xc8b89a));
+	    handle.position.set(-2.4, 0.22 + i * 0.18 + 0.04, -1.04);
+	    g.add(handle);
+	  }
+
+	  // 台面小物件
+	  const plane = box(1.0, 0.07, 0.22, darkWood);
+	  plane.position.set(-0.2, 1.08, -1.55);
+	  g.add(plane);
+
+	  return g;
+	}
+
+	function makeOilDrum(model, x, z) {
+	  const g = new Group();
+	  const y = model.heightAt(x, z);
+	  g.position.set(x, y, z);
+	  const body = new Mesh(new CylinderGeometry(0.52, 0.52, 1.15, 12), mat(0x4a5a6a));
+	  body.position.y = 0.58;
+	  body.castShadow = true;
+	  g.add(body);
+	  for (const yy of [0.28, 0.88]) {
+	    const band = new Mesh(new TorusGeometry(0.53, 0.035, 5, 14), mat(0x8a949c));
+	    band.rotation.x = Math.PI / 2;
+	    band.position.y = yy;
+	    g.add(band);
+	  }
+	  const cap = new Mesh(new CylinderGeometry(0.18, 0.18, 0.05, 8), mat(0x8a949c));
+	  cap.position.set(0.18, 1.17, 0.16);
+	  g.add(cap);
+	  return g;
+	}
+
+	function makeCrate(model, x, z, s, rot) {
+	  const g = new Group();
+	  const y = model.heightAt(x, z);
+	  g.position.set(x, y, z);
+	  g.rotation.y = rot;
+	  const wood = mat(0x9a7448);
+	  const dark = mat(0x6f5236);
+	  const body = box(s, s * 0.8, s * 0.9, wood);
+	  body.position.y = s * 0.4;
+	  body.castShadow = true;
+	  g.add(body);
+	  for (const yy of [0.15, 0.45, 0.7]) {
+	    const slat = box(s * 1.02, 0.05, s * 0.92, dark);
+	    slat.position.y = s * yy;
+	    g.add(slat);
+	  }
+	  return g;
+	}
+
+	function makeSawhorse(model, x, z) {
+	  const g = new Group();
+	  const y = model.heightAt(x, z);
+	  g.position.set(x, y, z);
+	  const wood = mat(0x8a6a44);
+	  const dark = mat(0x6f5236);
+	  for (const sx of [-1.2, 1.2]) {
+	    for (const sz of [-0.45, 0.45]) {
+	      const leg = box(0.12, 1.1, 0.12, dark);
+	      leg.position.set(sx, 0.55, sz);
+	      leg.rotation.z = sx > 0 ? -0.18 : 0.18;
+	      g.add(leg);
+	    }
+	  }
+	  const beam = box(2.9, 0.12, 0.18, wood);
+	  beam.position.y = 1.06;
+	  g.add(beam);
+	  const plank = box(3.3, 0.09, 0.55, wood);
+	  plank.position.set(0.2, 1.16, 0);
+	  g.add(plank);
+	  return g;
+	}
+
+	function makeSign(model, x, z) {
+	  const g = new Group();
+	  const y = model.heightAt(x, z);
+	  g.position.set(x, y, z);
+	  const wood = mat(0x6f5236);
+	  for (const sx of [-0.75, 0.75]) {
+	    const post = box(0.10, 1.5, 0.10, wood);
+	    post.position.set(sx, 0.75, 0);
+	    g.add(post);
+	  }
+	  const cv = document.createElement('canvas');
+	  cv.width = 320;
+	  cv.height = 128;
+	  const ctx = cv.getContext('2d');
+	  ctx.fillStyle = '#6f5236';
+	  ctx.fillRect(0, 0, 320, 128);
+	  ctx.strokeStyle = '#c8b89a';
+	  ctx.lineWidth = 5;
+	  ctx.strokeRect(7, 7, 306, 114);
+	  ctx.fillStyle = '#f2e3c8';
+	  ctx.font = 'bold 42px monospace';
+	  ctx.textAlign = 'center';
+	  ctx.fillText('WORKSHOP', 160, 78);
+	  const tex = new CanvasTexture(cv);
+	  tex.colorSpace = SRGBColorSpace;
+	  const board = new Mesh(new PlaneGeometry(2.1, 0.85), new MeshBasicMaterial({ map: tex }));
+	  board.position.set(0, 1.28, 0.06);
+	  g.add(board);
+	  const back = box(2.2, 0.95, 0.08, wood);
+	  back.position.set(0, 1.28, 0);
+	  g.add(back);
+	  return g;
+	}
+
+	function buildWorkshop(model, rng) {
+	  const group = new Group();
+	  group.name = 'workshop';
+
+	  // 棚子 + 工作台 + 工具墙 + 台钳 + 工具柜
+	  group.add(makeShed(model));
+	  group.add(makeToolWall(model, 66, -2.55));
+
+	  // 外侧杂物
+	  group.add(makeOilDrum(model, 73.8, -1.2));
+	  group.add(makeCrate(model, 58.2, 4.0, 1.3, 0.22));
+	  group.add(makeCrate(model, 60.0, 4.8, 1.0, -0.15));
+	  group.add(makeCrate(model, 58.0, 1.6, 0.8, 0.5));
+	  group.add(makeSawhorse(model, 71.2, 5.0));
+	  group.add(makeSign(model, 56.8, 6.6));
+
+	  // 轮胎
+	  const tire = new Mesh(
+	    new TorusGeometry(0.46, 0.17, 7, 14),
+	    toonLambert({ color: 0x2a2a2a, flatShading: true, shared: false })
+	  );
+	  tire.position.set(57.6, model.heightAt(57.6, -0.3) + 0.46, -0.3);
+	  tire.rotation.x = 0.08;
+	  tire.castShadow = true;
+	  group.add(tire);
+
+	  // 木料堆
+	  const plankMat = mat(0x9a7448);
+	  for (let i = 0; i < 4; i++) {
+	    const plank = box(3.2, 0.10, 0.42, plankMat);
+	    plank.position.set(58.2, model.heightAt(58.2, 2.4) + 0.08 + i * 0.12, 2.4 + i * 0.03);
+	    plank.rotation.y = -0.12;
+	    plank.castShadow = true;
+	    group.add(plank);
+	  }
+
+	  // 棚下工作灯
+	  const lampY = model.heightAt(66, -0.2);
+	  const lampMat = new MeshBasicMaterial({ color: 0xffd39a, transparent: true, opacity: 0 });
+	  const lamp = new Mesh(new BoxGeometry(0.34, 0.12, 0.34), lampMat);
+	  lamp.position.set(66, lampY + 2.95, -0.2);
+	  group.add(lamp);
+	  const chain = box(0.02, 0.45, 0.02, mat(0x3a3a38));
+	  chain.position.set(66, lampY + 3.28, -0.2);
+	  group.add(chain);
+	  const lampLight = new PointLight(0xffc080, 0, 10, 2);
+	  lampLight.position.set(66, lampY + 2.9, -0.2);
+	  group.add(lampLight);
+
+	  // 可换配色：只记录木质/屋顶/工具柜的材质，工具和灯不动
+	  const THEMES = [
+	    { name: '原木木棚', wood: 0x8a6a44, dark: 0x6f5236, roof: 0x5f6f78, edge: 0x46545c, chest: 0xa84832 },
+	    { name: '森林绿棚', wood: 0x6f7a4a, dark: 0x55603a, roof: 0x4f6152, edge: 0x38483b, chest: 0x8a5a3a },
+	    { name: '工业蓝棚', wood: 0x7a8088, dark: 0x5a6068, roof: 0x48627a, edge: 0x334a60, chest: 0x3f5a7a },
+	    { name: '暖沙色棚', wood: 0xb08a58, dark: 0x8a6a40, roof: 0x7a5a48, edge: 0x5f4338, chest: 0xb5543c },
+	  ];
+	  const baseToMat = new Map();
+	  group.traverse((o) => {
+	    if (!o.isMesh || !o.material || !o.material.color) return;
+	    if (o.material.isMeshBasicMaterial) return;
+	    const hex = o.material.color.getHex();
+	    if (!baseToMat.has(hex)) baseToMat.set(hex, o.material);
+	  });
+	  const roleByBase = new Map([
+	    [0x8a6a44, 'wood'],
+	    [0x6f5236, 'dark'],
+	    [0x5f6f78, 'roof'],
+	    [0x46545c, 'edge'],
+	    [0xa84832, 'chest'],
+	    [0x9a7448, 'wood'],
+	    [0x55603a, 'dark'],
+	  ]);
+	  let styleIdx = 0;
+	  group.userData.styleNames = THEMES.map((t) => t.name);
+	  group.userData.getStyle = () => ({ idx: styleIdx, name: THEMES[styleIdx].name });
+	  group.userData.setStyle = (idx) => {
+	    const i = Math.max(0, Math.min(THEMES.length - 1, Number(idx) || 0));
+	    styleIdx = i;
+	    const th = THEMES[i];
+	    for (const [hex, material] of baseToMat) {
+	      const role = roleByBase.get(hex);
+	      if (!role) continue;
+	      material.color.setHex(th[role]);
+	    }
+	    group.userData.styleIdx = i;
+	    return true;
+	  };
+	  group.userData.setStyle(0);
+
+	  group.userData.setNight = (t) => {
+	    const k = Math.max(0, Math.min(1, (t - 0.72) / 0.23));
+	    const w = k * k * (3 - 2 * k);
+	    lampMat.opacity = w * 0.95;
+	    lampLight.intensity = w * 16;
+	    lampLight.visible = w > 0.04;
+	  };
+	  group.userData.setNight(0);
+
+	  return group;
+	}
+
+	// 接触阴影：贴在物体脚下的半透明暗斑，用来把建筑/树/围栏“压”回地面。
+	// 全部用 InstancedMesh，避免为每棵树/每段围栏增加 draw call。
+
+	function radialTexture() {
+	  const cv = document.createElement('canvas');
+	  cv.width = cv.height = 128;
+	  const ctx = cv.getContext('2d');
+	  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+	  g.addColorStop(0, 'rgba(0,0,0,0.64)');
+	  g.addColorStop(0.45, 'rgba(0,0,0,0.36)');
+	  g.addColorStop(0.78, 'rgba(0,0,0,0.13)');
+	  g.addColorStop(1, 'rgba(0,0,0,0)');
+	  ctx.fillStyle = g;
+	  ctx.fillRect(0, 0, 128, 128);
+	  const tex = new CanvasTexture(cv);
+	  tex.colorSpace = SRGBColorSpace;
+	  return tex;
+	}
+
+	function buildContactShadows(model, opts = {}) {
+	  const group = new Group();
+	  group.name = 'contactShadows';
+
+	  const planeGeo = new PlaneGeometry(1, 1);
+	  planeGeo.rotateX(-Math.PI / 2);
+
+	  const discMat = new MeshBasicMaterial({
+	    map: radialTexture(),
+	    transparent: true,
+	    opacity: 0.54,
+	    depthWrite: false,
+	    color: 0x1c2a16,
+	    polygonOffset: true,
+	    polygonOffsetFactor: -2,
+	    polygonOffsetUnits: -2,
+	    side: DoubleSide,
+	  });
+
+	  const discs = [];
+
+	  // 建筑/大物件：x,z 是中心，sx/sz 是阴影长宽
+	  for (const b of opts.buildings || []) {
+	    discs.push({
+	      x: b.x, z: b.z,
+	      sx: b.sx ?? 8, sz: b.sz ?? 8,
+	      rot: b.rot || 0,
+	    });
+	  }
+
+	  // 树根：点状接触阴影
+	  for (const tr of opts.trees || []) {
+	    discs.push({ x: tr.x, z: tr.z, sx: tr.sx ?? 2.8, sz: tr.sz ?? 2.8, rot: 0 });
+	  }
+
+	  // 围栏脚边：沿每段围栏铺一条软边暗带
+	  for (const slot of opts.fences || []) {
+	    const pts = slot.points;
+	    if (!Array.isArray(pts) || pts.length < 2) continue;
+	    for (let i = 0; i < pts.length; i++) {
+	      const [ax, az] = pts[i];
+	      const [bx, bz] = pts[(i + 1) % pts.length];
+	      const dx = bx - ax, dz = bz - az;
+	      const len = Math.hypot(dx, dz);
+	      if (len < 0.1) continue;
+	      const n = Math.max(1, Math.round(len / 2.4));
+	      for (let k = 0; k <= n; k++) {
+	        const t = k / n;
+	        discs.push({
+	          x: ax + dx * t,
+	          z: az + dz * t,
+	          sx: 1.15,
+	          sz: 1.0,
+	          rot: Math.atan2(dx, dz),
+	        });
+	      }
+	    }
+	  }
+
+	  const m = new Matrix4();
+	  const q = new Quaternion();
+	  const p = new Vector3();
+	  const s = new Vector3();
+
+	  if (discs.length) {
+	    const im = new InstancedMesh(planeGeo, discMat, discs.length);
+	    im.name = 'contactDiscs';
+	    discs.forEach((d, i) => {
+	      p.set(d.x, model.heightAt(d.x, d.z) + 0.035, d.z);
+	      q.setFromAxisAngle(new Vector3(0, 1, 0), d.rot);
+	      s.set(d.sx * 0.90, 1, d.sz * 0.90);
+	      m.compose(p, q, s);
+	      im.setMatrixAt(i, m);
+	    });
+	    im.instanceMatrix.needsUpdate = true;
+	    im.renderOrder = 1;
+	    group.add(im);
+	  }
+
+	  // 核心接触斑：在同样位置再压一层更小的暗斑，强化"根部接触"
+	  if (discs.length) {
+	    const coreMat = discMat.clone();
+	    coreMat.opacity = 0.42;
+	    const core = new InstancedMesh(planeGeo, coreMat, discs.length);
+	    core.name = 'contactCores';
+	    discs.forEach((d, i) => {
+	      p.set(d.x, model.heightAt(d.x, d.z) + 0.04, d.z);
+	      q.setFromAxisAngle(new Vector3(0, 1, 0), d.rot);
+	      s.set(d.sx * 0.50, 1, d.sz * 0.50);
+	      m.compose(p, q, s);
+	      core.setMatrixAt(i, m);
+	    });
+	    core.instanceMatrix.needsUpdate = true;
+	    core.renderOrder = 2;
+	    group.add(core);
+	  }
+
 	  return group;
 	}
 
@@ -44754,6 +45630,12 @@ void main() {
 	// 木材堆（大树下）
 	const WOODPILE = { x: 6.5, z: -16 };
 
+	// 水井：两个雪人 (8,4) / (14,30) 的中点
+	const WELL = { x: 11, z: 17, r: 2.3 };
+
+	// 修理棚工作区：与农舍平行（farmhouse.rot = 0.34）
+	const WORKSHOP = { x: 66.7, z: -11.8, rot: 0.34 };
+
 	const BUILDINGS = {
 	  barn:       { x: -30, z: 0,   w: 13, d: 20, rot: -0.22 },
 	  farmhouse:  { x: 30,  z: -18, w: 11, d: 13, rot: 0.34 },
@@ -45315,10 +46197,25 @@ void main() {
 	  geo.setAttribute('position', src.attributes.position);
 	  geo.setAttribute('normal', src.attributes.normal);
 
+	  // 草簇根部压暗：从根部的 0.62 渐变到叶尖的 1.0
+	  {
+	    const pos = src.attributes.position;
+	    const colors = new Float32Array(pos.count * 3);
+	    for (let i = 0; i < pos.count; i++) {
+	      const t = Math.min(1, Math.max(0, pos.getY(i) / 0.9));
+	      const f = 0.54 + 0.46 * t;
+	      colors[i * 3] = f;
+	      colors[i * 3 + 1] = f;
+	      colors[i * 3 + 2] = f;
+	    }
+	    geo.setAttribute('color', new BufferAttribute(colors, 3));
+	  }
+
 	  // shared:false —— 下面覆盖 onBeforeCompile 挂风摆，且 main.js 每季改 color
 	  const mat = toonLambert({
 	    color: 0x8fbe5e,
 	    flatShading: true,
+	    vertexColors: true,
 	    side: DoubleSide,
 	    transparent: true,     // 距离淡出需要
 	    depthWrite: true,
@@ -45379,6 +46276,9 @@ void main() {
 	    const x = Math.cos(ang) * rad;
 	    const z = Math.sin(ang) * rad;
 	    if (Math.abs(x) > WORLD.size * 0.45 || Math.abs(z) > WORLD.size * 0.45) continue;
+	    // 水里不长草：池塘范围直接跳过
+	    const pond = BUILDINGS.pond;
+	    if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
 	    const y = model.heightAt(x, z);
 	    if (model.slopeAt(x, z) > 0.7) continue;
 	    p.set(x, y, z);
@@ -45587,7 +46487,7 @@ void main() {
 	  const K = colorFor(opts);
 
 	  // ---- 墙体：红色竖板 ----
-	  part$5(parts, box(W, H, D, K.barnWall, 0, 0, 0));
+	  part$5(parts, box$1(W, H, D, K.barnWall, 0, 0, 0));
 
 	  // 竖向木板条纹（每隔 0.92 一条暗缝）
 	  //
@@ -45598,23 +46498,23 @@ void main() {
 	  const seamZ = D / 2;
 	  for (let x = -W / 2 + SEAM_STEP / 2; x < W / 2; x += SEAM_STEP) {
 	    // 前后两个面
-	    part$5(detail, box(0.10, H - 0.1, 0.07, 0x6a2014, x, 0.05, seamZ + 0.04));
-	    part$5(detail, box(0.10, H - 0.1, 0.07, 0x6a2014, x, 0.05, -seamZ - 0.04));
+	    part$5(detail, box$1(0.10, H - 0.1, 0.07, 0x6a2014, x, 0.05, seamZ + 0.04));
+	    part$5(detail, box$1(0.10, H - 0.1, 0.07, 0x6a2014, x, 0.05, -seamZ - 0.04));
 	  }
 	  for (let z = -D / 2 + 0.55; z < D / 2; z += 1.1) {
-	    part$5(detail, box(0.06, H - 0.1, 0.08, K.barnWallDark, W / 2 + 0.01, 0.05, z));
-	    part$5(detail, box(0.06, H - 0.1, 0.08, K.barnWallDark, -W / 2 - 0.01, 0.05, z));
+	    part$5(detail, box$1(0.06, H - 0.1, 0.08, K.barnWallDark, W / 2 + 0.01, 0.05, z));
+	    part$5(detail, box$1(0.06, H - 0.1, 0.08, K.barnWallDark, -W / 2 - 0.01, 0.05, z));
 	  }
 
 	  // ---- 白色包边 ----
 	  // 底部基座
-	  part$5(parts, box(W + 0.16, 0.5, D + 0.16, K.barnTrim, 0, 0, 0));
+	  part$5(parts, box$1(W + 0.16, 0.5, D + 0.16, K.barnTrim, 0, 0, 0));
 	  // 顶部檐口白边
-	  part$5(parts, box(W + 0.16, 0.42, D + 0.16, K.barnTrim, 0, H - 0.5, 0));
+	  part$5(parts, box$1(W + 0.16, 0.42, D + 0.16, K.barnTrim, 0, H - 0.5, 0));
 	  // 四角竖向白条
 	  for (const sx of [-1, 1]) {
 	    for (const sz of [-1, 1]) {
-	      part$5(parts, box(0.34, H, 0.34, K.barnTrim, sx * (W / 2 - 0.1), 0, sz * (D / 2 - 0.1)));
+	      part$5(parts, box$1(0.34, H, 0.34, K.barnTrim, sx * (W / 2 - 0.1), 0, sz * (D / 2 - 0.1)));
 	    }
 	  }
 
@@ -45702,7 +46602,7 @@ void main() {
 	        const layerH = roofH / LAYERS * 1.12;
 	        const layerY = yBase + t * roofH - roofH / LAYERS / 2;
 	        // 每层高度略大于间距（*1.12），保证层与层之间没有缝隙
-	        part$5(parts, box(
+	        part$5(parts, box$1(
 	          halfW * 2, layerH, 0.26,
 	          K.barnWall, 0, layerY, z
 	        ));
@@ -45729,7 +46629,7 @@ void main() {
 	        for (let k = kMin; k <= kMax; k++) {
 	          const sx2 = -W / 2 + SEAM_STEP / 2 + k * SEAM_STEP;
 	          if (Math.abs(sx2) > halfW - 0.06) continue;
-	          part$5(detail, box(
+	          part$5(detail, box$1(
 	            0.10, layerH, 0.07,
 	            0x6a2014, sx2, layerY, z + sz * 0.14
 	          ));
@@ -45739,18 +46639,18 @@ void main() {
 	  }
 
 	  // 屋脊压顶
-	  part$5(parts, box(0.42, 0.26, D + 2.6, K.barnRoofEdge, 0, H - 0.08 + roofH - 0.1, 0));
+	  part$5(parts, box$1(0.42, 0.26, D + 2.6, K.barnRoofEdge, 0, H - 0.08 + roofH - 0.1, 0));
 
 	  // 折线处的转角压条（折点位置一条，左右各一）
 	  for (const sx of [-1, 1]) {
 	    const zx = sx * roofHalfW * KX;
 	    const zy = H - 0.08 + roofH * KY;
-	    part$5(parts, box(0.34, 0.22, D + 2.5, K.barnRoofEdge, zx, zy - 0.06, 0));
+	    part$5(parts, box$1(0.34, 0.22, D + 2.5, K.barnRoofEdge, zx, zy - 0.06, 0));
 	  }
 
 	  // 檐口：底边一条厚檐（左右各一）
 	  for (const sx of [-1, 1]) {
-	    part$5(detail, box(0.55, 0.30, D + 2.5, K.barnRoofEdge, sx * (roofHalfW - 0.2), H - 0.2, 0));
+	    part$5(detail, box$1(0.55, 0.30, D + 2.5, K.barnRoofEdge, sx * (roofHalfW - 0.2), H - 0.2, 0));
 	  }
 	  // 屋顶横向瓦楞
 	  //
@@ -45805,14 +46705,14 @@ void main() {
 	  // ---- 正面大门：双开门 + X 撑条 ----
 	  const doorW = 6.0, doorH = 6.4, dz = D / 2 + 0.06;
 	  // 门框（深色）
-	  part$5(parts, box(doorW + 0.6, doorH + 0.5, 0.3, K.barnDoorDark, 0, 0.1, dz));
+	  part$5(parts, box$1(doorW + 0.6, doorH + 0.5, 0.3, K.barnDoorDark, 0, 0.1, dz));
 	  // 左右两扇门
 	  for (const sx of [-1, 1]) {
-	    part$5(parts, box(doorW / 2 - 0.12, doorH, 0.22, K.barnDoor, sx * doorW / 4, 0.3, dz + 0.16));
+	    part$5(parts, box$1(doorW / 2 - 0.12, doorH, 0.22, K.barnDoor, sx * doorW / 4, 0.3, dz + 0.16));
 	  }
 	  // 竖向门板缝
 	  for (let i = -2; i <= 2; i++) {
-	    part$5(detail, box(0.06, doorH - 0.3, 0.04, K.barnDoorDark, i * (doorW / 5.4), 0.45, dz + 0.28));
+	    part$5(detail, box$1(0.06, doorH - 0.3, 0.04, K.barnDoorDark, i * (doorW / 5.4), 0.45, dz + 0.28));
 	  }
 	  // X 形撑条（每扇门一个）
 	  for (const sx of [-1, 1]) {
@@ -45824,10 +46724,10 @@ void main() {
 	    }
 	  }
 	  // 门中缝的竖向白条
-	  part$5(parts, box(0.3, doorH, 0.14, K.barnTrim, 0, 0.3, dz + 0.30));
+	  part$5(parts, box$1(0.3, doorH, 0.14, K.barnTrim, 0, 0.3, dz + 0.30));
 
 	  // 门上方横梁（白色）
-	  part$5(parts, box(W + 0.2, 0.36, 0.3, K.barnTrim, 0, doorH + 0.55, D / 2 + 0.08));
+	  part$5(parts, box$1(W + 0.2, 0.36, 0.3, K.barnTrim, 0, doorH + 0.55, D / 2 + 0.08));
 
 	  // ---- 阁楼窗（干草从窗口露出）----
 	  //
@@ -45838,28 +46738,28 @@ void main() {
 	  const atticW = 2.6, atticH = 1.9;
 	  const atticY = H + 0.55;                  // 山墙下部
 	  // 小雨檐（挑出山墙的小挑檐，参考图里有）
-	  part$5(parts, box(atticW + 1.1, 0.24, 0.9, K.barnRoofEdge, 0, atticY + atticH + 0.16, gableZ + 0.35));
+	  part$5(parts, box$1(atticW + 1.1, 0.24, 0.9, K.barnRoofEdge, 0, atticY + atticH + 0.16, gableZ + 0.35));
 	  // 窗洞外框（浅色木框）
-	  part$5(parts, box(atticW + 0.36, atticH + 0.34, 0.22, 0x8a5a38, 0, atticY - 0.17, gableZ + 0.06));
+	  part$5(parts, box$1(atticW + 0.36, atticH + 0.34, 0.22, 0x8a5a38, 0, atticY - 0.17, gableZ + 0.06));
 	  // 深色窗洞
-	  part$5(parts, box(atticW, atticH, 0.16, 0x1a1210, 0, atticY, gableZ + 0.14));
+	  part$5(parts, box$1(atticW, atticH, 0.16, 0x1a1210, 0, atticY, gableZ + 0.14));
 	  // 窗口下方的干草（从洞里堆出来，参考图很显眼）
-	  part$5(parts, box(atticW + 0.14, 0.30, 0.42, K.hay, 0, atticY - 0.10, gableZ + 0.22));
-	  part$5(parts, box(atticW * 0.78, 0.22, 0.30, K.hayDark, 0, atticY - 0.26, gableZ + 0.32));
+	  part$5(parts, box$1(atticW + 0.14, 0.30, 0.42, K.hay, 0, atticY - 0.10, gableZ + 0.22));
+	  part$5(parts, box$1(atticW * 0.78, 0.22, 0.30, K.hayDark, 0, atticY - 0.26, gableZ + 0.32));
 	  // 窗口顶部的滑轮吊架（参考图里有个小滑轮）
-	  part$5(parts, box(0.16, 0.16, 0.16, 0x5a4a3a, 0, atticY + atticH + 0.02, gableZ + 0.30));
+	  part$5(parts, box$1(0.16, 0.16, 0.16, 0x5a4a3a, 0, atticY + atticH + 0.02, gableZ + 0.30));
 
 	  // ---- 壁灯（门右侧）----
 	  const lampX = doorW / 2 + 1.4, lampY = 5.2;
-	  part$5(parts, box(0.14, 0.5, 0.14, 0x3a2a1e, lampX, lampY + 0.5, D / 2 + 0.1));
-	  part$5(parts, box(0.5, 0.62, 0.5, 0x3a2a1e, lampX, lampY, D / 2 + 0.28));
-	  part$5(parts, box(0.34, 0.44, 0.34, K.lamp, lampX, lampY + 0.09, D / 2 + 0.3));
+	  part$5(parts, box$1(0.14, 0.5, 0.14, 0x3a2a1e, lampX, lampY + 0.5, D / 2 + 0.1));
+	  part$5(parts, box$1(0.5, 0.62, 0.5, 0x3a2a1e, lampX, lampY, D / 2 + 0.28));
+	  part$5(parts, box$1(0.34, 0.44, 0.34, K.lamp, lampX, lampY + 0.09, D / 2 + 0.3));
 
 	  // ---- 木梯（靠右侧墙）----
 	  const lx = W / 2 + 0.35;
 	  for (let i = 0; i < 9; i++) {
 	    const y = 0.8 + i * 0.72;
-	    part$5(parts, box(0.9, 0.1, 0.16, K.ladder, lx, y, -D / 2 + 2.2 + i * 0.02));
+	    part$5(parts, box$1(0.9, 0.1, 0.16, K.ladder, lx, y, -D / 2 + 2.2 + i * 0.02));
 	  }
 	  for (const sz of [-0.45, 0.45]) {
 	    const rail = new BoxGeometry(0.1, 7.4, 0.12);
@@ -45870,15 +46770,15 @@ void main() {
 
 	  // ---- 墙角干草堆 ----
 	  const hayPile = (x, z, s) => {
-	    part$5(parts, box(2.2 * s, 0.9 * s, 1.6 * s, K.hay, x, 0, z));
-	    part$5(parts, box(1.7 * s, 0.55 * s, 1.2 * s, K.hayDark, x + 0.15 * s, 0.75 * s, z - 0.1 * s));
+	    part$5(parts, box$1(2.2 * s, 0.9 * s, 1.6 * s, K.hay, x, 0, z));
+	    part$5(parts, box$1(1.7 * s, 0.55 * s, 1.2 * s, K.hayDark, x + 0.15 * s, 0.75 * s, z - 0.1 * s));
 	  };
 	  hayPile(-W / 2 - 1.1, D / 2 - 2.0, 1.0);
 	  hayPile(W / 2 + 1.0, -D / 2 + 1.6, 0.9);
 
 	  // ---- 门前地面（土路）----
 	  // 门前土路（用 K.barnDoorDark，对应 PALETTE.dirt，参与换色）
-	  part$5(parts, box(6.5, 0.1, 4.0, K.barnDoorDark, 0, 0, D / 2 + 2.0));
+	  part$5(parts, box$1(6.5, 0.1, 4.0, K.barnDoorDark, 0, 0, D / 2 + 2.0));
 
 	  const m = meshFrom(parts);
 	  m.name = 'barnDemo';
@@ -45906,21 +46806,21 @@ void main() {
 	  const W = 11, D = 13, H = 6.2;
 
 	  // ---- 墙体：原木横板 ----
-	  part$5(parts, box(W, H, D, K.houseWall, 0, 0, 0));
+	  part$5(parts, box$1(W, H, D, K.houseWall, 0, 0, 0));
 	  // 横向木板缝（每 0.75 一道暗线）
 	  //
 	  // ★ 前后两个面都要有（之前只有一圈薄片，正面几乎看不出横板）。
 	  //   间距 0.75 必须和山墙层里的横线一致，才能连成连续的横板纹理。
 	  for (let y = 0.75; y < H; y += 0.75) {
-	    part$5(detail, box(W - 0.02, 0.07, 0.06, K.houseWallDark, 0, y, D / 2 + 0.04));
-	    part$5(detail, box(W - 0.02, 0.07, 0.06, K.houseWallDark, 0, y, -D / 2 - 0.04));
+	    part$5(detail, box$1(W - 0.02, 0.07, 0.06, K.houseWallDark, 0, y, D / 2 + 0.04));
+	    part$5(detail, box$1(W - 0.02, 0.07, 0.06, K.houseWallDark, 0, y, -D / 2 - 0.04));
 	    // 左右两个侧面
-	    part$5(detail, box(0.06, 0.07, D - 0.02, K.houseWallDark, W / 2 + 0.04, y, 0));
-	    part$5(detail, box(0.06, 0.07, D - 0.02, K.houseWallDark, -W / 2 - 0.04, y, 0));
+	    part$5(detail, box$1(0.06, 0.07, D - 0.02, K.houseWallDark, W / 2 + 0.04, y, 0));
+	    part$5(detail, box$1(0.06, 0.07, D - 0.02, K.houseWallDark, -W / 2 - 0.04, y, 0));
 	  }
 
 	  // ---- 基座（深色石基）----
-	  part$5(parts, box(W + 0.3, 0.55, D + 0.3, 0x8a7a68, 0, 0, 0));
+	  part$5(parts, box$1(W + 0.3, 0.55, D + 0.3, 0x8a7a68, 0, 0, 0));
 
 	  // ---- 屋顶：红瓦 + 厚檐口 ----
 	  //
@@ -45962,7 +46862,7 @@ void main() {
 	        const layerY = roofY0 + t * hRoofH - hRoofH / LAYERS / 2;
 
 	        // 山墙主体（原木色）
-	        part$5(parts, box(halfW * 2, layerH, 0.26, K.houseWall, 0, layerY, z));
+	        part$5(parts, box$1(halfW * 2, layerH, 0.26, K.houseWall, 0, layerY, z));
 
 	        // ★ 横向木板缝：每层内再切几道横线，
 	        //   这样从墙身一直延伸到屋脊都是连续的横板纹理。
@@ -45970,14 +46870,14 @@ void main() {
 	        const yTop = layerY + layerH / 2;
 	        const yBot = layerY - layerH / 2;
 	        for (let yy = Math.ceil(yBot / 0.75) * 0.75; yy <= yTop; yy += 0.75) {
-	          part$5(detail, box(halfW * 2, 0.07, 0.06, K.houseWallDark, 0, yy, z + sz * 0.14));
+	          part$5(detail, box$1(halfW * 2, 0.07, 0.06, K.houseWallDark, 0, yy, z + sz * 0.14));
 	        }
 	      }
 	    }
 	  }
 
 	  // 屋脊
-	  part$5(parts, box(0.42, 0.26, D + 1.2, K.houseRoofDark, 0, roofY0 + hRoofH - 0.1, 0));
+	  part$5(parts, box$1(0.42, 0.26, D + 1.2, K.houseRoofDark, 0, roofY0 + hRoofH - 0.1, 0));
 
 	  // ---- 屋顶边缘压条（深红，形成"屋顶外沿"的轮廓）----
 	  //
@@ -46050,7 +46950,7 @@ void main() {
 	    //   檐口白边端点 x = hRoofHalfW（因为长度取了正好 slopeLen），
 	    //   所以横梁半宽 = hRoofHalfW，与端点严丝合缝。
 	    for (const sz of [-1, 1]) {
-	      part$5(parts, box(
+	      part$5(parts, box$1(
 	        hRoofHalfW * 2, boardH, boardW,
 	        K.houseTrim,
 	        0, roofY0 - boardH * 0.5, sz * (D / 2 + 0.17)
@@ -46104,46 +47004,46 @@ void main() {
 
 	  // ---- 烟囱（砖砌，出屋顶）----
 	  const chX = 2.6, chZ = -2.2;
-	  part$5(parts, box(1.5, 5.4, 1.4, K.chimney, chX, H + 1.6, chZ));
+	  part$5(parts, box$1(1.5, 5.4, 1.4, K.chimney, chX, H + 1.6, chZ));
 	  // 砖缝
 	  for (let y = H + 2.0; y < H + 6.8; y += 0.45) {
-	    part$5(detail, box(1.54, 0.06, 1.44, K.chimneyDark, chX, y, chZ));
+	    part$5(detail, box$1(1.54, 0.06, 1.44, K.chimneyDark, chX, y, chZ));
 	  }
 	  // 烟囱顶盖
-	  part$5(parts, box(1.9, 0.28, 1.8, 0xc8beb0, chX, H + 7.0, chZ));
+	  part$5(parts, box$1(1.9, 0.28, 1.8, 0xc8beb0, chX, H + 7.0, chZ));
 
 	  // ---- 门（正面中央偏左）----
 	  const doorW = 1.9, doorH = 3.4, dz = D / 2 + 0.06;
-	  part$5(parts, box(doorW + 0.34, doorH + 0.3, 0.24, K.houseTrim, -1.4, 0.5, dz));
-	  part$5(parts, box(doorW, doorH, 0.18, K.door, -1.4, 0.6, dz + 0.14));
+	  part$5(parts, box$1(doorW + 0.34, doorH + 0.3, 0.24, K.houseTrim, -1.4, 0.5, dz));
+	  part$5(parts, box$1(doorW, doorH, 0.18, K.door, -1.4, 0.6, dz + 0.14));
 	  // 门板分格
-	  part$5(parts, box(doorW * 0.72, 0.9, 0.06, 0xa87848, -1.4, doorH * 0.62, dz + 0.24));
-	  part$5(parts, box(doorW * 0.72, 0.9, 0.06, 0xa87848, -1.4, doorH * 0.22, dz + 0.24));
+	  part$5(parts, box$1(doorW * 0.72, 0.9, 0.06, 0xa87848, -1.4, doorH * 0.62, dz + 0.24));
+	  part$5(parts, box$1(doorW * 0.72, 0.9, 0.06, 0xa87848, -1.4, doorH * 0.22, dz + 0.24));
 	  // 门把手
-	  part$5(parts, box(0.14, 0.14, 0.1, K.doorKnob, -1.4 - doorW * 0.28, 1.9, dz + 0.3));
+	  part$5(parts, box$1(0.14, 0.14, 0.1, K.doorKnob, -1.4 - doorW * 0.28, 1.9, dz + 0.3));
 
 	  // ---- 台阶（门前两级）----
-	  part$5(parts, box(3.0, 0.26, 1.1, K.stair, -1.4, 0, D / 2 + 0.75));
-	  part$5(parts, box(2.6, 0.26, 0.8, K.stair, -1.4, 0.26, D / 2 + 0.55));
+	  part$5(parts, box$1(3.0, 0.26, 1.1, K.stair, -1.4, 0, D / 2 + 0.75));
+	  part$5(parts, box$1(2.6, 0.26, 0.8, K.stair, -1.4, 0.26, D / 2 + 0.55));
 
 	  // ---- 窗户（蓝框 + 花箱）----
 	  const windowAt = (x, y, z, withFlower) => {
 	    // 白框
-	    part$5(parts, box(2.0, 1.8, 0.16, K.houseTrim, x, y, z));
+	    part$5(parts, box$1(2.0, 1.8, 0.16, K.houseTrim, x, y, z));
 	    // 蓝框
-	    part$5(parts, box(1.72, 1.52, 0.12, K.windowBlue, x, y + 0.14, z + 0.08));
+	    part$5(parts, box$1(1.72, 1.52, 0.12, K.windowBlue, x, y + 0.14, z + 0.08));
 	    // 玻璃
-	    part$5(parts, box(1.44, 1.24, 0.08, K.windowGlass, x, y + 0.28, z + 0.14));
+	    part$5(parts, box$1(1.44, 1.24, 0.08, K.windowGlass, x, y + 0.28, z + 0.14));
 	    // 十字窗棂
-	    part$5(detail, box(0.1, 1.24, 0.06, K.houseTrim, x, y + 0.28, z + 0.2));
-	    part$5(detail, box(1.44, 0.1, 0.06, K.houseTrim, x, y + 0.9, z + 0.2));
+	    part$5(detail, box$1(0.1, 1.24, 0.06, K.houseTrim, x, y + 0.28, z + 0.2));
+	    part$5(detail, box$1(1.44, 0.1, 0.06, K.houseTrim, x, y + 0.9, z + 0.2));
 	    // 花箱
 	    {
-	      part$5(parts, box(1.9, 0.34, 0.5, 0x9a6a38, x, y - 0.1, z + 0.34));
+	      part$5(parts, box$1(1.9, 0.34, 0.5, 0x9a6a38, x, y - 0.1, z + 0.34));
 	      // 花：几簇红绿
 	      for (let i = -1; i <= 1; i++) {
-	        part$5(parts, box(0.34, 0.24, 0.3, K.flowerGreen, x + i * 0.55, y + 0.22, z + 0.34));
-	        part$5(parts, box(0.22, 0.2, 0.22, K.flowerRed, x + i * 0.55, y + 0.42, z + 0.36));
+	        part$5(parts, box$1(0.34, 0.24, 0.3, K.flowerGreen, x + i * 0.55, y + 0.22, z + 0.34));
+	        part$5(parts, box$1(0.22, 0.2, 0.22, K.flowerRed, x + i * 0.55, y + 0.42, z + 0.36));
 	      }
 	    }
 	  };
@@ -46152,9 +47052,9 @@ void main() {
 
 	  // 侧墙窗（贴在左右两面墙上，需要旋转 90°）
 	  const sideWin = (x, z) => {
-	    part$5(parts, box(0.16, 1.8, 2.0, K.houseTrim, x, 2.3, z));
-	    part$5(parts, box(0.12, 1.52, 1.72, K.windowBlue, x + 0.08, 2.44, z));
-	    part$5(parts, box(0.08, 1.24, 1.44, K.windowGlass, x + 0.14, 2.58, z));
+	    part$5(parts, box$1(0.16, 1.8, 2.0, K.houseTrim, x, 2.3, z));
+	    part$5(parts, box$1(0.12, 1.52, 1.72, K.windowBlue, x + 0.08, 2.44, z));
+	    part$5(parts, box$1(0.08, 1.24, 1.44, K.windowGlass, x + 0.14, 2.58, z));
 	  };
 	  sideWin(W / 2 + 0.06, 1.8);
 	  sideWin(-W / 2 - 0.06, -1.8);
@@ -46170,9 +47070,9 @@ void main() {
 
 	  // ---- 靠墙的铁锹 ----
 	  const shovelX = -W / 2 - 0.5, shovelZ = D / 2 - 1.6;
-	  part$5(parts, box(0.1, 3.2, 0.1, 0x8a6a48, shovelX, 0, shovelZ));
-	  part$5(parts, box(0.5, 0.7, 0.08, 0x9a9a98, shovelX, 0, shovelZ));
-	  part$5(parts, box(0.44, 0.16, 0.16, 0x5a4a3a, shovelX, 3.1, shovelZ));
+	  part$5(parts, box$1(0.1, 3.2, 0.1, 0x8a6a48, shovelX, 0, shovelZ));
+	  part$5(parts, box$1(0.5, 0.7, 0.08, 0x9a9a98, shovelX, 0, shovelZ));
+	  part$5(parts, box$1(0.44, 0.16, 0.16, 0x5a4a3a, shovelX, 3.1, shovelZ));
 
 	  const m = meshFrom(parts);
 	  m.name = 'farmhouseDemo';
@@ -46266,17 +47166,17 @@ void main() {
 	  //   而斜撑只连到 spread（2.5），于是斜撑末端悬空：
 	  //   截图里"支脚散开戳在地上"就是这个原因。
 	  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-	    part$4(parts, box(legW, legH, legW, color, sx * spread, 0, sz * spread));
+	    part$4(parts, box$1(legW, legH, legW, color, sx * spread, 0, sz * spread));
 	  }
 
 	  // 横梁（每一层，四个方向）—— 端点正好在腿上
 	  for (const t of levels) {
 	    const y = legH * t;
 	    const w = spread * 2;
-	    part$4(parts, box(w, legW * 0.8, legW * 0.8, bc, 0, y, -spread));
-	    part$4(parts, box(w, legW * 0.8, legW * 0.8, bc, 0, y, spread));
-	    part$4(parts, box(legW * 0.8, legW * 0.8, w, bc, -spread, y, 0));
-	    part$4(parts, box(legW * 0.8, legW * 0.8, w, bc, spread, y, 0));
+	    part$4(parts, box$1(w, legW * 0.8, legW * 0.8, bc, 0, y, -spread));
+	    part$4(parts, box$1(w, legW * 0.8, legW * 0.8, bc, 0, y, spread));
+	    part$4(parts, box$1(legW * 0.8, legW * 0.8, w, bc, -spread, y, 0));
+	    part$4(parts, box$1(legW * 0.8, legW * 0.8, w, bc, spread, y, 0));
 	  }
 
 	  // X 形斜撑：连接【相邻两层横梁】的对角
@@ -46330,12 +47230,12 @@ void main() {
 	  const w = 0.62;
 	  // 两根梯梁
 	  for (const sx of [-1, 1]) {
-	    part$4(parts, box(0.10, h, 0.10, color, x + sx * w / 2, fromY, z));
+	    part$4(parts, box$1(0.10, h, 0.10, color, x + sx * w / 2, fromY, z));
 	  }
 	  // 梯档
 	  const n = Math.max(3, Math.round(h / 0.55));
 	  for (let i = 1; i < n; i++) {
-	    part$4(parts, box(w, 0.08, 0.08, color, x, fromY + (h * i) / n, z));
+	    part$4(parts, box$1(w, 0.08, 0.08, color, x, fromY + (h * i) / n, z));
 	  }
 	  return parts;
 	}
@@ -46396,7 +47296,7 @@ void main() {
 	    const a = (i / 8) * Math.PI * 2;
 	    const bx = Math.cos(a) * (r + 0.02);
 	    const bz = Math.sin(a) * (r + 0.02);
-	    part$4(details, box(0.10, tankH, 0.06, metalDark, bx, tankY, bz));
+	    part$4(details, box$1(0.10, tankH, 0.06, metalDark, bx, tankY, bz));
 	  }
 	  // 锈迹（多块不规则补丁，参考图里锈得很明显）
 	  // 锈迹：多块【小】补丁（大块方块看着像贴纸）
@@ -46410,13 +47310,13 @@ void main() {
 	  ];
 	  for (const [ang, hy, w, h] of rustPatches) {
 	    const a = ang * Math.PI * 2 / 2;   // ang 是"半圈"单位 0~2
-	    part$4(details, box(w, h, 0.04, rust,
+	    part$4(details, box$1(w, h, 0.04, rust,
 	      Math.cos(a) * (r + 0.05), tankY + tankH * hy, Math.sin(a) * (r + 0.05)));
 	  }
 	  // 从上往下的锈水痕（几条细长竖条）
 	  for (const [ang, hy, w, h] of [[0.15, 0.30, 0.18, 2.4], [1.05, 0.22, 0.14, 2.0], [1.75, 0.35, 0.16, 1.6]]) {
 	    const a = ang * Math.PI * 2 / 2;
-	    part$4(details, box(w, h, 0.04, 0x7a4628,
+	    part$4(details, box$1(w, h, 0.04, 0x7a4628,
 	      Math.cos(a) * (r + 0.05), tankY + h * 0.5 + tankH * hy, Math.sin(a) * (r + 0.05)));
 	  }
 
@@ -46473,7 +47373,7 @@ void main() {
 	          const localY = letterY + (rows / 2 - row - 0.5) * px;
 	          // 贴到圆柱面
 	          const zFace = Math.sqrt(Math.max(0.2, rSurf * rSurf - localX * localX));
-	          part$4(details, box(px * 1.02, px * 1.02, 0.05, rustTextColor, localX, localY, zFace));
+	          part$4(details, box$1(px * 1.02, px * 1.02, 0.05, rustTextColor, localX, localY, zFace));
 	        }
 	      }
 	    }
@@ -46501,7 +47401,7 @@ void main() {
 	    const a = (i / 20) * Math.PI * 2;
 	    if (Math.abs(Math.cos(a)) < 0.15 && Math.cos(a) > 0) continue;  // 留出梯子口
 	    const px = Math.cos(a) * fr, pz = Math.sin(a) * fr;
-	    part$4(parts, box(0.16, 1.0, 0.16, fenceCol, px, 0, pz));
+	    part$4(parts, box$1(0.16, 1.0, 0.16, fenceCol, px, 0, pz));
 	  }
 	  // 栅栏横杆
 	  for (const y of [0.35, 0.75]) {
@@ -46568,16 +47468,16 @@ void main() {
 	  // 右侧平台 + 栏杆（参考图里桶子右侧有一小段平台带栏杆）
 	  {
 	    const px0 = r + 0.3, px1 = r + 2.4;
-	    part$4(parts, box(px1 - px0, 0.24, 1.6, woodDark, (px0 + px1) / 2, deckY + 0.18, 0));
+	    part$4(parts, box$1(px1 - px0, 0.24, 1.6, woodDark, (px0 + px1) / 2, deckY + 0.18, 0));
 	    // 栏杆柱
 	    for (let i = 0; i <= 3; i++) {
 	      const x = px0 + (px1 - px0) * (i / 3);
-	      part$4(parts, box(0.12, 0.85, 0.12, woodDark, x, deckY + 0.42, 0.72));
-	      part$4(parts, box(0.12, 0.85, 0.12, woodDark, x, deckY + 0.42, -0.72));
+	      part$4(parts, box$1(0.12, 0.85, 0.12, woodDark, x, deckY + 0.42, 0.72));
+	      part$4(parts, box$1(0.12, 0.85, 0.12, woodDark, x, deckY + 0.42, -0.72));
 	    }
 	    // 扶手
-	    part$4(parts, box(px1 - px0, 0.10, 0.10, woodDark, (px0 + px1) / 2, deckY + 1.22, 0.72));
-	    part$4(parts, box(px1 - px0, 0.10, 0.10, woodDark, (px0 + px1) / 2, deckY + 1.22, -0.72));
+	    part$4(parts, box$1(px1 - px0, 0.10, 0.10, woodDark, (px0 + px1) / 2, deckY + 1.22, 0.72));
+	    part$4(parts, box$1(px1 - px0, 0.10, 0.10, woodDark, (px0 + px1) / 2, deckY + 1.22, -0.72));
 	  }
 
 	  // ---- 桶身（木板 + 3 道铁箍）----
@@ -46587,7 +47487,7 @@ void main() {
 	  // 竖向木板缝
 	  for (let i = 0; i < 16; i++) {
 	    const a = (i / 16) * Math.PI * 2;
-	    part$4(details, box(0.08, tankH - 0.15, 0.05, woodDark,
+	    part$4(details, box$1(0.08, tankH - 0.15, 0.05, woodDark,
 	      Math.cos(a) * (r + 0.02), tankY + 0.05, Math.sin(a) * (r + 0.02)));
 	  }
 	  // 三道铁箍
@@ -46626,12 +47526,12 @@ void main() {
 	  // 1) 从桶底向下的短竖段
 	  part$4(parts, cyl(0.17, 0.17, 1.0, 8, pipeCol, -r - 0.15, tankY - 0.55, 0));
 	  // 2) 水平段（往左伸）
-	  part$4(parts, box(Math.abs(pipeX) - (r + 0.15), 0.30, 0.30, pipeCol,
+	  part$4(parts, box$1(Math.abs(pipeX) - (r + 0.15), 0.30, 0.30, pipeCol,
 	    (-r - 0.15 + pipeX) / 2, tankY - 1.0, 0));
 	  // 3) 竖直段：从水平段一路落到地面
 	  part$4(parts, cyl(0.17, 0.17, tankY - 1.0, 8, pipeCol, pipeX, 0, 0));
 	  // 4) 地面处的弯头 + 短横管（参考图里管口朝外）
-	  part$4(parts, box(0.75, 0.30, 0.30, pipeCol, pipeX + 0.30, 0.16, 0));
+	  part$4(parts, box$1(0.75, 0.30, 0.30, pipeCol, pipeX + 0.30, 0.16, 0));
 
 	  // ---- 长梯 ----
 	  makeLadder$1(-r - 0.75, 1.2, 0, deckY + 1.0, K.woodDark).forEach(p => parts.push(p));
@@ -46682,7 +47582,7 @@ void main() {
 	  // 台板下的支撑梁
 	  for (let i = 0; i < 6; i++) {
 	    const a = (i / 6) * Math.PI * 2;
-	    part$4(parts, box(0.22, 0.22, r * 1.6, woodDark,
+	    part$4(parts, box$1(0.22, 0.22, r * 1.6, woodDark,
 	      Math.cos(a) * r * 0.5, deckY - 0.12, Math.sin(a) * r * 0.5));
 	  }
 
@@ -46693,7 +47593,7 @@ void main() {
 	  // 竖板缝（密集）
 	  for (let i = 0; i < 18; i++) {
 	    const a = (i / 18) * Math.PI * 2;
-	    part$4(details, box(0.07, tankH - 0.12, 0.05, woodDark,
+	    part$4(details, box$1(0.07, tankH - 0.12, 0.05, woodDark,
 	      Math.cos(a) * (r + 0.02), tankY + 0.04, Math.sin(a) * (r + 0.02)));
 	  }
 	  // 三道铁箍
@@ -46727,14 +47627,14 @@ void main() {
 	  const pipeX = r + 0.75;
 	  {
 	    // 1) 桶身侧面出口（短横管，从桶壁伸出）
-	    part$4(parts, box(0.85, 0.28, 0.28, pipeCol, r + 0.35, tankY + 0.35, 0));
+	    part$4(parts, box$1(0.85, 0.28, 0.28, pipeCol, r + 0.35, tankY + 0.35, 0));
 	    // 2) 竖直下行主管：从桶身出口一直到地面
 	    const topY = tankY + 0.28;
 	    part$4(parts, cyl(0.16, 0.16, topY, 8, pipeCol, pipeX, 0, 0));
 	    // 3) 地面弯头 + 出水口（朝外）
-	    part$4(parts, box(0.85, 0.30, 0.30, pipeCol, pipeX + 0.35, 0.15, 0));
+	    part$4(parts, box$1(0.85, 0.30, 0.30, pipeCol, pipeX + 0.35, 0.15, 0));
 	    // 4) 顶部弯头（连接桶壁和竖管）
-	    part$4(parts, box(pipeX - (r + 0.30), 0.28, 0.28, pipeCol,
+	    part$4(parts, box$1(pipeX - (r + 0.30), 0.28, 0.28, pipeCol,
 	      (r + 0.30 + pipeX) / 2, tankY + 0.35, 0));
 	  }
 
@@ -46773,11 +47673,11 @@ void main() {
 	  const w = width === undefined ? 0.55 : width;
 	  const h = toY - fromY;
 	  for (const sx of [-1, 1]) {
-	    part$3(parts, box(0.09, h, 0.09, color, x + sx * w / 2, fromY, z));
+	    part$3(parts, box$1(0.09, h, 0.09, color, x + sx * w / 2, fromY, z));
 	  }
 	  const n = Math.max(3, Math.round(h / 0.5));
 	  for (let i = 1; i < n; i++) {
-	    part$3(parts, box(w, 0.07, 0.07, color, x, fromY + (h * i) / n, z));
+	    part$3(parts, box$1(w, 0.07, 0.07, color, x, fromY + (h * i) / n, z));
 	  }
 	}
 
@@ -46813,7 +47713,7 @@ void main() {
 	    }
 	    for (let i = 0; i < 12; i++) {
 	      const a = (i / 12) * Math.PI * 2;
-	      part$3(details, box(0.06, h - 0.2, 0.05, metalDark,
+	      part$3(details, box$1(0.06, h - 0.2, 0.05, metalDark,
 	        cx + Math.cos(a) * (r + 0.02), 0.1, Math.sin(a) * (r + 0.02)));
 	    }
 
@@ -46824,11 +47724,11 @@ void main() {
 	    {
 	      const bandY = h * 0.44;
 	      const faceZ = r + 0.10;
-	      part$3(details, box(0.75, 0.42, 0.05, 0xe8eef2, cx - 0.55, bandY - 0.20, faceZ));
-	      part$3(details, box(0.48, 0.10, 0.05, 0xe8eef2, cx - 0.72, bandY + 0.24, faceZ + 0.01));
-	      part$3(details, box(0.30, 0.10, 0.05, 0xe8eef2, cx - 0.55, bandY + 0.30, faceZ + 0.01));
+	      part$3(details, box$1(0.75, 0.42, 0.05, 0xe8eef2, cx - 0.55, bandY - 0.20, faceZ));
+	      part$3(details, box$1(0.48, 0.10, 0.05, 0xe8eef2, cx - 0.72, bandY + 0.24, faceZ + 0.01));
+	      part$3(details, box$1(0.30, 0.10, 0.05, 0xe8eef2, cx - 0.55, bandY + 0.30, faceZ + 0.01));
 	      for (let i = 0; i < 3; i++) {
-	        part$3(details, box(0.85, 0.08, 0.05, 0xe8eef2, cx + 0.60, bandY - 0.22 + i * 0.20, faceZ));
+	        part$3(details, box$1(0.85, 0.08, 0.05, 0xe8eef2, cx + 0.60, bandY - 0.22 + i * 0.20, faceZ));
 	      }
 	    }
 
@@ -46850,7 +47750,7 @@ void main() {
 	    part$3(parts, cyl(r * 0.92, r * 0.55, 1.0, 20, metal, cx, -1, 0));
 	    for (let i = 0; i < 6; i++) {
 	      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-	      part$3(parts, box(0.16, 1.0, 0.16, metalDark,
+	      part$3(parts, box$1(0.16, 1.0, 0.16, metalDark,
 	        cx + Math.cos(a) * r * 0.78, -1, Math.sin(a) * r * 0.78));
 	    }
 	  }
@@ -46859,23 +47759,23 @@ void main() {
 	  //   ★ 单筒模式下放在筒身【侧面】，不要放中间（会穿模）。
 	  const towerW = 1.5, towerH = h + 2.6 * HS;
 	  const towerX = opts.single ? r + towerW / 2 + 0.5 : 0;
-	  part$3(parts, box(towerW, towerH, towerW, metalDark, towerX, 0, 0));
+	  part$3(parts, box$1(towerW, towerH, towerW, metalDark, towerX, 0, 0));
 	  for (let i = 1; i < 8; i++) {
-	    part$3(details, box(towerW + 0.06, 0.08, towerW + 0.06, metal, towerX, i * (towerH / 8), 0));
+	    part$3(details, box$1(towerW + 0.06, 0.08, towerW + 0.06, metal, towerX, i * (towerH / 8), 0));
 	  }
-	  part$3(parts, box(towerW + 0.5, 0.7, towerW + 0.5, metalLight, towerX, towerH, 0));
-	  part$3(parts, box(towerW + 0.2, 0.3, towerW + 0.2, metalDark, towerX, towerH + 0.7, 0));
+	  part$3(parts, box$1(towerW + 0.5, 0.7, towerW + 0.5, metalLight, towerX, towerH, 0));
+	  part$3(parts, box$1(towerW + 0.2, 0.3, towerW + 0.2, metalDark, towerX, towerH + 0.7, 0));
 
 	  if (opts.single) {
 	    // 单筒：提升塔顶部伸出一根横向管道接到筒顶
 	    const pipeY = h + 0.55;
 	    const len = towerX - towerW / 2 - r * 0.55;
-	    part$3(parts, box(len, 0.34, 0.34, pipeCol,
+	    part$3(parts, box$1(len, 0.34, 0.34, pipeCol,
 	      towerW / 2 + towerX - towerX + (towerX - towerW / 2) / 2, pipeY, 0));
 	    // 修正：管道从塔壁连到筒壁
 	    const px0 = towerX - towerW / 2;
 	    const px1 = r * 0.55;
-	    part$3(parts, box(px0 - px1, 0.34, 0.34, pipeCol, (px0 + px1) / 2, pipeY, 0));
+	    part$3(parts, box$1(px0 - px1, 0.34, 0.34, pipeCol, (px0 + px1) / 2, pipeY, 0));
 	    part$3(parts, cyl(0.20, 0.20, 0.9, 8, pipeCol, px1, pipeY, 0));
 	    part$3(parts, cyl(0.19, 0.19, 1.2, 8, pipeCol, towerX, towerH - 0.6, 0));
 	  } else {
@@ -46883,7 +47783,7 @@ void main() {
 	      const cx = side * gap / 2;
 	      const pipeY = h + 0.55;
 	      const len = Math.abs(cx) - towerW / 2 - r * 0.55;
-	      part$3(parts, box(len, 0.34, 0.34, pipeCol, side * (towerW / 2 + len / 2), pipeY, 0));
+	      part$3(parts, box$1(len, 0.34, 0.34, pipeCol, side * (towerW / 2 + len / 2), pipeY, 0));
 	      part$3(parts, cyl(0.20, 0.20, 0.9, 8, pipeCol, side * (Math.abs(cx) - r * 0.55), pipeY, 0));
 	    }
 	    part$3(parts, cyl(0.19, 0.19, 1.2, 8, pipeCol, 0, towerH - 0.6, 0));
@@ -46919,15 +47819,15 @@ void main() {
 	    const cx = opts.single ? 0 : side * gap / 2;
 
 	    // ---- 塔身：方形木板塔 ----
-	    part$3(parts, box(bodyW, h, bodyD, woodRed, cx, 0, 0));
+	    part$3(parts, box$1(bodyW, h, bodyD, woodRed, cx, 0, 0));
 
 	    // 底部石基（深色）
-	    part$3(parts, box(bodyW + 0.30, 0.55, bodyD + 0.30, plinth, cx, 0, 0));
+	    part$3(parts, box$1(bodyW + 0.30, 0.55, bodyD + 0.30, plinth, cx, 0, 0));
 
 	    // 白色横条（红白相间，绕四面一圈）
 	    for (let i = 0; i < 6; i++) {
 	      const y = 1.0 + i * 1.35;
-	      part$3(details, box(bodyW + 0.06, 0.30, bodyD + 0.06, woodWhite, cx, y, 0));
+	      part$3(details, box$1(bodyW + 0.06, 0.30, bodyD + 0.06, woodWhite, cx, y, 0));
 	    }
 
 	    // 竖向板缝（四面各若干道）
@@ -46937,11 +47837,11 @@ void main() {
 	        const t = i / n;
 	        const ox = -bodyW / 2 + bodyW * t;
 	        // 前后两面
-	        part$3(details, box(0.07, h - 0.6, 0.05, woodRedDark, cx + ox, 0.3, bodyD / 2 + 0.04));
-	        part$3(details, box(0.07, h - 0.6, 0.05, woodRedDark, cx + ox, 0.3, -bodyD / 2 - 0.04));
+	        part$3(details, box$1(0.07, h - 0.6, 0.05, woodRedDark, cx + ox, 0.3, bodyD / 2 + 0.04));
+	        part$3(details, box$1(0.07, h - 0.6, 0.05, woodRedDark, cx + ox, 0.3, -bodyD / 2 - 0.04));
 	        // 左右两面
-	        part$3(details, box(0.05, h - 0.6, 0.07, woodRedDark, cx + bodyW / 2 + 0.04, 0.3, ox));
-	        part$3(details, box(0.05, h - 0.6, 0.07, woodRedDark, cx - bodyW / 2 - 0.04, 0.3, ox));
+	        part$3(details, box$1(0.05, h - 0.6, 0.07, woodRedDark, cx + bodyW / 2 + 0.04, 0.3, ox));
+	        part$3(details, box$1(0.05, h - 0.6, 0.07, woodRedDark, cx - bodyW / 2 - 0.04, 0.3, ox));
 	      }
 	    }
 
@@ -46961,7 +47861,7 @@ void main() {
 	        const layerH = hh / LAYERS * 1.15;
 	        const layerY = roofY + t * hh - hh / LAYERS / 2;
 	        for (const sz of [-1, 1]) {
-	          part$3(details, box(w, layerH, 0.18, woodRed,
+	          part$3(details, box$1(w, layerH, 0.18, woodRed,
 	            cx, layerY, sz * (bodyD / 2 + 0.02)));
 	        }
 	      }
@@ -46978,18 +47878,18 @@ void main() {
 	        part$3(parts, g);
 	      }
 	      // 屋脊
-	      part$3(parts, box(0.30, 0.24, bodyD + overhang * 2 + 0.1, roofGrayDark,
+	      part$3(parts, box$1(0.30, 0.24, bodyD + overhang * 2 + 0.1, roofGrayDark,
 	        cx, roofY + hh - 0.07, 0));
 	      // 檐口白边
 	      for (const sx of [-1, 1]) {
-	        part$3(parts, box(0.42, 0.20, bodyD + overhang * 2, roofGrayDark,
+	        part$3(parts, box$1(0.42, 0.20, bodyD + overhang * 2, roofGrayDark,
 	          cx + sx * (hw - 0.10), roofY - 0.14, 0));
 	      }
 	    }
 
 	    // 山墙小窗（前后各一个）
 	    for (const sz of [-1, 1]) {
-	      part$3(parts, box(0.70, 0.58, 0.10, 0x3a2a20,
+	      part$3(parts, box$1(0.70, 0.58, 0.10, 0x3a2a20,
 	        cx, roofY + 1.05, sz * (bodyD / 2 + 0.12)));
 	    }
 	  }
@@ -47013,12 +47913,12 @@ void main() {
 	  const netGap = gap - bodyW;              // 两塔之间的净距
 	  const bridgeW = netGap + 0.16;           // 只插进塔壁 0.08
 	  const bridgeH = 1.30;
-	  part$3(parts, box(bridgeW, bridgeH, 1.9, woodRed, 0, bridgeY, 0));
+	  part$3(parts, box$1(bridgeW, bridgeH, 1.9, woodRed, 0, bridgeY, 0));
 
 	  // 桥体两端的接缝压条（盖住桥和塔壁的交界）
 	  for (const side of [-1, 1]) {
 	    const ex = side * (bridgeW / 2);
-	    part$3(parts, box(0.22, bridgeH + 0.12, 2.02, woodRedDark, ex, bridgeY - 0.06, 0));
+	    part$3(parts, box$1(0.22, bridgeH + 0.12, 2.02, woodRedDark, ex, bridgeY - 0.06, 0));
 	  }
 
 	  // 桥顶小屋顶：坡板水平投影必须 <= netGap/2 - 余量
@@ -47036,20 +47936,20 @@ void main() {
 	      part$3(parts, g);
 	    }
 	    // 屋脊
-	    part$3(parts, box(0.24, 0.16, 2.16, roofGrayDark, 0, bridgeY + bridgeH + bh - 0.04, 0));
+	    part$3(parts, box$1(0.24, 0.16, 2.16, roofGrayDark, 0, bridgeY + bridgeH + bh - 0.04, 0));
 	    // 檐口
 	    for (const sx of [-1, 1]) {
-	      part$3(parts, box(0.26, 0.14, 2.14, roofGrayDark, sx * run, bridgeY + bridgeH - 0.04, 0));
+	      part$3(parts, box$1(0.26, 0.14, 2.14, roofGrayDark, sx * run, bridgeY + bridgeH - 0.04, 0));
 	    }
 	  }
 
 	  // 桥体上的小窗（前后各一）
 	  for (const sz of [-1, 1]) {
-	    part$3(parts, box(0.80, 0.50, 0.10, 0x3a2a20, 0, bridgeY + 0.42, sz * 0.96));
+	    part$3(parts, box$1(0.80, 0.50, 0.10, 0x3a2a20, 0, bridgeY + 0.42, sz * 0.96));
 	  }
 	  // ---- 中央竖管（从廊桥往下）----
 	  part$3(parts, cyl(0.22, 0.22, bridgeY - 0.5, 10, pipeCol, 0, 0.5, 0));
-	  part$3(parts, box(1.5, 0.26, 0.26, pipeCol, 0.75, bridgeY - 0.7, 0));
+	  part$3(parts, box$1(1.5, 0.26, 0.26, pipeCol, 0.75, bridgeY - 0.7, 0));
 	  part$3(parts, cyl(0.26, 0.26, 0.5, 8, pipeCol, 0, 0.18, 0));
 
 	  // ---- 右侧爬梯（贴在右塔外侧）----
@@ -47082,7 +47982,7 @@ void main() {
 	    }
 	    for (let i = 0; i < 10; i++) {
 	      const a = (i / 10) * Math.PI * 2;
-	      part$3(details, box(0.04, h - 0.2, 0.04, concreteDark,
+	      part$3(details, box$1(0.04, h - 0.2, 0.04, concreteDark,
 	        cx + Math.cos(a) * (r + 0.01), 0.1, Math.sin(a) * (r + 0.01)));
 	    }
 
@@ -47107,11 +48007,11 @@ void main() {
 	  const capR0 = r + 0.24;
 	  const bridgeY = h + 0.30 + capR0 * 0.75;
 	  const bridgeW = gap - r * 2 + 1.2;
-	  part$3(parts, box(bridgeW, 0.30, 1.2, capMetal, 0, bridgeY, 0));
+	  part$3(parts, box$1(bridgeW, 0.30, 1.2, capMetal, 0, bridgeY, 0));
 	  for (const sz of [-1, 1]) {
-	    part$3(parts, box(bridgeW, 0.08, 0.08, pipeCol, 0, bridgeY + 0.62, sz * 0.54));
+	    part$3(parts, box$1(bridgeW, 0.08, 0.08, pipeCol, 0, bridgeY + 0.62, sz * 0.54));
 	    for (let i = 0; i <= 3; i++) {
-	      part$3(parts, box(0.08, 0.62, 0.08, pipeCol,
+	      part$3(parts, box$1(0.08, 0.62, 0.08, pipeCol,
 	        -bridgeW / 2 + (bridgeW * i) / 3, bridgeY + 0.15, sz * 0.54));
 	    }
 	  }
@@ -47123,10 +48023,10 @@ void main() {
 	  part$3(parts, cyl(0.24, 0.24, bridgeY - 0.5, 10, pipeCol, 0, 0.3, 0));
 	  for (const side of [-1, 1]) {
 	    const cx = side * gap / 2;
-	    part$3(parts, box(Math.abs(cx) - r * 0.6, 0.26, 0.26, pipeCol,
+	    part$3(parts, box$1(Math.abs(cx) - r * 0.6, 0.26, 0.26, pipeCol,
 	      side * (r * 0.6 + (Math.abs(cx) - r * 0.6) / 2), bridgeY - 0.3, 0));
 	  }
-	  part$3(parts, box(0.5, 0.36, 0.5, 0x7a8288, 0, 0.34, 0));
+	  part$3(parts, box$1(0.5, 0.36, 0.5, 0x7a8288, 0, 0.34, 0));
 	  part$3(parts, cyl(0.16, 0.16, 0.4, 8, pipeCol, 0, 0, 0));
 
 	  makeLadder(parts, -gap / 2 - r - 0.35, 0, 0, h * 0.98, pipeCol, 0.5);
@@ -47196,9 +48096,9 @@ void main() {
 	    part$2(parts, tint(g, white));
 	  }
 	  // 机舱尾部小突起
-	  part$2(parts, box(0.55, 0.42, 0.75, whiteDark, 0, nacY + 0.55, -0.9));
+	  part$2(parts, box$1(0.55, 0.42, 0.75, whiteDark, 0, nacY + 0.55, -0.9));
 	  // 机舱顶部小鳍
-	  part$2(parts, box(0.12, 0.42, 0.55, grey, 0, nacY + 0.78, -0.35));
+	  part$2(parts, box$1(0.12, 0.42, 0.55, grey, 0, nacY + 0.78, -0.35));
 
 	  // 轮毂
 	  part$2(parts, cyl(0.42, 0.48, 0.55, 10, whiteDark, 0, nacY, 1.05));
@@ -47314,7 +48214,7 @@ void main() {
 	          const y1 = cy + domeR * Math.sin(th1);
 	          const r0 = domeR * Math.cos(th0) * 0.96;
 	          const r1 = domeR * Math.cos(th1) * 0.96;
-	          part$2(details, box(0.09, Math.abs(y1 - y0) + 0.06, 0.09, blueDark,
+	          part$2(details, box$1(0.09, Math.abs(y1 - y0) + 0.06, 0.09, blueDark,
 	            Math.cos(a) * (r0 + r1) / 2, Math.min(y0, y1), Math.sin(a) * (r0 + r1) / 2));
 	        }
 	      }
@@ -47447,19 +48347,19 @@ void main() {
 
 	  // 中央水管
 	  part$2(parts, cyl(0.16, 0.16, H, 8, steelDark, 0, 0, 0));
-	  part$2(parts, box(0.46, 0.30, 0.46, rust, 0, 0, 0));
+	  part$2(parts, box$1(0.46, 0.30, 0.46, rust, 0, 0, 0));
 	  // 管身锈斑
 	  for (let i = 0; i < 4; i++) {
-	    part$2(details, box(0.34, 0.18, 0.34, rust, 0, 0.6 + i * 2.1, 0));
+	    part$2(details, box$1(0.34, 0.18, 0.34, rust, 0, 0.6 + i * 2.1, 0));
 	  }
 
 	  // 塔顶平台 + 小护栏
-	  part$2(parts, box(topW * 2.6, 0.16, topW * 2.6, steelDark, 0, H, 0));
+	  part$2(parts, box$1(topW * 2.6, 0.16, topW * 2.6, steelDark, 0, H, 0));
 	  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-	    part$2(details, box(0.08, 0.42, 0.08, steel, sx * topW * 1.2, H + 0.16, sz * topW * 1.2));
+	    part$2(details, box$1(0.08, 0.42, 0.08, steel, sx * topW * 1.2, H + 0.16, sz * topW * 1.2));
 	  }
 	  // 顶部机头（装扇叶的方箱）
-	  part$2(parts, box(0.62, 0.55, 0.55, steelDark, 0, H + 0.42, 0));
+	  part$2(parts, box$1(0.62, 0.55, 0.55, steelDark, 0, H + 0.42, 0));
 
 	  // 尾翼（扇形板 + 连杆）
 	  {
@@ -47467,12 +48367,12 @@ void main() {
 	    // 连杆
 	    strut(parts, 0, fy, -0.2, 0, fy + 0.15, -2.3, 0.11, steelDark);
 	    // 尾翼板（大扇形，参考图里很显眼）
-	    part$2(parts, box(0.07, 1.30, 1.30, steel, 0, fy + 0.28, -2.85));
+	    part$2(parts, box$1(0.07, 1.30, 1.30, steel, 0, fy + 0.28, -2.85));
 	    // 尾翼上的锈迹 + 加强条
-	    part$2(details, box(0.10, 0.10, 1.34, rust, 0, fy + 0.90, -2.85));
-	    part$2(details, box(0.10, 0.10, 1.34, rust, 0, fy - 0.34, -2.85));
-	    part$2(details, box(0.10, 1.34, 0.10, rust, 0, fy + 0.28, -2.85));
-	    part$2(details, box(0.34, 0.34, 0.06, rust, 0, fy + 0.28, -3.52));
+	    part$2(details, box$1(0.10, 0.10, 1.34, rust, 0, fy + 0.90, -2.85));
+	    part$2(details, box$1(0.10, 0.10, 1.34, rust, 0, fy - 0.34, -2.85));
+	    part$2(details, box$1(0.10, 1.34, 0.10, rust, 0, fy + 0.28, -2.85));
+	    part$2(details, box$1(0.34, 0.34, 0.06, rust, 0, fy + 0.28, -3.52));
 	  }
 
 	  return build$2(parts, details, 'windRanch');
@@ -47493,7 +48393,7 @@ void main() {
 	  // 外圈
 	  for (let i = 0; i < 24; i++) {
 	    const a = (i / 24) * Math.PI * 2;
-	    part$2(details, box(0.09, 0.09, 0.09, steelDark,
+	    part$2(details, box$1(0.09, 0.09, 0.09, steelDark,
 	      Math.cos(a) * R, Math.sin(a) * R, 0));
 	  }
 
@@ -47546,7 +48446,7 @@ void main() {
 	  part$2(parts, cyl(R * 1.05, R * 1.12, 0.85, 14, stone, 0, 0, 0));
 	  for (let i = 0; i < 14; i++) {
 	    const a = (i / 14) * Math.PI * 2;
-	    part$2(details, box(0.34, 0.24, 0.20, stoneDark,
+	    part$2(details, box$1(0.34, 0.24, 0.20, stoneDark,
 	      Math.cos(a) * R * 1.08, 0.15 + (i % 2) * 0.28, Math.sin(a) * R * 1.08));
 	  }
 
@@ -47564,7 +48464,7 @@ void main() {
 	      const t = k / 8;
 	      const rr = R * (1.00 + (0.80 - 1.00) * t);
 	      const a2 = a + (k % 2) * (Math.PI / 14);
-	      part$2(details, box(0.05, H / 8 - 0.10, 0.05, brickDark,
+	      part$2(details, box$1(0.05, H / 8 - 0.10, 0.05, brickDark,
 	        Math.cos(a2) * rr, 0.85 + t * H + 0.05, Math.sin(a2) * rr));
 	    }
 	  }
@@ -47669,7 +48569,7 @@ void main() {
 	  for (let i = 0; i < 20; i++) {
 	    const a = (i / 20) * Math.PI * 2;
 	    const h = 0.22 + (i % 3) * 0.16;
-	    part$2(details, box(0.30, h, 0.24, icing,
+	    part$2(details, box$1(0.30, h, 0.24, icing,
 	      Math.cos(a) * R * 1.06, 1.50 - h, Math.sin(a) * R * 1.06));
 	  }
 	  // 糖霜层（覆盖上表面）
@@ -47678,15 +48578,15 @@ void main() {
 	  // 中层：粉色蛋糕
 	  part$2(parts, cyl(R * 0.86, R * 0.92, 2.4, 16, pink, 0, 1.72, 0));
 	  // 粉色层上的白窗（尖拱）
-	  part$2(parts, box(0.72, 0.90, 0.14, cream, 0, 2.85, R * 0.88));
+	  part$2(parts, box$1(0.72, 0.90, 0.14, cream, 0, 2.85, R * 0.88));
 	  {
 	    const g = new CylinderGeometry(0.36, 0.36, 0.14, 8, 1, false, 0, Math.PI);
 	    g.rotateX(Math.PI / 2);
 	    g.translate(0, 4.20, R * 0.88);
 	    part$2(parts, tint(g, cream));
 	  }
-	  part$2(details, box(0.20, 0.92, 0.06, choco, 0, 3.30, R * 0.92));
-	  part$2(details, box(0.74, 0.20, 0.06, choco, 0, 3.30, R * 0.92));
+	  part$2(details, box$1(0.20, 0.92, 0.06, choco, 0, 3.30, R * 0.92));
+	  part$2(details, box$1(0.74, 0.20, 0.06, choco, 0, 3.30, R * 0.92));
 
 	  // 顶部：粉色圆顶（洋葱形）
 	  const topY = 1.72 + 2.4;
@@ -47713,12 +48613,12 @@ void main() {
 	    const t = 0.3 + (i % 4) * 0.15;
 	    const rr = R * 0.80 * Math.cos(t);
 	    const yy = topY + R * 0.30 + R * 0.80 * Math.sin(t);
-	    part$2(details, box(0.10, 0.10, 0.10, sprinkleCols[i % 5],
+	    part$2(details, box$1(0.10, 0.10, 0.10, sprinkleCols[i % 5],
 	      Math.cos(a) * rr, yy, Math.sin(a) * rr));
 	  }
 
 	  // 拱门（巧克力 + 糖霜边）
-	  part$2(parts, box(0.95, 1.15, 0.20, chocoDark, 0, 0.02, R * 1.02));
+	  part$2(parts, box$1(0.95, 1.15, 0.20, chocoDark, 0, 0.02, R * 1.02));
 	  {
 	    const g = new CylinderGeometry(0.475, 0.475, 0.20, 10, 1, false, 0, Math.PI);
 	    g.rotateX(Math.PI / 2);
@@ -47728,11 +48628,11 @@ void main() {
 	  // 拐杖糖门框（红白条纹）
 	  for (const sx of [-1, 1]) {
 	    for (let k = 0; k < 4; k++) {
-	      part$2(details, box(0.14, 0.30, 0.14, k % 2 === 0 ? red : icing,
+	      part$2(details, box$1(0.14, 0.30, 0.14, k % 2 === 0 ? red : icing,
 	        sx * 0.55, 0.02 + k * 0.30, R * 1.05));
 	    }
 	  }
-	  part$2(details, box(1.20, 0.16, 0.16, icing, 0, 1.35, R * 1.05));
+	  part$2(details, box$1(1.20, 0.16, 0.16, icing, 0, 1.35, R * 1.05));
 
 	  // 周围的棒棒糖
 	  const lolliCols = [red, blue, yellow, green, purple, pinkDark];
@@ -47742,7 +48642,7 @@ void main() {
 	    const lz = Math.sin(a) * R * 1.45;
 	    const lh = 0.9 + (i % 3) * 0.35;
 	    // 棍
-	    part$2(details, box(0.06, lh, 0.06, cream, lx, 0, lz));
+	    part$2(details, box$1(0.06, lh, 0.06, cream, lx, 0, lz));
 	    // 糖球
 	    part$2(parts, cyl(0.22, 0.22, 0.12, 10, lolliCols[i], lx, lh, lz));
 	    part$2(details, cyl(0.13, 0.13, 0.14, 8, icing, lx, lh, lz));
@@ -47752,7 +48652,7 @@ void main() {
 	  for (let i = 0; i < 14; i++) {
 	    const a = (i / 14) * Math.PI * 2 + 0.15;
 	    const rr = R * (1.15 + (i % 3) * 0.12);
-	    part$2(details, box(0.16, 0.12, 0.16, sprinkleCols[i % 5],
+	    part$2(details, box$1(0.16, 0.12, 0.16, sprinkleCols[i % 5],
 	      Math.cos(a) * rr, 0, Math.sin(a) * rr));
 	  }
 
@@ -47962,6 +48862,7 @@ void main() {
 
 	  group.name = 'windmill';
 	  group.userData.blades = blades;
+	  blades.traverse((o) => { if (o.isMesh) o.castShadow = false; });
 	  group.userData.windmillStyle = style;
 	  group.userData.spinSpeed = spec.spin;
 	  group.userData.scaleFactor = spec.scale || 1;
@@ -48178,6 +49079,7 @@ void main() {
 
 	  const m = meshFrom(parts, { flatShading: false });
 	  m.name = 'fence-' + style;
+	  m.castShadow = false;   // 细长横杆/尖桩在雪地上会拉出很长的"十字线"，改由接触阴影压地
 	  // ★ 围栏的横杆只有 0.16~0.24 宽，用建筑级的描边厚度会把它整根吞掉，
 	  //   在薄雾里就变成一条粗黑虚线。单独调细。
 	  m.userData.outlineThickness = 0.014;
@@ -48507,6 +49409,7 @@ void main() {
 	      });
 	    }
 	    const nm = fence(slot.points, slot.height, model, true, style);
+	    nm.visible = !slot.hidden;
 	    nm.name = slot.namePrefix + '-' + style;
 	    nm.userData.fenceKind = kind;
 	    nm.userData.fenceStyle = style;
@@ -48517,24 +49420,25 @@ void main() {
 	  }
 
 	  // 注册一道围栏
-	  function registerFence(kind, namePrefix, points, height, style) {
+	  function registerFence(kind, namePrefix, points, height, style, hidden = false, livestock = false) {
 	    const nm = fence(points, height, model, true, style);
+	    nm.visible = !hidden;
 	    nm.name = namePrefix + '-' + style;
 	    nm.userData.fenceKind = kind;
 	    nm.userData.fenceStyle = style;
 	    group.add(nm);
-	    const slot = { kind, namePrefix, points, height, style, mesh: nm };
+	    const slot = { kind, namePrefix, points, height, style, hidden, livestock, mesh: nm };
 	    fenceSlots.push(slot);
 	    return nm;
 	  }
 
-	  registerFence('pasture', 'fence-pasture', PASTURE, 1.5, FENCE_STYLE_PASTURE);
+	  registerFence('pasture', 'fence-pasture', PASTURE, 1.5, FENCE_STYLE_PASTURE, false, true);
 	  registerFence('coop', 'fence-coop', COOP, 1.0, FENCE_STYLE_COOP);
 
 	  // 每块田地的围栏
 	  for (let fi = 0; fi < FIELD_RECTS.length; fi++) {
 	    const corners = fieldCorners(FIELD_RECTS[fi]);
-	    registerFence('field-' + fi, 'field-fence', corners, 0.95, FENCE_STYLE_FIELD);
+	    registerFence('field-' + fi, 'field-fence', corners, 0.95, FENCE_STYLE_FIELD, false, !!FIELD_RECTS[fi].fenceOnly);
 	  }
 
 	  // 暴露给外部（hud 的点击面板用）
@@ -48543,6 +49447,18 @@ void main() {
 	    const s = fenceSlots.find((x) => x.kind === kind);
 	    return s ? s.style : null;
 	  };
+	  // 隐藏/显示牛羊 + 羊驼牧场的围栏（按钮调用）
+	  group.userData.setLivestockFencesHidden = (hidden) => {
+	    const h = !!hidden;
+	    for (const slot of fenceSlots) {
+	      if (!slot.livestock) continue;
+	      slot.hidden = h;
+	      if (slot.mesh) slot.mesh.visible = !h;
+	    }
+	    group.userData.livestockFencesHidden = h;
+	  };
+	  group.userData.livestockFencesHidden = false;
+
 	  group.userData.setFenceStyle = (kind, style) => {
 	    if (!FENCE_STYLES.includes(style)) return false;
 	    const ok = rebuildFence(kind, style);
@@ -48925,13 +49841,13 @@ void main() {
 
 	function addSoil(parts, size, h, topColor, sideColor) {
 	  if (SKIP_SOIL) return;
-	  part$1(parts, box(size, h, size, sideColor, 0, 0, 0));
-	  part$1(parts, box(size * 0.98, h * 0.30, size * 0.98, topColor, 0, 0, 0));
+	  part$1(parts, box$1(size, h, size, sideColor, 0, 0, 0));
+	  part$1(parts, box$1(size * 0.98, h * 0.30, size * 0.98, topColor, 0, 0, 0));
 	  const s = size * 0.28;
 	  for (let i = -1; i <= 1; i++) {
 	    for (let j = -1; j <= 1; j++) {
 	      if ((i + j) % 2 !== 0) continue;
-	      part$1(parts, box(0.10, 0.06, 0.10, sideColor, i * s, h * 0.30, j * s));
+	      part$1(parts, box$1(0.10, 0.06, 0.10, sideColor, i * s, h * 0.30, j * s));
 	    }
 	  }
 	}
@@ -48950,7 +49866,7 @@ void main() {
 	  // ★ 之前多加了「叶尖小块」，但它的位置是按直线算的，
 	  //   而叶片已经倾斜旋转过，两者对不上 —— 结果尖端块飞在半空，
 	  //   看起来像散落的小方块。这里去掉尖端块，只用一整块。
-	  const g = box(wid * 0.85, 0.10, len, color, 0, 0, 0);
+	  const g = box$1(wid * 0.85, 0.10, len, color, 0, 0, 0);
 	  g.translate(0, 0, len / 2);
 	  g.applyMatrix4(new Matrix4().makeRotationX(-0.72));
 	  g.applyMatrix4(new Matrix4().makeRotationY(ang));
@@ -48994,7 +49910,7 @@ void main() {
 	    for (let i = 0; i < segs; i++) {
 	      const y = baseY + (ph * i) / segs;
 	      const col = i % 2 === 0 ? stem : stemDark;
-	      part$1(parts, box(0.16, ph / segs * 1.02, 0.16, col, px, y, pz));
+	      part$1(parts, box$1(0.16, ph / segs * 1.02, 0.16, col, px, y, pz));
 	    }
 
 	    // 叶片：4 片，分两层
@@ -49036,7 +49952,7 @@ void main() {
 	      //   花盘半径 0.40，花瓣中心放在 0.40 + 0.13 = 0.53 处、
 	      //   且花瓣长度要盖住交界（0.26 长 → 一半在内一半在外）
 	      const rr = 0.40 + 0.04;   // 花瓣一半嵌进花盘，不留缝
-	      const g3 = box(0.19, 0.32, 0.10, col, 0, 0, 0);
+	      const g3 = box$1(0.19, 0.32, 0.10, col, 0, 0, 0);
 	      g3.translate(0, rr, 0);
 	      g3.applyMatrix4(new Matrix4().makeRotationZ(a));
 	      // 用 Y 旋转把整个花瓣环转到朝向 fa
@@ -49078,12 +49994,12 @@ void main() {
 
 	    // 萝卜根部：橙色方块，露出地面一截，下面埋在土里
 	    //   用 3 段递减的方块做锥形
-	    part$1(parts, box(0.36, 0.26, 0.36, carrot, px, topY - 0.10, pz));
-	    part$1(parts, box(0.28, 0.22, 0.28, carrotDark, px, topY - 0.32, pz));
-	    part$1(parts, box(0.20, 0.18, 0.20, carrotDark, px, topY - 0.50, pz));
+	    part$1(parts, box$1(0.36, 0.26, 0.36, carrot, px, topY - 0.10, pz));
+	    part$1(parts, box$1(0.28, 0.22, 0.28, carrotDark, px, topY - 0.32, pz));
+	    part$1(parts, box$1(0.20, 0.18, 0.20, carrotDark, px, topY - 0.50, pz));
 	    // 根须（2 根细条）
-	    part$1(parts, box(0.06, 0.16, 0.06, carrotDark, px + 0.10, topY - 0.62, pz - 0.06));
-	    part$1(parts, box(0.06, 0.14, 0.06, carrotDark, px - 0.08, topY - 0.58, pz + 0.08));
+	    part$1(parts, box$1(0.06, 0.16, 0.06, carrotDark, px + 0.10, topY - 0.62, pz - 0.06));
+	    part$1(parts, box$1(0.06, 0.14, 0.06, carrotDark, px - 0.08, topY - 0.58, pz + 0.08));
 
 	    // 羽状绿叶：5 根茎 + 每根上的小叶片
 	    const stems = Math.max(2, Math.round(4 * LOD));
@@ -49100,13 +50016,13 @@ void main() {
 	        const y = topY + sh * t;
 	        const ox = Math.cos(a) * lean * t * sh;
 	        const oz = Math.sin(a) * lean * t * sh;
-	        part$1(parts, box(0.07, sh / n * 1.05, 0.07, col, px + ox, y, pz + oz));
+	        part$1(parts, box$1(0.07, sh / n * 1.05, 0.07, col, px + ox, y, pz + oz));
 	        // 茎两侧的羽状小叶（每段 2 片）
 	        if (k >= 1) {
 	          // ★ 羽状小叶：只在外侧两段出现，且尺寸缩小，避免叶片挤成一团
 	          for (const sgn of [-1, 1]) {
 	            const la = a + sgn * 1.4;
-	            const g = box(0.15, 0.06, 0.08, col, 0, 0, 0);
+	            const g = box$1(0.15, 0.06, 0.08, col, 0, 0, 0);
 	            g.translate(0, y + sh / n * 0.5, 0);
 	            g.applyMatrix4(new Matrix4().makeRotationY(la));
 	            g.translate(px + ox, 0, pz + oz);
@@ -49158,7 +50074,7 @@ void main() {
 	        const ang = Math.atan2(pz, px);
 	        const sect = Math.floor(((ang + Math.PI) / (Math.PI * 2)) * nSect) % 2;
 	        const col = sect === 0 ? pump : pumpDark;
-	        part$1(parts, box(cell, cell, cell, col, px, cy + py, pz));
+	        part$1(parts, box$1(cell, cell, cell, col, px, cy + py, pz));
 	      }
 	    }
 	  }
@@ -49171,10 +50087,10 @@ void main() {
 	  // 瓜蒂（弯折的绿色方柱）
 	  //   ★ 尺寸整体缩小 ~30%：原来的蒂又粗又高，像南瓜上插了一根绿棒子。
 	  const sy = cy + R * 0.84;
-	  part$1(parts, box(0.16, 0.20, 0.16, stemC, 0, sy, 0));
-	  part$1(parts, box(0.14, 0.16, 0.14, stemDark, 0.07, sy + 0.20, 0));
-	  part$1(parts, box(0.13, 0.14, 0.22, stemC, 0.14, sy + 0.34, 0.04));
-	  part$1(parts, box(0.12, 0.12, 0.12, stemDark, 0.22, sy + 0.46, 0.08));
+	  part$1(parts, box$1(0.16, 0.20, 0.16, stemC, 0, sy, 0));
+	  part$1(parts, box$1(0.14, 0.16, 0.14, stemDark, 0.07, sy + 0.20, 0));
+	  part$1(parts, box$1(0.13, 0.14, 0.22, stemC, 0.14, sy + 0.34, 0.04));
+	  part$1(parts, box$1(0.12, 0.12, 0.12, stemDark, 0.22, sy + 0.46, 0.08));
 
 	  // ★ 藤蔓已删除 ——
 	  //   原来南瓜周身散着一圈 0.10 的小绿方块（藤蔓段）和 0.16 的小黄方块（藤末端的黄花），
@@ -49236,7 +50152,7 @@ void main() {
 	      const ny = baseY + h * t;
 	      const dx = nx - px, dy = ny - py, dz = nz - pz;
 	      const segLen = Math.hypot(dx, dy, dz);
-	      const g = box(0.078, segLen * 1.06, 0.078, k % 2 ? stalk : stalkDark, 0, 0, 0);
+	      const g = box$1(0.078, segLen * 1.06, 0.078, k % 2 ? stalk : stalkDark, 0, 0, 0);
 	      // 默认沿 +Y，转到目标方向
 	      const q = new Quaternion();
 	      const dir = new Vector3(dx, dy, dz).normalize();
@@ -49260,14 +50176,14 @@ void main() {
 	      const y = py + earLen * t;
 	      const col = k % 2 === 0 ? earA : earB;
 	      // 主块
-	      part$1(parts, box(w, (earLen / LV) * 1.15, w, col, px, y, pz));
+	      part$1(parts, box$1(w, (earLen / LV) * 1.15, w, col, px, y, pz));
 	      // 错位凸起（LOD 低时省略，省一半顶点）
 	      if (LOD >= 0.6) {
 	        const bump = w * 0.52;
 	        if (k % 2 === 0) {
-	          part$1(parts, box(bump, 0.07, bump, earB, px + w * 0.42, y + 0.02, pz));
+	          part$1(parts, box$1(bump, 0.07, bump, earB, px + w * 0.42, y + 0.02, pz));
 	        } else {
-	          part$1(parts, box(bump, 0.07, bump, earB, px, y + 0.02, pz + w * 0.42));
+	          part$1(parts, box$1(bump, 0.07, bump, earB, px, y + 0.02, pz + w * 0.42));
 	        }
 	      }
 	    }
@@ -49282,7 +50198,7 @@ void main() {
 	        const d = 0.38 * t;
 	        const yy = baseY + 0.06 + 0.16 * Math.sin(Math.PI * t);
 	        const lw = 0.14 * (1 - t * 0.5);
-	        part$1(parts, box(lw, 0.06, 0.16, k % 2 ? green : greenDark,
+	        part$1(parts, box$1(lw, 0.06, 0.16, k % 2 ? green : greenDark,
 	          x0 + ldx * d, yy, z0 + ldz * d));
 	      }
 	    }
@@ -49291,9 +50207,9 @@ void main() {
 	  // ---- 四角杂草 ----
 	  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
 	    const bx = sx * 0.80, bz = sz * 0.80;
-	    part$1(parts, box(0.09, 0.30, 0.09, green, bx, baseY, bz));
-	    part$1(parts, box(0.18, 0.07, 0.09, greenDark, bx + sx * 0.06, baseY + 0.18, bz));
-	    part$1(parts, box(0.09, 0.07, 0.16, greenDark, bx, baseY + 0.10, bz + sz * 0.06));
+	    part$1(parts, box$1(0.09, 0.30, 0.09, green, bx, baseY, bz));
+	    part$1(parts, box$1(0.18, 0.07, 0.09, greenDark, bx + sx * 0.06, baseY + 0.18, bz));
+	    part$1(parts, box$1(0.09, 0.07, 0.16, greenDark, bx, baseY + 0.10, bz + sz * 0.06));
 	  }
 
 	  return build$1(parts, 'cropWheat');
@@ -49342,7 +50258,7 @@ void main() {
 	    // ★ 宽度只在最后 1/3 收窄，前面保持等宽 ——
 	    //   每段都收窄会造成明显的台阶错位，看起来像一节节断开
 	    const w = wid * (tm < 0.66 ? 1.0 : 1.0 - ((tm - 0.66) / 0.34) * 0.45);
-	    const g = box(w, 0.11, segLen * 1.10, color, 0, 0, 0);
+	    const g = box$1(w, 0.11, segLen * 1.10, color, 0, 0, 0);
 	    const q = new Quaternion();
 	    q.setFromUnitVectors(new Vector3(0, 1, 0),
 	      new Vector3(dx, dy, dz).normalize());
@@ -49382,7 +50298,7 @@ void main() {
 	    for (let i = 0; i < segs; i++) {
 	      const y = baseY + (ph * i) / segs;
 	      const col = i % 2 === 0 ? stalk : stalkDark;
-	      part$1(parts, box(0.15, (ph / segs) * 1.04, 0.15, col, px, y, pz));
+	      part$1(parts, box$1(0.15, (ph / segs) * 1.04, 0.15, col, px, y, pz));
 	    }
 
 	    // 叶片：4 层，左右交替，拱起后下垂
@@ -49416,23 +50332,23 @@ void main() {
 	        const t = k / (LV - 1);
 	        const w = 0.20 * Math.sin(Math.PI * (0.18 + t * 0.72));
 	        const col = k % 2 === 0 ? cobA : cobB;
-	        part$1(parts, box(w, 0.075, w, col, cx2, cy2 + t * 0.58, cz2));
+	        part$1(parts, box$1(w, 0.075, w, col, cx2, cy2 + t * 0.58, cz2));
 	      }
 
 	      // 苞叶：两片绿皮从下方包上来
 	      for (const sgn of [-1, 1]) {
 	        const ox = -cdz * sgn * 0.13;
 	        const oz = cdx * sgn * 0.13;
-	        part$1(parts, box(0.11, 0.34, 0.11, husk, cx2 + ox, cy2 - 0.04, cz2 + oz));
-	        part$1(parts, box(0.11, 0.24, 0.11, husk, cx2 + ox * 0.7, cy2 + 0.30, cz2 + oz * 0.7));
+	        part$1(parts, box$1(0.11, 0.34, 0.11, husk, cx2 + ox, cy2 - 0.04, cz2 + oz));
+	        part$1(parts, box$1(0.11, 0.24, 0.11, husk, cx2 + ox * 0.7, cy2 + 0.30, cz2 + oz * 0.7));
 	      }
-	      part$1(parts, box(0.26, 0.10, 0.26, husk, cx2, cy2 - 0.10, cz2));
+	      part$1(parts, box$1(0.26, 0.10, 0.26, husk, cx2, cy2 - 0.10, cz2));
 	    }
 
 	    // ---- 顶部：叶片继续向上，形成 V 字形 ----
 	    // 参考图里玉米顶部没有雄穗，而是几片叶子从茎顶继续向上分叉
 	    const ty = baseY + ph;
-	    part$1(parts, box(0.13, 0.30, 0.13, stalk, px, ty, pz));
+	    part$1(parts, box$1(0.13, 0.30, 0.13, stalk, px, ty, pz));
 
 	    // 参考图顶部是【2 片叶子左右分叉】形成 V 字，不要挤成一团
 	    const topLeaves = [
@@ -50156,34 +51072,34 @@ void main() {
 	  const baseY = 0.58;              // 车身底面（底盘之上）
 
 	  // ---- 引擎盖 ----
-	  part(parts, box(cabW, hoodH, hoodD, bodyColor, 0, baseY, zFront - hoodD / 2));
+	  part(parts, box$1(cabW, hoodH, hoodD, bodyColor, 0, baseY, zFront - hoodD / 2));
 	  // 车头前端（和引擎盖同高，稍窄，形成车头的收势）
-	  part(parts, box(cabW * 0.90, hoodH * 0.92, 0.26, bodyColor, 0, baseY, zFront + 0.09));
+	  part(parts, box$1(cabW * 0.90, hoodH * 0.92, 0.26, bodyColor, 0, baseY, zFront + 0.09));
 
 	  // ---- 格栅（嵌在车头前端，不凸出）----
 	  //   格栅的 z 要到车头最前表面(zFront + 0.22)，厚度 0.10 只露出一点点
 	  const frontZ = zFront + 0.22;
-	  part(parts, box(cabW * 0.66, hoodH * 0.58, 0.10, grilleColor,
+	  part(parts, box$1(cabW * 0.66, hoodH * 0.58, 0.10, grilleColor,
 	    0, baseY + hoodH * 0.16, frontZ - 0.02));
 	  // 格栅横条（2 道细，嵌在格栅表面）
 	  for (let i = 0; i < 2; i++) {
-	    part(details, box(cabW * 0.62, 0.05, 0.04, 0x6a6e74,
+	    part(details, box$1(cabW * 0.62, 0.05, 0.04, 0x6a6e74,
 	      0, baseY + hoodH * 0.26 + i * 0.22, frontZ + 0.04));
 	  }
 
 	  // ---- 保险杠（车头最下沿，横向一整条）----
-	  part(parts, box(cabW * 1.0, 0.24, 0.28, bumperColor, 0, baseY - 0.06, frontZ + 0.06));
+	  part(parts, box$1(cabW * 1.0, 0.24, 0.28, bumperColor, 0, baseY - 0.06, frontZ + 0.06));
 
 	  // ---- 大灯（嵌在格栅两侧，和车头齐平）----
 	  for (const sx of [-1, 1]) {
-	    part(details, box(0.30, 0.20, 0.08, 0xf0ead0,
+	    part(details, box$1(0.30, 0.20, 0.08, 0xf0ead0,
 	      sx * cabW * 0.33, baseY + hoodH * 0.30, frontZ + 0.02));
 	  }
 
 	  // ---- 驾驶室 ----
 	  const cabZ = zFront - hoodD - cabD / 2;
 	  const cabY = baseY + hoodH;
-	  part(parts, box(cabW, cabH, cabD, bodyColor, 0, cabY, cabZ));
+	  part(parts, box$1(cabW, cabH, cabD, bodyColor, 0, cabY, cabZ));
 
 	  // ---- 驾驶室下方的侧裙板 ----
 	  //
@@ -50195,13 +51111,13 @@ void main() {
 	    const skirtBottom = baseY - 0.10;            // 0.48（底盘附近）
 	    const skirtH = skirtTop - skirtBottom;
 	    for (const sx of [-1, 1]) {
-	      part(parts, box(0.14, skirtH, cabD, bodyColor,
+	      part(parts, box$1(0.14, skirtH, cabD, bodyColor,
 	        sx * (cabW / 2 - 0.07), skirtBottom, cabZ));
 	    }
 	    // 车头下方也补一段（引擎盖底到保险杠）
 	    const hoodSkirtH = baseY - (baseY - 0.10);
 	    for (const sx of [-1, 1]) {
-	      part(parts, box(0.12, hoodSkirtH + 0.10, hoodD, bodyColor,
+	      part(parts, box$1(0.12, hoodSkirtH + 0.10, hoodD, bodyColor,
 	        sx * (cabW / 2 - 0.06), baseY - 0.10, zFront - hoodD / 2));
 	    }
 	  }
@@ -50215,24 +51131,24 @@ void main() {
 	    const gw = cabW * 0.80;
 	    const gh = cabH * 0.44;
 	    const gy = cabY + cabH * 0.56;
-	    part(details, box(gw, gh, 0.03, glassColor,
+	    part(details, box$1(gw, gh, 0.03, glassColor,
 	      0, gy, cabZ + cabD / 2 + 0.015));
 	  }
 	  // 侧窗（左右）：同样贴住车身，留边框
 	  for (const sx of [-1, 1]) {
 	    const sh = cabH * 0.34;
 	    const sy = cabY + cabH * 0.58;
-	    part(details, box(0.03, sh, cabD * 0.52, glassColor,
+	    part(details, box$1(0.03, sh, cabD * 0.52, glassColor,
 	      sx * (cabW / 2 + 0.015), sy, cabZ + cabD * 0.02));
 	  }
 	  // 车顶（和驾驶室同宽，薄薄一层）
-	  part(parts, box(cabW, 0.10, cabD, bodyColor, 0, cabY + cabH, cabZ));
+	  part(parts, box$1(cabW, 0.10, cabD, bodyColor, 0, cabY + cabH, cabZ));
 
 	  // 后视镜（两根细杆 + 小方块，尽量贴紧车身）
 	  for (const sx of [-1, 1]) {
-	    part(details, box(0.04, 0.22, 0.04, 0x6a6e74,
+	    part(details, box$1(0.04, 0.22, 0.04, 0x6a6e74,
 	      sx * (cabW / 2 + 0.09), cabY + cabH * 0.74, cabZ + cabD / 2 - 0.22));
-	    part(details, box(0.08, 0.20, 0.13, 0x3a3e44,
+	    part(details, box$1(0.08, 0.20, 0.13, 0x3a3e44,
 	      sx * (cabW / 2 + 0.15), cabY + cabH * 0.76, cabZ + cabD / 2 - 0.22));
 	  }
 
@@ -50241,7 +51157,7 @@ void main() {
 	    cabW / 2 + 0.04, baseY, cabZ + cabD / 2 - 0.28));
 
 	  if (withSleeper) {
-	    part(parts, box(cabW, cabH * 0.62, cabD * 0.48, bodyColor,
+	    part(parts, box$1(cabW, cabH * 0.62, cabD * 0.48, bodyColor,
 	      0, cabY, cabZ - cabD * 0.72));
 	  }
 
@@ -50264,7 +51180,7 @@ void main() {
 	  // 底盘
 	  // 底盘（按车身实际范围：车头前沿 6.5 → 车尾 -2.7）
 	  // 底盘（覆盖 5.55 → -1.55）
-	  part(parts, box(2.00, 0.32, 7.10, 0x4a4e52, 0, 0.50, 2.00));
+	  part(parts, box$1(2.00, 0.32, 7.10, 0x4a4e52, 0, 0.50, 2.00));
 
 	  const cab = addCab(parts, details, { bodyColor: body, zFront, cabH: 1.35, cabW: 1.95, cabD: 1.75, hoodD: 1.05, hoodH: 1.15 });
 
@@ -50275,42 +51191,42 @@ void main() {
 	  const bedZc = (bedZ0 + bedZ1) / 2;
 	  const bedY = 0.87;
 	  // 货斗底板
-	  part(parts, box(2.0, 0.16, bedLen, body, 0, bedY, bedZc));
+	  part(parts, box$1(2.0, 0.16, bedLen, body, 0, bedY, bedZc));
 	  // 左右侧板
 	  for (const sx of [-1, 1]) {
-	    part(parts, box(0.12, 0.62, bedLen, body, sx * 0.96, bedY + 0.16, bedZc));
+	    part(parts, box$1(0.12, 0.62, bedLen, body, sx * 0.96, bedY + 0.16, bedZc));
 	  }
 	  // 尾板
-	  part(parts, box(2.0, 0.62, 0.12, body, 0, bedY + 0.16, bedZ1));
+	  part(parts, box$1(2.0, 0.62, 0.12, body, 0, bedY + 0.16, bedZ1));
 
 	  // 木栏（货斗上方一圈，参考图里很明显）
 	  for (const sx of [-1, 1]) {
 	    // 立柱
 	    for (let i = 0; i <= 3; i++) {
 	      const z = bedZ1 + (bedLen * i) / 3;
-	      part(parts, box(0.13, 0.75, 0.13, woodBar, sx * 0.94, bedY + 0.78, z));
+	      part(parts, box$1(0.13, 0.75, 0.13, woodBar, sx * 0.94, bedY + 0.78, z));
 	    }
 	    // 横杆
 	    for (const yy of [1.10, 1.44]) {
-	      part(parts, box(0.11, 0.11, bedLen, woodBar, sx * 0.94, yy, bedZc));
+	      part(parts, box$1(0.11, 0.11, bedLen, woodBar, sx * 0.94, yy, bedZc));
 	    }
 	  }
 	  // 前挡栏
-	  part(parts, box(2.0, 0.75, 0.12, woodBar, 0, bedY + 0.78, bedZ0));
-	  part(parts, box(2.0, 0.11, 0.11, woodDark, 0, 1.44, bedZ0));
+	  part(parts, box$1(2.0, 0.75, 0.12, woodBar, 0, bedY + 0.78, bedZ0));
+	  part(parts, box$1(2.0, 0.11, 0.11, woodDark, 0, 1.44, bedZ0));
 
 	  // 干草包（货斗里，2 排 × 2 个）
 	  for (let i = 0; i < 2; i++) {
 	    for (let j = 0; j < 2; j++) {
-	      part(parts, box(0.82, 0.52, 0.82, hay,
+	      part(parts, box$1(0.82, 0.52, 0.82, hay,
 	        (j - 0.5) * 0.90, bedY + 0.16, bedZ0 - 0.65 - i * 0.92));
 	      // 捆绳（两道，细）
-	      part(details, box(0.86, 0.06, 0.06, hayDark,
+	      part(details, box$1(0.86, 0.06, 0.06, hayDark,
 	        (j - 0.5) * 0.90, bedY + 0.16 + 0.30, bedZ0 - 0.65 - i * 0.92));
 	    }
 	  }
 	  // 上面再叠一个
-	  part(parts, box(0.82, 0.50, 0.82, hayDark, 0, bedY + 0.16 + 0.52, bedZ0 - 1.10));
+	  part(parts, box$1(0.82, 0.50, 0.82, hayDark, 0, bedY + 0.16 + 0.52, bedZ0 - 1.10));
 
 	  // 车轮：前 2 + 后 2（皮卡是单轴后轮）
 	  const wheelR = 0.62, wheelW = 0.36;
@@ -50337,14 +51253,14 @@ void main() {
 
 	  // 底盘（6.9 → -4.1）
 	  // 底盘（5.95 → -2.55）
-	  part(parts, box(2.05, 0.35, 8.50, 0x4a4e52, 0, 0.52, 1.70));
+	  part(parts, box$1(2.05, 0.35, 8.50, 0x4a4e52, 0, 0.52, 1.70));
 
 	  const cab = addCab(parts, details, {
 	    bodyColor: body, zFront,
 	    cabH: 1.40, cabW: 2.00, cabD: 1.80, hoodD: 1.10, hoodH: 1.18,
 	  });
 	  for (let i = -1; i <= 1; i++) {
-	    part(parts, box(0.18, 0.10, 0.18, yellow, i * 0.42, cab.cabTopY + 0.02, cab.cabZ + 0.3));
+	    part(parts, box$1(0.18, 0.10, 0.18, yellow, i * 0.42, cab.cabTopY + 0.02, cab.cabZ + 0.3));
 	  }
 
 	  const tankZ0 = cab.cabZ - 0.90;
@@ -50353,7 +51269,7 @@ void main() {
 	  const tankZc = (tankZ0 + tankZ1) / 2;
 	  const tankY = 0.93;
 	  const tankH = 2.05;
-	  part(parts, box(2.10, tankH, tankLen, tank, 0, tankY, tankZc));
+	  part(parts, box$1(2.10, tankH, tankLen, tank, 0, tankY, tankZc));
 	  {
 	    const g = new CylinderGeometry(1.05, 1.05, tankLen, 14, 1, false, 0, Math.PI);
 	    g.rotateX(Math.PI / 2);
@@ -50363,16 +51279,16 @@ void main() {
 	    part(parts, tint(g, tankTop));
 	  }
 	  for (let i = 1; i <= 2; i++) {
-	    part(details, box(2.14, 0.14, 0.14, tankTop, 0, tankY + tankH * 0.5, tankZ1 + (tankLen * i) / 3));
+	    part(details, box$1(2.14, 0.14, 0.14, tankTop, 0, tankY + tankH * 0.5, tankZ1 + (tankLen * i) / 3));
 	  }
 	  for (const sx of [-1, 1]) {
-	    part(details, box(0.06, tankH * 0.9, 0.16, tankTop, sx * 1.06, tankY + 0.1, tankZc));
+	    part(details, box$1(0.06, tankH * 0.9, 0.16, tankTop, sx * 1.06, tankY + 0.1, tankZc));
 	  }
 
 	  for (let i = 0; i < 2; i++) {
 	    const z = tankZ1 + tankLen * (0.30 + i * 0.34);
 	    for (const sx of [-1, 1]) {
-	      part(parts, box(0.30, 0.42, 0.60, yellow, sx * 1.14, tankY + 0.30, z));
+	      part(parts, box$1(0.30, 0.42, 0.60, yellow, sx * 1.14, tankY + 0.30, z));
 	    }
 	  }
 
@@ -50380,11 +51296,11 @@ void main() {
 	    const lx = 1.12, lz = tankZ0 + 0.55;
 	    const y0 = 0.9, y1 = tankY + tankH + 0.1;
 	    for (const sz of [-1, 1]) {
-	      part(parts, box(0.07, y1 - y0, 0.07, metal, lx, y0, lz + sz * 0.22));
+	      part(parts, box$1(0.07, y1 - y0, 0.07, metal, lx, y0, lz + sz * 0.22));
 	    }
 	    const n = 6;
 	    for (let i = 1; i < n; i++) {
-	      part(parts, box(0.07, 0.06, 0.44, metal, lx, y0 + ((y1 - y0) * i) / n, lz));
+	      part(parts, box$1(0.07, 0.06, 0.44, metal, lx, y0 + ((y1 - y0) * i) / n, lz));
 	    }
 	  }
 
@@ -50416,7 +51332,7 @@ void main() {
 
 	  // 底盘（7.3 → -4.3）
 	  // 底盘（6.25 → -2.65）
-	  part(parts, box(2.10, 0.36, 8.90, 0x4a4e52, 0, 0.53, 1.80));
+	  part(parts, box$1(2.10, 0.36, 8.90, 0x4a4e52, 0, 0.53, 1.80));
 
 	  const cab = addCab(parts, details, {
 	    bodyColor: body, zFront,
@@ -50429,33 +51345,33 @@ void main() {
 	  const bedZc = (bedZ0 + bedZ1) / 2;
 	  const bedY = 0.92;
 	  const wallH = 1.55;
-	  part(parts, box(2.15, 0.16, bedLen, bedColor, 0, bedY, bedZc));
+	  part(parts, box$1(2.15, 0.16, bedLen, bedColor, 0, bedY, bedZc));
 	  for (const sx of [-1, 1]) {
-	    part(parts, box(0.14, wallH, bedLen, bedColor, sx * 1.04, bedY + 0.16, bedZc));
+	    part(parts, box$1(0.14, wallH, bedLen, bedColor, sx * 1.04, bedY + 0.16, bedZc));
 	  }
-	  part(parts, box(2.15, wallH, 0.14, bedColor, 0, bedY + 0.16, bedZ0));
-	  part(parts, box(2.15, wallH, 0.14, bedColor, 0, bedY + 0.16, bedZ1));
+	  part(parts, box$1(2.15, wallH, 0.14, bedColor, 0, bedY + 0.16, bedZ0));
+	  part(parts, box$1(2.15, wallH, 0.14, bedColor, 0, bedY + 0.16, bedZ1));
 	  for (const sx of [-1, 1]) {
 	    for (let i = 1; i <= 3; i++) {
 	      const z = bedZ1 + (bedLen * i) / 4;
-	      part(details, box(0.06, wallH * 0.94, 0.14, bedEdge, sx * 1.12, bedY + 0.20, z));
+	      part(details, box$1(0.06, wallH * 0.94, 0.14, bedEdge, sx * 1.12, bedY + 0.20, z));
 	    }
 	  }
 	  for (const sx of [-1, 1]) {
-	    part(details, box(0.20, 0.10, bedLen, bedEdge, sx * 1.04, bedY + 0.16 + wallH, bedZc));
+	    part(details, box$1(0.20, 0.10, bedLen, bedEdge, sx * 1.04, bedY + 0.16 + wallH, bedZc));
 	  }
 
 	  for (let i = 0; i < 3; i++) {
 	    for (let j = 0; j < 2; j++) {
 	      const z = bedZ0 - 0.75 - i * 1.05;
 	      const x = (j - 0.5) * 0.98;
-	      part(parts, box(0.86, 0.46, 0.86, sack, x, bedY + 0.16, z));
-	      part(details, box(0.44, 0.30, 0.04, sackMark, x, bedY + 0.22, z + 0.44));
+	      part(parts, box$1(0.86, 0.46, 0.86, sack, x, bedY + 0.16, z));
+	      part(details, box$1(0.44, 0.30, 0.04, sackMark, x, bedY + 0.22, z + 0.44));
 	    }
 	  }
 	  for (let i = 0; i < 2; i++) {
 	    const z = bedZ0 - 1.25 - i * 1.05;
-	    part(parts, box(0.86, 0.44, 0.86, sackDark, 0, bedY + 0.16 + 0.47, z));
+	    part(parts, box$1(0.86, 0.44, 0.86, sackDark, 0, bedY + 0.16 + 0.47, z));
 	  }
 
 	  // 排气管（货斗前缘外侧，不挡驾驶室）
@@ -50491,7 +51407,7 @@ void main() {
 
 	  // 底盘（7.0 → -4.1）
 	  // 底盘（5.95 → -2.55）
-	  part(parts, box(2.05, 0.36, 8.50, 0x4a4e52, 0, 0.53, 1.70));
+	  part(parts, box$1(2.05, 0.36, 8.50, 0x4a4e52, 0, 0.53, 1.70));
 
 	  const cab = addCab(parts, details, {
 	    bodyColor: body, zFront,
@@ -50507,15 +51423,15 @@ void main() {
 	  //   原来侧板顶到 1.98，把筐完全挡住，从任何角度都看不到货斗里有什么。
 	  //   参考图里橙斗车是【低栏】货斗，果蔬筐明显露在外面。
 	  const wallH = 0.62;
-	  part(parts, box(2.05, 0.16, bedLen, bedColor, 0, bedY, bedZc));
+	  part(parts, box$1(2.05, 0.16, bedLen, bedColor, 0, bedY, bedZc));
 	  for (const sx of [-1, 1]) {
-	    part(parts, box(0.13, wallH, bedLen, bedColor, sx * 1.02, bedY + 0.16, bedZc));
+	    part(parts, box$1(0.13, wallH, bedLen, bedColor, sx * 1.02, bedY + 0.16, bedZc));
 	  }
-	  part(parts, box(2.12, wallH, 0.13, bedColor, 0, bedY + 0.16, bedZ0));
-	  part(parts, box(2.12, wallH, 0.13, bedColor, 0, bedY + 0.16, bedZ1));
+	  part(parts, box$1(2.12, wallH, 0.13, bedColor, 0, bedY + 0.16, bedZ0));
+	  part(parts, box$1(2.12, wallH, 0.13, bedColor, 0, bedY + 0.16, bedZ1));
 	  // 顶部压条（深橙）
 	  for (const sx of [-1, 1]) {
-	    part(details, box(0.18, 0.09, bedLen, 0xb06018, sx * 1.02, bedY + 0.16 + wallH, bedZc));
+	    part(details, box$1(0.18, 0.09, bedLen, 0xb06018, sx * 1.02, bedY + 0.16 + wallH, bedZc));
 	  }
 
 	  // 果蔬筐（木箱 + 里面的红/绿果实）
@@ -50523,12 +51439,12 @@ void main() {
 	    // 木箱（四面 + 底）
 	    //   ★ 箱高 0.44 → 0.52，箱顶到 bedY+0.16+0.52 = 1.60，
 	    //     侧板顶降到 bedY+0.16+0.62 = 1.70，箱子和果实都能露出来。
-	    part(parts, box(0.92, 0.10, 0.92, wood, cx, bedY + 0.16, cz));
+	    part(parts, box$1(0.92, 0.10, 0.92, wood, cx, bedY + 0.16, cz));
 	    for (const sz of [-1, 1]) {
-	      part(parts, box(0.92, 0.52, 0.06, wood, cx, bedY + 0.26, cz + sz * 0.43));
+	      part(parts, box$1(0.92, 0.52, 0.06, wood, cx, bedY + 0.26, cz + sz * 0.43));
 	    }
 	    for (const sx of [-1, 1]) {
-	      part(parts, box(0.06, 0.52, 0.92, woodDark, cx + sx * 0.43, bedY + 0.26, cz));
+	      part(parts, box$1(0.06, 0.52, 0.92, woodDark, cx + sx * 0.43, bedY + 0.26, cz));
 	    }
 	    // 果实（4 个圆球，简洁）
 	    const col = withRed ? appleRed : appleGreen;
@@ -50549,16 +51465,16 @@ void main() {
 	    const lx = 1.14, lz = bedZc + 0.6;
 	    const y0 = 0.9, y1 = bedY + 0.16 + wallH + 0.1;
 	    for (const sz of [-1, 1]) {
-	      part(parts, box(0.07, y1 - y0, 0.07, metal, lx, y0, lz + sz * 0.20));
+	      part(parts, box$1(0.07, y1 - y0, 0.07, metal, lx, y0, lz + sz * 0.20));
 	    }
 	    const n = 4;
 	    for (let i = 1; i < n; i++) {
-	      part(parts, box(0.07, 0.06, 0.40, metal, lx, y0 + ((y1 - y0) * i) / n, lz));
+	      part(parts, box$1(0.07, 0.06, 0.40, metal, lx, y0 + ((y1 - y0) * i) / n, lz));
 	    }
 	  }
 	  // 货斗前部的小工具架（简化成两根竖杆）
 	  for (const sx of [-1, 1]) {
-	    part(details, box(0.06, 0.55, 0.06, metal, sx * 0.86, bedY + 0.16 + wallH, bedZ0 - 0.15));
+	    part(details, box$1(0.06, 0.55, 0.06, metal, sx * 0.86, bedY + 0.16 + wallH, bedZ0 - 0.15));
 	  }
 
 	  const wheelR = 0.66, wheelW = 0.40;
@@ -50587,6 +51503,14 @@ void main() {
 	  orange: makeOrangeHauler,
 	};
 
+	// 每种车的驾驶室尺寸/位置（和 truckDemo.addCab 的参数保持一致）
+	const CAB_INFO = {
+	  pickup: { z: 5.0 - 1.05 - 1.75 / 2, w: 1.95, h: 1.35, hy: 0.58 + 1.15, d: 1.75 },
+	  grain:  { z: 5.4 - 1.10 - 1.80 / 2, w: 2.00, h: 1.40, hy: 0.58 + 1.18, d: 1.80 },
+	  blue:   { z: 5.7 - 1.12 - 1.85 / 2, w: 2.02, h: 1.38, hy: 0.58 + 1.20, d: 1.85 },
+	  orange: { z: 5.4 - 1.08 - 1.82 / 2, w: 2.00, h: 1.38, hy: 0.58 + 1.18, d: 1.82 },
+	};
+
 	function buildTruck(style = 'pickup') {
 	  const group = new Group();
 	  group.name = 'truck';
@@ -50608,6 +51532,43 @@ void main() {
 	  };
 
 	  group.userData.truckStyle = style;
+
+	  // 驾驶室夜灯：暖色车窗贴片 + 车内点光，t=0.72 之后渐亮
+	  const cab = CAB_INFO[style] || CAB_INFO.pickup;
+	  const cabGlowMat = new MeshBasicMaterial({
+	    color: 0xffb765, transparent: true, opacity: 0, side: DoubleSide, depthWrite: false,
+	  });
+	  const glowPanels = [];
+	  {
+	    const gw = cab.w * 0.80;
+	    const gh = cab.h * 0.44;
+	    const front = new Mesh(new BoxGeometry(gw, gh, 0.025), cabGlowMat);
+	    front.position.set(0, cab.hy + cab.h * 0.56, cab.z + cab.d / 2 + 0.035);
+	    group.add(front);
+	    glowPanels.push(front);
+
+	    const sh = cab.h * 0.34;
+	    for (const sx of [-1, 1]) {
+	      const side = new Mesh(new BoxGeometry(0.025, sh, cab.d * 0.52), cabGlowMat);
+	      side.position.set(sx * (cab.w / 2 + 0.035), cab.hy + cab.h * 0.58, cab.z + cab.d * 0.02);
+	      group.add(side);
+	      glowPanels.push(side);
+	    }
+	  }
+	  const cabLight = new PointLight(0xffc98a, 0, 7, 2);
+	  cabLight.position.set(0, cab.hy + cab.h * 0.55, cab.z);
+	  group.add(cabLight);
+
+	  group.userData.setNight = (t) => {
+	    const k = Math.max(0, Math.min(1, (t - 0.72) / 0.23));
+	    const w = k * k * (3 - 2 * k);
+	    cabGlowMat.opacity = w * 0.78;
+	    for (const p of glowPanels) p.visible = w > 0.04;
+	    cabLight.intensity = w * 13;
+	    cabLight.visible = w > 0.04;
+	  };
+	  group.userData.setNight(0);
+
 	  return group;
 	}
 
@@ -50708,7 +51669,7 @@ void main() {
 	  const poleMat = toonLambert({ color: 0x4a4038 });
 	  const pole = new Mesh(new CylinderGeometry(0.14, 0.2, height, 6), poleMat);
 	  pole.position.y = height / 2;
-	  pole.castShadow = true;
+	  pole.castShadow = false;   // 细杆的长投影在雪地上像一根黑线
 	  group.add(pole);
 
 	  const shade = new Mesh(
@@ -51203,7 +52164,7 @@ void main() {
 	    // ★ 不要再堆密集毛团（试过 1 主团 + 7 小团，正面看是一团乱毛，
 	    //   反而没有低多边形的干净感）。参考图里的羊也是"一块身体 + 几处起伏"，
 	    //   这里保留 1 个主方块 + 4 个顶部凸起，足够读成"羊毛蓬松"。
-	    bodyParts.push(box(bodyW, bodyH, bodyD, bodyColor, 0, 0, 0));
+	    bodyParts.push(box$1(bodyW, bodyH, bodyD, bodyColor, 0, 0, 0));
 	    const bump = Math.min(bodyW, bodyH, bodyD) * 0.26;
 	    const bumpList = [
 	      [-bodyW * 0.28, bodyH * 0.94, -bodyD * 0.26],
@@ -51212,13 +52173,13 @@ void main() {
 	      [0, bodyH * 0.92, -bodyD * 0.42],
 	    ];
 	    for (const [bx, by, bz] of bumpList) {
-	      bodyParts.push(box(bump * 1.7, bump * 1.1, bump * 1.7, bodyColor, bx, by - bump * 0.55, bz));
+	      bodyParts.push(box$1(bump * 1.7, bump * 1.1, bump * 1.7, bodyColor, bx, by - bump * 0.55, bz));
 	    }
 	  } else {
-	    bodyParts.push(box(bodyW, bodyH, bodyD, bodyColor, 0, 0, 0));
+	    bodyParts.push(box$1(bodyW, bodyH, bodyD, bodyColor, 0, 0, 0));
 	    // 花斑：略凸出身体表面的薄片
 	    for (const slot of patchSlots) {
-	      bodyParts.push(box(bodyW + 0.05, slot.h, slot.d, patchColor, 0, slot.y, slot.z));
+	      bodyParts.push(box$1(bodyW + 0.05, slot.h, slot.d, patchColor, 0, slot.y, slot.z));
 	    }
 	  }
 	  if (extraParts) extraParts.forEach((p) => bodyParts.push(p));
@@ -51226,11 +52187,11 @@ void main() {
 	  // 牛：乳房（腹部下方偏后，粉色，四个小方块）
 	  if (udderColor !== null) {
 	    const uy = -bodyH * 0.12;
-	    bodyParts.push(box(bodyW * 0.34, bodyH * 0.30, bodyD * 0.26, udderColor, 0, uy, -bodyD * 0.14));
+	    bodyParts.push(box$1(bodyW * 0.34, bodyH * 0.30, bodyD * 0.26, udderColor, 0, uy, -bodyD * 0.14));
 	    const teat = Math.min(bodyW, bodyD) * 0.055;
 	    for (const sx of [-1, 1]) {
 	      for (const sz of [-1, 1]) {
-	        bodyParts.push(box(teat, teat * 1.4, teat, udderColor, sx * bodyW * 0.10, uy - teat * 1.35, -bodyD * 0.14 + sz * bodyD * 0.06));
+	        bodyParts.push(box$1(teat, teat * 1.4, teat, udderColor, sx * bodyW * 0.10, uy - teat * 1.35, -bodyD * 0.14 + sz * bodyD * 0.06));
 	      }
 	    }
 	  }
@@ -51238,19 +52199,19 @@ void main() {
 	  // 马：鞍具（鞍座 + 两侧鞍翼 + 肚带 + 马镫）
 	  if (saddleColor !== null) {
 	    const sy = bodyH * 0.98;
-	    bodyParts.push(box(bodyW * 0.72, bodyH * 0.16, bodyD * 0.30, saddleColor, 0, sy, -bodyD * 0.02));
+	    bodyParts.push(box$1(bodyW * 0.72, bodyH * 0.16, bodyD * 0.30, saddleColor, 0, sy, -bodyD * 0.02));
 	    // 鞍座前沿翘起
-	    bodyParts.push(box(bodyW * 0.60, bodyH * 0.20, bodyD * 0.10, saddleColor, 0, sy + bodyH * 0.14, bodyD * 0.12));
+	    bodyParts.push(box$1(bodyW * 0.60, bodyH * 0.20, bodyD * 0.10, saddleColor, 0, sy + bodyH * 0.14, bodyD * 0.12));
 	    // 两侧鞍翼
 	    for (const sx of [-1, 1]) {
-	      bodyParts.push(box(bodyW * 0.06, bodyH * 0.42, bodyD * 0.26, saddleColor, sx * bodyW * 0.5, bodyH * 0.62, -bodyD * 0.02));
+	      bodyParts.push(box$1(bodyW * 0.06, bodyH * 0.42, bodyD * 0.26, saddleColor, sx * bodyW * 0.5, bodyH * 0.62, -bodyD * 0.02));
 	    }
 	    // 肚带（从鞍下绕到腹部的细带）
 	    if (saddleStrapColor !== null) {
-	      bodyParts.push(box(bodyW * 1.02, bodyH * 0.10, bodyD * 0.08, saddleStrapColor, 0, -bodyH * 0.02, -bodyD * 0.02));
+	      bodyParts.push(box$1(bodyW * 1.02, bodyH * 0.10, bodyD * 0.08, saddleStrapColor, 0, -bodyH * 0.02, -bodyD * 0.02));
 	      // 马镫
 	      for (const sx of [-1, 1]) {
-	        bodyParts.push(box(bodyW * 0.05, bodyH * 0.16, bodyD * 0.05, saddleStrapColor, sx * bodyW * 0.54, bodyH * 0.30, -bodyD * 0.02));
+	        bodyParts.push(box$1(bodyW * 0.05, bodyH * 0.16, bodyD * 0.05, saddleStrapColor, sx * bodyW * 0.54, bodyH * 0.30, -bodyD * 0.02));
 	      }
 	    }
 	  }
@@ -51264,16 +52225,16 @@ void main() {
 	    const [c1, c2, c3] = blanketColors;
 	    const topY = bodyH - bodyH * 0.02;    // 顶层面 = 身体顶面略下
 	    // 主布面（盖住背部）
-	    bodyParts.push(box(bodyW * 1.03, bodyH * 0.10, bodyD * 0.50, c1, 0, topY - bodyH * 0.10, -bodyD * 0.04));
+	    bodyParts.push(box$1(bodyW * 1.03, bodyH * 0.10, bodyD * 0.50, c1, 0, topY - bodyH * 0.10, -bodyD * 0.04));
 	    // 两侧垂下的布（蓝 / 黄色带）
 	    for (const sx of [-1, 1]) {
-	      bodyParts.push(box(bodyW * 0.05, bodyH * 0.34, bodyD * 0.50, c2, sx * bodyW * 0.515, topY - bodyH * 0.34, -bodyD * 0.04));
-	      bodyParts.push(box(bodyW * 0.06, bodyH * 0.10, bodyD * 0.50, c3, sx * bodyW * 0.52, topY - bodyH * 0.42, -bodyD * 0.04));
+	      bodyParts.push(box$1(bodyW * 0.05, bodyH * 0.34, bodyD * 0.50, c2, sx * bodyW * 0.515, topY - bodyH * 0.34, -bodyD * 0.04));
+	      bodyParts.push(box$1(bodyW * 0.06, bodyH * 0.10, bodyD * 0.50, c3, sx * bodyW * 0.52, topY - bodyH * 0.42, -bodyD * 0.04));
 	      // 流苏（挂在蓝布下缘）
 	      const fr = bodyW * 0.030;
 	      for (let i = 0; i < 5; i++) {
 	        const fz = -bodyD * 0.04 + (i - 2) * bodyD * 0.10;
-	        bodyParts.push(box(fr, bodyH * 0.14, fr, c1, sx * bodyW * 0.52, topY - bodyH * 0.52, fz));
+	        bodyParts.push(box$1(fr, bodyH * 0.14, fr, c1, sx * bodyW * 0.52, topY - bodyH * 0.52, fz));
 	      }
 	    }
 	  }
@@ -51297,10 +52258,10 @@ void main() {
 	    const nh = neckLen;
 	    const nw = bodyW * 0.34;
 	    const nd = bodyD * 0.30;
-	    neckParts.push(box(nw, nh, nd, bodyColor, 0, 0, 0));
+	    neckParts.push(box$1(nw, nh, nd, bodyColor, 0, 0, 0));
 	    // 绒毛：脖子根部略粗（和身体衔接），往上收窄
 	    if (wool) {
-	      neckParts.push(box(nw * 1.5, nh * 0.42, nd * 1.5, bodyColor, 0, 0, 0));
+	      neckParts.push(box$1(nw * 1.5, nh * 0.42, nd * 1.5, bodyColor, 0, 0, 0));
 	    }
 	  }
 	  if (neckParts.length) neckGroup.add(limbMesh(neckParts));
@@ -51322,21 +52283,21 @@ void main() {
 
 	  const headParts = [];
 	  // 颅骨（方块）
-	  headParts.push(box(headSize, headSize * 0.92, headSize * 1.0, headColor, 0, 0, 0));
+	  headParts.push(box$1(headSize, headSize * 0.92, headSize * 1.0, headColor, 0, 0, 0));
 
 	  // 口鼻：从脸的下半部前伸的一块。
 	  // ★ 高度别超过头高的一半，宽度别超过头的 0.8 倍 ——
 	  //   否则正面看就是"一整块粉色平面盖住脸"。
 	  const muzzleH2 = Math.min(muzzleSize, headSize * 0.55) * 0.62;
 	  const muzzleY = -headSize * 0.16;          // 底边位置（box 的 y 是底边）
-	  headParts.push(box(
+	  headParts.push(box$1(
 	    Math.min(muzzleSize, headSize * 0.82), muzzleH2, headSize * 0.34,
 	    muzzleColor, 0, muzzleY, headSize * 0.46
 	  ));
 
 	  // 鼻子：独立的粉色/深色方块，贴在口鼻前端
 	  if (noseColor !== null) {
-	    headParts.push(box(
+	    headParts.push(box$1(
 	      Math.min(muzzleSize, headSize * 0.82) * 0.74, muzzleH2 * 0.72, headSize * 0.12,
 	      noseColor, 0, muzzleY + muzzleH2 * 0.10, headSize * 0.46 + headSize * 0.30
 	    ));
@@ -51353,8 +52314,8 @@ void main() {
 	      // ★ 之前 headSize*0.52 高、0.20 宽 —— 又细又长，像两根天线。
 	      //   参考图里是"短而宽"的小方耳。
 	      for (const sx of [-1, 1]) {
-	        headParts.push(box(headSize * 0.24, headSize * 0.34, headSize * 0.20, patchColor, sx * headSize * 0.30, headSize * 0.88, -headSize * 0.02));
-	        headParts.push(box(headSize * 0.12, headSize * 0.18, headSize * 0.06, muzzleColor, sx * headSize * 0.30, headSize * 0.92, headSize * 0.08));
+	        headParts.push(box$1(headSize * 0.24, headSize * 0.34, headSize * 0.20, patchColor, sx * headSize * 0.30, headSize * 0.88, -headSize * 0.02));
+	        headParts.push(box$1(headSize * 0.12, headSize * 0.18, headSize * 0.06, muzzleColor, sx * headSize * 0.30, headSize * 0.92, headSize * 0.08));
 	      }
 	    } else {
 	      // 水平伸出（牛/羊）：方块薄片，从头的两侧往外伸。
@@ -51364,9 +52325,9 @@ void main() {
 	      for (const sx of [-1, 1]) {
 	        const earW = headSize * 0.48;
 	        const earX = sx * (headSize * 0.50 + earW * 0.42);
-	        headParts.push(box(earW, headSize * 0.22, headSize * 0.36, patchColor, earX, headSize * 0.50, -headSize * 0.02));
+	        headParts.push(box$1(earW, headSize * 0.22, headSize * 0.36, patchColor, earX, headSize * 0.50, -headSize * 0.02));
 	        // 耳朵内侧浅色
-	        headParts.push(box(earW * 0.55, headSize * 0.10, headSize * 0.20, muzzleColor, earX, headSize * 0.55, headSize * 0.06));
+	        headParts.push(box$1(earW * 0.55, headSize * 0.10, headSize * 0.20, muzzleColor, earX, headSize * 0.55, headSize * 0.06));
 	      }
 	    }
 	  }
@@ -51374,7 +52335,7 @@ void main() {
 	  // 角（小方块，参考图里是短短的两截）
 	  if (horned) {
 	    for (const sx of [-1, 1]) {
-	      headParts.push(box(headSize * 0.13, headSize * 0.34, headSize * 0.13, hornColor, sx * headSize * 0.34, headSize * 0.86, -headSize * 0.10));
+	      headParts.push(box$1(headSize * 0.13, headSize * 0.34, headSize * 0.13, hornColor, sx * headSize * 0.34, headSize * 0.86, -headSize * 0.10));
 	    }
 	  }
 
@@ -51384,7 +52345,7 @@ void main() {
 	    const mn = Math.max(4, Math.round(neckLen * 5));
 	    for (let i = 0; i < mn; i++) {
 	      const k = i / (mn - 1 || 1);
-	      headParts.push(box(
+	      headParts.push(box$1(
 	        headSize * 0.20, headSize * 0.26, headSize * 0.34,
 	        0,
 	        headSize * 0.62 - k * (neckLen + headSize * 0.55),
@@ -51398,9 +52359,9 @@ void main() {
 	  // 项圈 + 铃铛（参考图里非常显眼，挂在头下方的脖子上）
 	  if (collarColor !== null) {
 	    const collarParts = [];
-	    collarParts.push(box(headSize * 1.14, headSize * 0.13, headSize * 0.92, collarColor, 0, -headSize * 0.14, 0));
+	    collarParts.push(box$1(headSize * 1.14, headSize * 0.13, headSize * 0.92, collarColor, 0, -headSize * 0.14, 0));
 	    if (bellColor !== null) {
-	      collarParts.push(box(headSize * 0.26, headSize * 0.26, headSize * 0.18, bellColor, 0, -headSize * 0.40, headSize * 0.40));
+	      collarParts.push(box$1(headSize * 0.26, headSize * 0.26, headSize * 0.18, bellColor, 0, -headSize * 0.40, headSize * 0.40));
 	    }
 	    const collar = limbMesh(collarParts);
 	    collar.name = 'collar';
@@ -51433,9 +52394,9 @@ void main() {
 	    g.name = 'leg';
 	    g.position.set(x, hipY, z);
 	    const parts = [];
-	    parts.push(box(legW, legLen, legW, legColor, 0, -legLen, 0));
+	    parts.push(box$1(legW, legLen, legW, legColor, 0, -legLen, 0));
 	    // 蹄子：底部一小块深色
-	    parts.push(box(legW * 1.12, legW * 0.42, legW * 1.12, hoofColor, 0, -legLen, 0));
+	    parts.push(box$1(legW * 1.12, legW * 0.42, legW * 1.12, hoofColor, 0, -legLen, 0));
 	    g.add(limbMesh(parts));
 	    return g;
 	  };
@@ -51454,10 +52415,10 @@ void main() {
 	  const tailGroup = new Group();
 	  tailGroup.name = 'tail';
 	  tailGroup.position.set(0, hipY + bodyH * 0.72, -bodyD / 2 - 0.03);
-	  const tailParts = [box(0.10, bodyH * 0.62, 0.10, tailColor, 0, -bodyH * 0.62, 0)];
+	  const tailParts = [box$1(0.10, bodyH * 0.62, 0.10, tailColor, 0, -bodyH * 0.62, 0)];
 	  if (tailStyle === 'tuft') {
 	    // 末端毛球（牛/马/羊驼参考图都有）
-	    tailParts.push(box(0.22, 0.26, 0.22, tailColor, 0, -bodyH * 0.62 - 0.10, 0));
+	    tailParts.push(box$1(0.22, 0.26, 0.22, tailColor, 0, -bodyH * 0.62 - 0.10, 0));
 	  }
 	  tailGroup.add(limbMesh(tailParts));
 	  root.add(tailGroup);
@@ -51659,18 +52620,18 @@ void main() {
 
 	  const headParts = [];
 	  // 脸：略扁的方块
-	  headParts.push(box(headW, headH, headD, faceColor, 0, 0, 0));
+	  headParts.push(box$1(headW, headH, headD, faceColor, 0, 0, 0));
 
 	  // 头顶的一撮毛（盖住额头后半部分，露出脸）
 	  const capW = headW * 1.06;
 	  const capH = headH * 0.46;
 	  const capD = headD * 0.86;
-	  headParts.push(box(capW, capH, capD, woolColor, 0, headH * 0.56, -headD * 0.10));
+	  headParts.push(box$1(capW, capH, capD, woolColor, 0, headH * 0.56, -headD * 0.10));
 
 	  // 口鼻：往前伸一小块
-	  headParts.push(box(headW * 0.62, headH * 0.34, headD * 0.30, faceColor, 0, headH * 0.06, headD * 0.44));
+	  headParts.push(box$1(headW * 0.62, headH * 0.34, headD * 0.30, faceColor, 0, headH * 0.06, headD * 0.44));
 	  // 鼻头
-	  headParts.push(box(headW * 0.34, headH * 0.20, headD * 0.10, noseColor, 0, headH * 0.12, headD * 0.60));
+	  headParts.push(box$1(headW * 0.34, headH * 0.20, headD * 0.10, noseColor, 0, headH * 0.12, headD * 0.60));
 
 	  // 眼睛：已按用户要求移除（羊也是干净的一张脸）。
 
@@ -51684,7 +52645,7 @@ void main() {
 	    const earH = headH * 0.14;
 	    const earD = headD * 0.40;
 	    for (const sx of [-1, 1]) {
-	      headParts.push(box(
+	      headParts.push(box$1(
 	        earW, earH, earD,
 	        faceColor,
 	        sx * (headW * 0.5 + earW * 0.46),
@@ -51716,15 +52677,15 @@ void main() {
 	    const collar = [];
 	    // 左右两条竖边
 	    for (const sx of [-1, 1]) {
-	      collar.push(box(collarW * 0.10, collarH * 1.6, collarD * 2, collarColor, sx * collarW * 0.46, cy, cz));
+	      collar.push(box$1(collarW * 0.10, collarH * 1.6, collarD * 2, collarColor, sx * collarW * 0.46, cy, cz));
 	    }
 	    // 前后两条横边
 	    for (const sz of [-1, 1]) {
-	      collar.push(box(collarW, collarH, collarD * 0.26, collarColor, 0, cy, cz + sz * collarD));
+	      collar.push(box$1(collarW, collarH, collarD * 0.26, collarColor, 0, cy, cz + sz * collarD));
 	    }
 	    if (bellColor !== null) {
 	      const bellH = headH * 0.15;
-	      collar.push(box(bellH * 1.2, bellH, bellH, bellColor, 0, cy - bellH * 0.9, cz + collarD * 1.15));
+	      collar.push(box$1(bellH * 1.2, bellH, bellH, bellColor, 0, cy - bellH * 0.9, cz + collarD * 1.15));
 	    }
 	    const cm = limbMesh(collar);
 	    cm.name = 'collar';
@@ -51739,8 +52700,8 @@ void main() {
 	    g.name = 'leg';
 	    g.position.set(x, hipY, z);
 	    const parts = [];
-	    parts.push(box(legW, legLen, legW, faceColor, 0, -legLen, 0));
-	    parts.push(box(legW * 1.1, legW * 0.42, legW * 1.1, hoofColor, 0, -legLen, 0));
+	    parts.push(box$1(legW, legLen, legW, faceColor, 0, -legLen, 0));
+	    parts.push(box$1(legW * 1.1, legW * 0.42, legW * 1.1, hoofColor, 0, -legLen, 0));
 	    g.add(limbMesh(parts));
 	    return g;
 	  };
@@ -51760,7 +52721,7 @@ void main() {
 	  tailGroup.name = 'tail';
 	  tailGroup.position.set(0, hipY + ry * 0.9, -rz * 0.92);
 	  const tailParts = [];
-	  tailParts.push(box(bodyW * 0.16, bodyH * 0.22, bodyD * 0.16, woolColor, 0, -bodyH * 0.18, 0));
+	  tailParts.push(box$1(bodyW * 0.16, bodyH * 0.22, bodyD * 0.16, woolColor, 0, -bodyH * 0.18, 0));
 	  tailGroup.add(limbMesh(tailParts));
 	  root.add(tailGroup);
 
@@ -51870,7 +52831,7 @@ void main() {
 	  bodyGroup.position.y = hipY;
 
 	  const bodyParts = [];
-	  bodyParts.push(box(0.62, 0.78, 0.4, shirtColor, 0, 0, 0));
+	  bodyParts.push(box$1(0.62, 0.78, 0.4, shirtColor, 0, 0, 0));
 	  bodyGroup.add(limbMesh(bodyParts));
 	  root.add(bodyGroup);
 
@@ -51963,7 +52924,7 @@ void main() {
 	  } else if (hatStyle === 'cap') {
 	    // 鸭舌帽：圆帽身 + 前伸的帽舌
 	    hairParts.push(cyl(0.245, 0.255, 0.135, 8, hatColor, 0, 0.145, 0));
-	    hairParts.push(box(0.34, 0.035, 0.2, hatColor, 0, 0.128, 0.235));
+	    hairParts.push(box$1(0.34, 0.035, 0.2, hatColor, 0, 0.128, 0.235));
 	  } else if (hatStyle === 'beanie') {
 	    // 毛线帽：压扁的球顶 + 帽箍 + 顶上的小球
 	    const dome = new IcosahedronGeometry(0.268, 1);
@@ -52009,7 +52970,7 @@ void main() {
 	    //   之前写 -0.33，盒子跨度变成 [-0.33, +0.33]（以肩膀为中心），
 	    //   上半截直接戳进脑袋里，下半截只到手肘 —— 挥手时整条手臂绕着
 	    //   自己的中点转，看起来像两根横着伸出去的棍子。
-	    const parts = [box(0.18, 0.66, 0.18, shirtColor, 0, -0.66, 0)];
+	    const parts = [box$1(0.18, 0.66, 0.18, shirtColor, 0, -0.66, 0)];
 	    g.add(limbMesh(parts));
 	    return g;
 	  };
@@ -52025,7 +52986,7 @@ void main() {
 	    // ★ 注意：box() 的 y 参数是【底边】位置（内部会 +h/2）。
 	    //   腿要从髋关节（0）向下延伸到 -legLen，所以底边应该是 -legLen。
 	    //   之前写 -legLen/2，导致腿整体上移 legLen/2，人物悬空 0.4。
-	    const parts = [box(0.26, legLen, 0.26, pantsColor, 0, -legLen, 0)];
+	    const parts = [box$1(0.26, legLen, 0.26, pantsColor, 0, -legLen, 0)];
 	    g.add(limbMesh(parts));
 	    return g;
 	  };
@@ -52128,7 +53089,7 @@ void main() {
 	  const bodyGroup = new Group();
 	  bodyGroup.name = 'body';
 	  bodyGroup.position.y = hipY;
-	  const bodyParts = [box(0.62, 0.78, 0.4, shirtColor, 0, 0, 0)];
+	  const bodyParts = [box$1(0.62, 0.78, 0.4, shirtColor, 0, 0, 0)];
 	  bodyGroup.add(limbMesh(bodyParts));
 	  // ★ 身体整体略后仰 12°，坐姿轮廓才明显（直立看和站姿没区别）
 	  bodyGroup.rotation.x = -0.2;
@@ -52171,7 +53132,7 @@ void main() {
 	    hairParts.push(cyl(0.2, 0.24, 0.2, 8, hatColor, 0, 0.245, 0));
 	  } else if (hatStyle === 'cap') {
 	    hairParts.push(cyl(0.245, 0.255, 0.135, 8, hatColor, 0, 0.145, 0));
-	    hairParts.push(box(0.34, 0.035, 0.2, hatColor, 0, 0.128, 0.235));
+	    hairParts.push(box$1(0.34, 0.035, 0.2, hatColor, 0, 0.128, 0.235));
 	  }
 	  if (hairParts.length) {
 	    const hairMesh = limbMesh(hairParts);
@@ -52206,7 +53167,7 @@ void main() {
 	    upper.name = 'upperArm';
 	    upper.rotation.x = -0.524;
 	    upper.rotation.z = -side * 0.213;
-	    upper.add(limbMesh([box(0.18, upperLen, 0.18, shirtColor, 0, -upperLen, 0)]));
+	    upper.add(limbMesh([box$1(0.18, upperLen, 0.18, shirtColor, 0, -upperLen, 0)]));
 
 	    // 小臂：肩→膝 几乎是一条直线（臂长 0.86 ≈ 距离 0.851），
 	    //   所以小臂相对大臂几乎不弯（rotX ≈ 0），只做轻微自然弯折。
@@ -52214,10 +53175,10 @@ void main() {
 	    fore.name = 'forearm';
 	    fore.position.y = -upperLen;
 	    fore.rotation.x = -0.08;
-	    fore.add(limbMesh([box(0.16, foreLen, 0.16, shirtColor, 0, -foreLen, 0)]));
+	    fore.add(limbMesh([box$1(0.16, foreLen, 0.16, shirtColor, 0, -foreLen, 0)]));
 
 	    // 手掌：搭在膝盖上（扁平方块，略微向前伸过膝盖）
-	    fore.add(limbMesh([box(0.20, 0.09, 0.26, skinColor, 0, -foreLen - 0.04, 0.03)]));
+	    fore.add(limbMesh([box$1(0.20, 0.09, 0.26, skinColor, 0, -foreLen - 0.04, 0.03)]));
 
 	    upper.add(fore);
 	    g.add(upper);
@@ -52237,17 +53198,17 @@ void main() {
 	    const thigh = new Group();
 	    thigh.name = 'thigh';
 	    thigh.rotation.x = -Math.PI / 2;      // 向前平伸
-	    thigh.add(limbMesh([box(0.26, thighLen, 0.26, pantsColor, 0, -thighLen, 0)]));
+	    thigh.add(limbMesh([box$1(0.26, thighLen, 0.26, pantsColor, 0, -thighLen, 0)]));
 
 	    // 小腿：接在大腿末端，向下垂
 	    const shin = new Group();
 	    shin.name = 'shin';
 	    shin.position.y = -thighLen;
 	    shin.rotation.x = Math.PI / 2;        // 转回竖直向下
-	    shin.add(limbMesh([box(0.24, shinLen, 0.24, pantsColor, 0, -shinLen, 0)]));
+	    shin.add(limbMesh([box$1(0.24, shinLen, 0.24, pantsColor, 0, -shinLen, 0)]));
 
 	    // 脚
-	    shin.add(limbMesh([box(0.26, 0.1, 0.34, 0x4a3a2a, 0, -shinLen - 0.1, 0.08)]));
+	    shin.add(limbMesh([box$1(0.26, 0.1, 0.34, 0x4a3a2a, 0, -shinLen - 0.1, 0.08)]));
 
 	    thigh.add(shin);
 	    hip.add(thigh);
@@ -52500,11 +53461,11 @@ void main() {
 	  bodyGroup.name = 'body';
 	  bodyGroup.position.y = hipY + 0.3;
 	  const bodyParts = [];
-	  bodyParts.push(box(0.34, 0.3, 0.42, breed.body, 0, 0, 0));
-	  bodyParts.push(box(0.2, 0.22, 0.22, breed.body, 0, 0.25, 0.16));
+	  bodyParts.push(box$1(0.34, 0.3, 0.42, breed.body, 0, 0, 0));
+	  bodyParts.push(box$1(0.2, 0.22, 0.22, breed.body, 0, 0.25, 0.16));
 	  bodyParts.push(cone2(0.07, 0.16, 4, 0xe0a33c, 0, 0.2, 0.3));
 	  bodyParts.push(cone2(0.06, 0.18, 4, breed.comb, 0, 0.32, 0.18));
-	  bodyParts.push(box(0.2, 0.22, 0.1, breed.body, 0, 0.2, -0.22));
+	  bodyParts.push(box$1(0.2, 0.22, 0.1, breed.body, 0, 0.2, -0.22));
 	  bodyGroup.add(meshFrom2(bodyParts));
 	  root.add(bodyGroup);
 
@@ -52512,7 +53473,7 @@ void main() {
 	    const g = new Group();
 	    g.name = 'leg';
 	    g.position.set(x, hipY, 0);
-	    g.add(meshFrom2([box(0.06, legLen, 0.06, 0xe0a33c, 0, -legLen / 2, 0)]));
+	    g.add(meshFrom2([box$1(0.06, legLen, 0.06, 0xe0a33c, 0, -legLen / 2, 0)]));
 	    return g;
 	  };
 	  const legL = makeLeg(-0.09);
@@ -52673,7 +53634,7 @@ void main() {
 	        speed: opts.speed,
 	        radius,
 	        graze: opts.graze !== false,
-	        poly, bodyR,
+	        poly, basePoly: poly, bodyR,
 	        clearance: spot.clearance,
 	        breed: breed.name,
 	        kind,
@@ -52944,6 +53905,32 @@ void main() {
 	    }
 	  };
 
+	  // 围栏隐藏后，牛羊/羊驼的活动范围整体放大（scale=1.6 表示线性扩大 60%）
+	  group.userData.setRoamScale = (scale) => {
+	    const k = Number.isFinite(scale) ? Math.max(1, scale) : 1;
+	    const cache = new Map();
+	    for (const a of list) {
+	      const u = a.userData;
+	      if (!u) continue;
+	      if (u.kind !== 'cow' && u.kind !== 'sheep' && u.kind !== 'alpaca') continue;
+	      const base = u.basePoly || u.poly;
+	      if (!base) continue;
+	      u.basePoly = base;
+	      if (k === 1) { u.poly = base; continue; }
+	      let out = cache.get(base);
+	      if (!out) {
+	        let cx = 0, cz = 0;
+	        for (const [px, pz] of base) { cx += px; cz += pz; }
+	        cx /= base.length; cz /= base.length;
+	        out = base.map(([px, pz]) => [cx + (px - cx) * k, cz + (pz - cz) * k]);
+	        cache.set(base, out);
+	      }
+	      u.poly = out;
+	    }
+	    group.userData.roamScale = k;
+	  };
+	  group.userData.setRoamScale(1);
+
 	  return group;
 	}
 
@@ -52991,6 +53978,8 @@ void main() {
 	    for (const [hx, hz, hr] of HAY_BALES) {
 	      if (Math.hypot(x - hx, z - hz) < hr + pad) return false;
 	    }
+	    // 水井体积碰撞：不能走进井口
+	    if (Math.hypot(x - WELL.x, z - WELL.z) < WELL.r + pad) return false;
 	    // ★ 树的体积碰撞：不能穿过树干
 	    for (const tr of TREE_OBSTACLES) {
 	      if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
@@ -57788,14 +58777,29 @@ void main() {
 	    onDone: null,
 	  };
 
+	  function pickIntroSpot() {
+	    if (intro.spot) return intro.spot;
+	    const spots = CAMERA.introSpots;
+	    intro.spot = (Array.isArray(spots) && spots.length)
+	      ? spots[Math.floor(Math.random() * spots.length)]
+	      : Object.assign({ look: CAMERA.introLook }, CAMERA.introFrom);
+	    return intro.spot;
+	  }
+
 	  function computeIntroPoints() {
-	    const fx = CAMERA.introFrom.x;
-	    const fz = CAMERA.introFrom.z;
+	    const spot = pickIntroSpot();
+	    const fx = spot.x;
+	    const fz = spot.z;
 	    const groundY = model.heightAt(fx, fz);
-	    intro.from.set(fx, Math.max(groundY + 5, 10), fz);
+	    // 开屏机位可以在地形边界之外；此时 y 作为绝对高度使用。
+	    const configuredY = Number(spot.y);
+	    intro.from.set(fx, Number.isFinite(configuredY) && configuredY > 0
+	      ? configuredY
+	      : Math.max(groundY + 8, 10), fz);
 
 	    intro.to.set(CAMERA.introTo.x, CAMERA.introTo.y, CAMERA.introTo.z);
-	    intro.fromTarget.set(0, 12, 0);
+	    const look = spot.look || CAMERA.introLook || { x: 0, y: 12, z: 0 };
+	    intro.fromTarget.set(look.x, look.y, look.z);
 	    intro.toTarget.set(CAMERA.target.x, CAMERA.target.y, CAMERA.target.z);
 	  }
 
@@ -57803,8 +58807,12 @@ void main() {
 
 	  function placeAtIntroStart() {
 	    computeIntroPoints();
+	    intro.pending = true;
 	    camera.position.copy(intro.from);
 	    controls.target.copy(intro.fromTarget);
+	    // 开屏机位在世界边界之外，必须先放开 OrbitControls 的距离上限，
+	    // 否则下一次 controls.update() 会把相机硬拉回 maxDistance=240。
+	    controls.maxDistance = Math.max(CAMERA.maxDistance, camera.position.distanceTo(controls.target) + 2);
 	    camera.lookAt(intro.fromTarget);
 	  }
 
@@ -57815,6 +58823,7 @@ void main() {
 	  // （之前每次都 copy(intro.from)，如果相机被别的东西移动过，
 	  //   就会先"啪"地弹回起点再飞出去。）
 	  function playIntro(onDone) {
+	    intro.pending = false;
 	    computeIntroPoints();
 
 	    // 起点 = 当前相机位置（点击那一刻的画面）
@@ -57850,8 +58859,11 @@ void main() {
 
 	    if (raw >= 1) {
 	      intro.active = false;
+	      intro.pending = false;
 
 	      // 交接帧：先关阻尼同步一次 OrbitControls，再恢复阻尼
+	      // 同时把开屏时临时放开的距离上限收回正常值。
+	      controls.maxDistance = CAMERA.maxDistance;
 	      const prevDamping = controls.enableDamping;
 	      controls.enableDamping = false;
 	      controls.enabled = true;
@@ -58273,10 +59285,12 @@ void main() {
 	  // WASD 自由移动
 	  //   W/S 前后，A/D 左右（相对当前镜头朝向的水平面）
 	  //   Q/E 升降 target（相当于整体上下平移视角）
-	  //   Shift 加速，空格 上升，Ctrl 下降
+	  //   Shift 加速，空格/E 上升，Q/C 下降
+	  //   ★ 不用 Ctrl 下降：Ctrl+W 是浏览器关闭标签页的快捷键，
+	  //     网页无法拦截，按住 Ctrl+WASD 会直接把页面关掉（看起来像闪退）。
 	  // ---------------------------------------------------------------------------
 	  const keys = new Set();
-	  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', ' ', 'control', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+	  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'c', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 
 	  function onKeyDown(e) {
 	    const k = e.key.toLowerCase();
@@ -58294,6 +59308,19 @@ void main() {
 	    keys.clear();
 	  }
 
+	  // ★ Ctrl+W 是浏览器级快捷键，网页无法 preventDefault。
+	  //   这里做最后一道保险：一旦检测到 Ctrl+W，关闭前弹确认框，
+	  //   用户可以选择留在页面，不会"啪"一下闪退。
+	  let ctrlWGuard = false;
+	  window.addEventListener('keydown', (e) => {
+	    if (e.ctrlKey && e.key.toLowerCase() === 'w') ctrlWGuard = true;
+	  }, true);
+	  window.addEventListener('beforeunload', (e) => {
+	    if (!ctrlWGuard) return;
+	    e.preventDefault();
+	    e.returnValue = '';
+	    setTimeout(() => { ctrlWGuard = false; }, 0);
+	  });
 	  window.addEventListener('keydown', onKeyDown);
 	  window.addEventListener('keyup', onKeyUp);
 	  window.addEventListener('blur', onBlur);
@@ -58504,7 +59531,7 @@ void main() {
 	    if (keys.has('d') || keys.has('arrowright')) _delta.add(_right);
 	    if (keys.has('a') || keys.has('arrowleft')) _delta.sub(_right);
 	    if (keys.has('e') || keys.has(' ')) _delta.y += 1;
-	    if (keys.has('q') || keys.has('control')) _delta.y -= 1;
+	    if (keys.has('q') || keys.has('c')) _delta.y -= 1;
 
 	    if (_delta.lengthSq() < 1e-6) return;
 
@@ -58536,6 +59563,7 @@ void main() {
 	    camera, controls, updateFov, playIntro, placeAtIntroStart, updateIntro,
 	    flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
 	    get introActive() { return intro.active; },
+	    get introPending() { return intro.pending; },
 	    get flyActive() { return fly.active; },
 	    get resetActive() { return resetAnim.active; },
 	    get moving() { return moveState.active; },
@@ -59057,7 +60085,7 @@ void main() {
 	//
 	// SNAPSHOT_VERSION 变更后，老用户本地存档会在下一次打开时被新默认覆盖一次。
 	// ---------------------------------------------------------------------------
-	const SNAPSHOT_VERSION = '0.6.0-snapshot-1';
+	const SNAPSHOT_VERSION = '0.7.0-snapshot-1';
 
 	const DEFAULT_SNAPSHOT = {
 	  snapshotVersion: SNAPSHOT_VERSION,
@@ -59069,6 +60097,8 @@ void main() {
 	  windmillStyle: 'modern',
 	  fenceStyles: { pasture: 'plank', coop: 'picket', field: 'rail' },
 	  watermillStyle: 0,
+	  wellStyle: 0,
+	  workshopStyle: 0,
 	  snowmenStyles: ['lowpoly', 'lowpoly', 'lowpoly'],
 	  fields: ['wheat', 'cabbage', 'sunflower', 'pasture2'],
 	  trees: ['apple', 'birch', 'blossom', 'camellia', 'birch', 'blossom', 'maple', 'apple'],
@@ -59099,6 +60129,7 @@ void main() {
 	  const btnRotate = $('btn-rotate');
 	  const btnReset = $('btn-reset');
 	  const btnRandom = $('btn-random');
+	  const btnFences = $('btn-fences');
 
 	  let hintTimer = 0;
 	  function showHint(text, ms = 3000) {
@@ -59109,7 +60140,7 @@ void main() {
 	    hintTimer = setTimeout(() => hint.classList.remove('show'), ms);
 	  }
 
-	  const state = { audioOn: false, seasonIdx: 1, autoRotate: true };
+	  const state = { audioOn: false, seasonIdx: 1, autoRotate: true, fencesHidden: false };
 
 	  // ★ 隐藏加载动画时【必须】同时取消 index.html 里的兜底超时 ——
 	  //   那个 guard 在 8 秒后检查 loader 是否还有 hidden 类，
@@ -59332,6 +60363,30 @@ void main() {
 	    });
 	  }
 
+	  // ---------- 隐藏 / 显示牧场围栏 ----------
+	  function applyFencesHidden(hidden) {
+	    state.fencesHidden = !!hidden;
+	    const h = state.fencesHidden;
+	    if (app.farm && app.farm.userData.setLivestockFencesHidden) {
+	      app.farm.userData.setLivestockFencesHidden(h);
+	    }
+	    if (app.animals && app.animals.userData.setRoamScale) {
+	      app.animals.userData.setRoamScale(h ? 1.6 : 1);
+	    }
+	    if (btnFences) {
+	      btnFences.classList.toggle('off', h);
+	      btnFences.title = h ? '显示牧场围栏' : '隐藏牧场围栏';
+	      btnFences.setAttribute('aria-label', btnFences.title);
+	    }
+	  }
+	  if (btnFences) {
+	    btnFences.addEventListener('click', () => {
+	      wakeBar();
+	      applyFencesHidden(!state.fencesHidden);
+	    });
+	  }
+	  applyFencesHidden(false);
+
 	  // 使用底部 UI 时保持常驻，移出后 2 秒收起
 	  if (timeBar) {
 	    timeBar.addEventListener('pointerenter', wakeBar);
@@ -59386,7 +60441,7 @@ void main() {
 	    app.farm, app.fields, app.truck, app.car,
 	    app.animals, app.people, app.pets, app.logLady,
 	    app.pondLife, app.pond, app.watermill, app.campfire,
-	    app.owl, app.bigtree, app.extraTrees, app.woodpile, app.seasonFX,
+	    app.owl, app.bigtree, app.extraTrees, app.woodpile, app.well, app.workshop, app.seasonFX,
 	  ].filter(Boolean);
 
 	  // ---------- 树冠障碍（供相机落点避障）----------
@@ -59511,9 +60566,16 @@ void main() {
 	    //     子网格只是它的零件。
 	    //     而 farm / animals / fields / trees / people / pets / pondLife
 	    //     都是"集合"，子对象才是被点的那个，绝不能上溯。
-	    const SINGLE_GROUPS = ['truck', 'car', 'watermill', 'campfire', 'owl', 'pond', 'woodpile', 'bigtree'];
+	    const SINGLE_GROUPS = ['truck', 'car', 'watermill', 'campfire', 'owl', 'pond', 'woodpile', 'bigtree', 'well'];
 	    if (root.parent && SINGLE_GROUPS.includes(root.parent.name)) {
 	      root = root.parent;
+	    }
+
+	    // 工作区是两层组（pivot → inner），点击零件后统一归到 workshop 根
+	    if (app.workshop) {
+	      let wp = root;
+	      while (wp && wp !== app.workshop) wp = wp.parent;
+	      if (wp === app.workshop) root = app.workshop;
 	    }
 
 	    if (!root || !root.parent) return;
@@ -59571,6 +60633,8 @@ void main() {
 	      owl:        { label: 'Owl',      distMul: 6.5 },
 	      bigtree:    { label: '参天大树',  distMul: 2.4 },
 	      woodpile:   { label: '木材堆',    distMul: 4.0 },
+	      well:       { label: '水井',      distMul: 2.7 },
+	      workshop:   { label: '修理棚',    distMul: 2.5 },
 	      snowman:    { label: '雪人',      distMul: 2.8 },
 	      wheel:      { label: '水车',     distMul: 3.0 },
 	      mill:       { label: '小磨坊',   distMul: 3.0 },
@@ -59836,6 +60900,36 @@ void main() {
 	        app.farm.userData.setWindmillStyle(pickStyle);
 
 	        if (app.markDirty) app.markDirty();
+	      });
+	      return;
+	    }
+
+	    // ---------- 水井：换配色 ----------
+	    if (root.name === 'well' && app.well?.userData?.setStyle) {
+	      const info = app.well.userData.getStyle();
+	      const names = app.well.userData.styleNames || [];
+	      const swatches = ['#8d8d87', '#a85442', '#6f7f7a', '#d2ccbc'];
+	      app.focusedBuilding = { kind: 'well' };
+	      const items = names.map((name, i) => ({ id: String(i), name, swatch: swatches[i] || '#888' }));
+	      app.showOptionPanel('水井 配色', items, info.idx, (pick) => {
+	        if (app.well.userData.setStyle(Number(pick))) {
+	          if (app.markDirty) app.markDirty();
+	        }
+	      });
+	      return;
+	    }
+
+	    // ---------- 修理棚：换配色 ----------
+	    if (root.name === 'workshop' && app.workshop?.userData?.setStyle) {
+	      const info = app.workshop.userData.getStyle();
+	      const names = app.workshop.userData.styleNames || [];
+	      const swatches = ['#8a6a44', '#6f7a4a', '#5a6f86', '#b08a58'];
+	      app.focusedBuilding = { kind: 'workshop' };
+	      const items = names.map((name, i) => ({ id: String(i), name, swatch: swatches[i] || '#888' }));
+	      app.showOptionPanel('修理棚 配色', items, info.idx, (pick) => {
+	        if (app.workshop.userData.setStyle(Number(pick))) {
+	          if (app.markDirty) app.markDirty();
+	        }
 	      });
 	      return;
 	    }
@@ -60377,6 +61471,12 @@ void main() {
 	      if (app.watermill && app.watermill.userData.getStyle) {
 	        s.watermillStyle = app.watermill.userData.getStyle().idx;
 	      }
+	      if (app.well && app.well.userData.getStyle) {
+	        s.wellStyle = app.well.userData.getStyle().idx;
+	      }
+	      if (app.workshop && app.workshop.userData.getStyle) {
+	        s.workshopStyle = app.workshop.userData.getStyle().idx;
+	      }
 
 	      // 雪人风格（每个雪人独立）
 	      if (app.seasonFX && Array.isArray(app.seasonFX.userData.snowmen)) {
@@ -60456,6 +61556,12 @@ void main() {
 	      }
 	      if (typeof d.watermillStyle === 'number' && app.watermill && app.watermill.userData.setStyle) {
 	        try { app.watermill.userData.setStyle(d.watermillStyle); } catch (e) {}
+	      }
+	      if (typeof d.wellStyle === 'number' && app.well && app.well.userData.setStyle) {
+	        try { app.well.userData.setStyle(d.wellStyle); } catch (e) {}
+	      }
+	      if (typeof d.workshopStyle === 'number' && app.workshop && app.workshop.userData.setStyle) {
+	        try { app.workshop.userData.setStyle(d.workshopStyle); } catch (e) {}
 	      }
 	      if (Array.isArray(d.snowmenStyles) && app.seasonFX && Array.isArray(app.seasonFX.userData.snowmen)) {
 	        d.snowmenStyles.forEach((style, i) => {
@@ -60871,8 +61977,42 @@ void main() {
 	  const fields = buildFields(terrainModel, rng);
 	  world.add(fields);
 
+	  // ★ 池塘：就在坐着的人 (-78,-23) 正前方，池心 (-78,2)
 	  const pond = buildPond(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r);
+	  // 水面用正圆收边：岸坡环保留但隐藏，水盘半径略小于地形水线，
+	  // 这样水边是光滑圆弧，不是地形粗网格切出来的锯齿。
+	  const pondBank = pond.getObjectByName('pondBank');
+	  if (pondBank) pondBank.visible = false;
+	  const waterMesh = pond.children.find((c) => c.isMesh && c.material && c.material.uniforms && c.material.uniforms.uTime);
+	  if (waterMesh) {
+	    const desiredR = BUILDINGS.pond.r * 0.95;
+	    const baseR = pond.userData.waterR || desiredR;
+	    const wScale = desiredR / baseR;
+	    waterMesh.scale.set(wScale, 1, wScale);
+	    waterMesh.material.uniforms.uRadius.value = desiredR;
+	    const baseSeason = pond.userData.setSeason;
+	    pond.userData.setSeason = (t) => {
+	      baseSeason(t);
+	      waterMesh.scale.set(wScale, 1, wScale);
+	      waterMesh.material.uniforms.uRadius.value = desiredR;
+	    };
+	    pond.userData.setSeason(0);
+	  }
 	  world.add(pond);
+
+	  // 池边石圈：大小/高低错落，水车那侧自动留缺口
+	  const stoneWaterY = pond.userData.waterY ?? 5.35;
+	  world.add(buildPondStones(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r, rng, stoneWaterY));
+
+
+	  // 水池生态：鱼 + 荷叶 + 水藻
+	  const pondLife = buildPondLife(
+	    terrainModel,
+	    { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z },
+	    BUILDINGS.pond.r,
+	    rng
+	  );
+	  world.add(pondLife);
 
 	  // 季节特效：樱花/落叶/雪 + 蝴蝶/蜜蜂 + 南瓜/雪人
 	  const seasonFX = buildSeasonFX(terrainModel, rng, quality);
@@ -60882,7 +62022,7 @@ void main() {
 	  const campfire = buildCampfire(terrainModel, rng, { x: 26, z: 8 });
 	  world.add(campfire);
 
-	  // 水车（水池西侧）
+	  // 水车（池塘西侧）
 	  const watermill = buildWatermill(terrainModel, rng, { x: -93, z: 2 });
 	  world.add(watermill);
 
@@ -60902,6 +62042,24 @@ void main() {
 	  const woodpile = buildWoodpile(terrainModel, rng, { x: WOODPILE.x, z: WOODPILE.z });
 	  world.add(woodpile);
 
+	  // 水井：木材堆另一边
+	  const well = buildWell(terrainModel, rng, { x: WELL.x, z: WELL.z });
+	  world.add(well);
+
+	  // 农舍东侧：修理棚工作区（整体旋转，和农舍平行）
+	  const workshopInner = buildWorkshop(terrainModel);
+	  workshopInner.position.set(-66, 0, -2);   // 把原有绝对坐标收回到自己中心
+	  const workshop = new Group();
+	  workshop.name = 'workshop';
+	  workshop.position.set(WORKSHOP.x, 0, WORKSHOP.z);
+	  workshop.rotation.y = WORKSHOP.rot;
+	  workshop.add(workshopInner);
+	  workshop.userData.setNight = (t) => workshopInner.userData.setNight(t);
+	  workshop.userData.getStyle = () => workshopInner.userData.getStyle();
+	  workshop.userData.setStyle = (idx) => workshopInner.userData.setStyle(idx);
+	  workshop.userData.styleNames = workshopInner.userData.styleNames;
+	  world.add(workshop);
+
 	  // 另外 3 棵不同品种的树（有大有小，丰富场景）
 	  // 位置都经过间隙检查（≥3 单位），不会穿模
 	  const extraTrees = new Group();
@@ -60916,14 +62074,34 @@ void main() {
 
 	  world.add(extraTrees);
 
-	  // 水池生态：鱼 + 荷叶 + 浮藻
-	  const pondLife = buildPondLife(
-	    terrainModel,
-	    { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z },
-	    BUILDINGS.pond.r,
-	    rng
-	  );
-	  world.add(pondLife);
+	  // 接触阴影：建筑脚下、树根、围栏脚边
+	  {
+	    const buildings = [
+	      { x: BUILDINGS.barn.x, z: BUILDINGS.barn.z, sx: 16, sz: 23, rot: BUILDINGS.barn.rot },
+	      { x: BUILDINGS.farmhouse.x, z: BUILDINGS.farmhouse.z, sx: 14, sz: 16, rot: BUILDINGS.farmhouse.rot },
+	      { x: BUILDINGS.silo1.x, z: BUILDINGS.silo1.z, sx: 9, sz: 9 },
+	      { x: BUILDINGS.silo2.x, z: BUILDINGS.silo2.z, sx: 9, sz: 9 },
+	      { x: BUILDINGS.watertower.x, z: BUILDINGS.watertower.z, sx: 11, sz: 11 },
+	      { x: BUILDINGS.windmill.x, z: BUILDINGS.windmill.z, sx: 8, sz: 8 },
+	      { x: workshop.position.x, z: workshop.position.z, sx: 15, sz: 10, rot: WORKSHOP.rot },
+	      { x: watermill.position.x, z: watermill.position.z, sx: 10, sz: 6 },
+	      { x: WELL.x, z: WELL.z, sx: 4.5, sz: 4.5 },
+	      { x: BIG_TREE.x, z: BIG_TREE.z, sx: 8.5, sz: 8.5 },
+	    ];
+	    const trees = [];
+	    extraTrees.traverse((tr) => {
+	      if (!tr.userData || !tr.userData.kind || !tr.userData.scale) return;
+	      if (!tr.name || !tr.name.startsWith('tree-')) return;
+	      const sc = tr.userData.scale || 1;
+	      trees.push({ x: tr.position.x, z: tr.position.z, sx: 2.05 * sc, sz: 2.05 * sc });
+	    });
+	    const contactShadows = buildContactShadows(terrainModel, {
+	      buildings,
+	      trees,
+	      fences: farm.userData.fenceSlots || [],
+	    });
+	    world.add(contactShadows);
+	  }
 
 	  const road = buildRoad(terrainModel, ROAD_POINTS, 5.5);
 	  world.add(road);
@@ -60992,7 +62170,7 @@ void main() {
 
 	  Object.assign(app, {
 	    renderer, scene, terrainModel, terrain, sky, stars, clouds, birds, lighting, rig, device, quality,
-	    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
+	    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, well, workshop, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
 	    // 默认从中午开始（t=0.5），滑杆向左是早晨迷雾，向右是夜晚
 	    mode: { t: 0.5, target: 0.5 },
 	    // 调试/调参用：描边雾衰减（farScale<1 更早入雾，power<1 更早饱和）
@@ -61526,7 +62704,11 @@ void main() {
 	  // 草簇：直接设色（冬季跟着草地一起变白，否则雪地上会留一圈绿草刺）
 	  if (app.grass && app.grass.material) {
 	    const gc = srgbOf(grassA);
-	    app.grass.material.color.setRGB(gc.r, gc.g, gc.b, SRGBColorSpace);
+	    // 草簇和地面同步压暗；冬季雪量上来后逐步恢复白色
+	    const grassK = 1 - 0.30 * (1 - snowAmount);
+	    app.grass.material.color.setRGB(
+	      gc.r * grassK, gc.g * grassK, gc.b * grassK, SRGBColorSpace
+	    );
 	  }
 
 	  // 地形：草地主体 + 冬季积雪。
@@ -61636,7 +62818,7 @@ void main() {
 
 	  if (app.rig.introActive) {
 	    app.rig.updateIntro(performance.now());
-	  } else {
+	  } else if (app.rig.introPending) ; else {
 	    // ★ 关键：飞行期间【不能】调用 controls.update()。
 	    //   OrbitControls.update() 即使 enabled=false 也会执行，
 	    //   它会用内部缓存的球坐标重算 camera.position，
@@ -61681,11 +62863,14 @@ void main() {
 	  app.logLady.userData.update(elapsed, dt);
 	  app.car.userData.update(dt);
 	  app.truck.userData.update(dt);
+	  if (app.truck.userData.setNight) app.truck.userData.setNight(app.mode.t);
+	  if (app.well && app.well.userData.setNight) app.well.userData.setNight(app.mode.t);
+	  if (app.workshop && app.workshop.userData.setNight) app.workshop.userData.setNight(app.mode.t);
 	  app.farm.userData.windmill.userData.blades.rotation.z += dt * 0.55;
 
 	  // 云朵：绕世界原点缓慢飘动。
 	  app.birds.userData.update(elapsed, dt, app.rig.camera);
-	  app.pondLife.userData.update(elapsed, dt);
+	  if (app.pondLife) app.pondLife.userData.update(elapsed, dt);
 	  app.seasonFX.userData.tick(dt, elapsed);
 
 	  // 篝火：只在夜晚点亮（t > 0.55 开始，0.85 全亮）
@@ -61717,7 +62902,7 @@ void main() {
 	  }
 
 	  // 水面波动
-	  if (app.pond.userData.waterMat) {
+	  if (app.pond && app.pond.userData.waterMat) {
 	    const wm = app.pond.userData.waterMat;
 	    wm.uniforms.uTime.value = elapsed;
 	    wm.uniforms.uNight.value = app.mode.t;

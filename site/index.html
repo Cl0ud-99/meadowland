@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Meadowland — 治愈系低多边形农场</title>
-  <meta name="description" content="A cozy low-poly farm experience built with three.js" />
+  <meta name="description" content="治愈系低多边形农场 · 三处山脊随机开屏 · 修理棚/水井特写与配色 · 冬季雪景" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#9fd0ea" />
@@ -52,6 +52,12 @@
       <button id="btn-rotate" class="tool" aria-label="自动环绕" title="自动环绕">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <button id="btn-fences" class="tool" aria-label="隐藏牧场围栏" title="隐藏牧场围栏">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M4 8h16M4 14h16M7 5v14M12 5v14M17 5v14"/>
+          <path class="fence-slash" d="M4 20L20 4"/>
+        </svg>
+      </button>
       <button id="btn-audio" class="tool off" aria-label="环境音" title="环境音">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
@@ -85,7 +91,7 @@
         </svg>
       </div>
       <h2 class="about-name">Cloud99</h2>
-      <p class="about-sub">Meadowland · A cozy low-poly farm</p>
+      <p class="about-sub">Meadowland · 0.7.0 · 边界山脊 / 修理棚 / 水井</p>
     </div>
     <button class="about-close" id="about-close" type="button" aria-label="关闭">×</button>
   </div>
