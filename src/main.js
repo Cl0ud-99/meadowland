@@ -14,6 +14,7 @@ import { buildOwl, refreshWatertowerPerch, refreshWindmillPerch } from './world/
 import { buildBigTree, buildTree } from './world/bigtree.js';
 import { buildWoodpile } from './world/woodpile.js';
 import { buildWell } from './world/well.js';
+import { buildWorkshop } from './world/workshop.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
 import { buildForest, buildScatterTrees } from './world/forest.js';
@@ -193,6 +194,10 @@ function boot() {
   const well = buildWell(terrainModel, rng, { x: WELL.x, z: WELL.z });
   world.add(well);
 
+  // 农舍东侧：修理棚工作区
+  const workshop = buildWorkshop(terrainModel, rng);
+  world.add(workshop);
+
   // 另外 3 棵不同品种的树（有大有小，丰富场景）
   // 位置都经过间隙检查（≥3 单位），不会穿模
   const extraTrees = new THREE.Group();
@@ -274,7 +279,7 @@ function boot() {
 
   Object.assign(app, {
     renderer, scene, terrainModel, terrain, sky, stars, clouds, birds, lighting, rig, device, quality,
-    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, well, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
+    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, well, workshop, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
     // 默认从中午开始（t=0.5），滑杆向左是早晨迷雾，向右是夜晚
     mode: { t: 0.5, target: 0.5 },
     // 调试/调参用：描边雾衰减（farScale<1 更早入雾，power<1 更早饱和）
@@ -969,6 +974,7 @@ function loop() {
   app.truck.userData.update(dt);
   if (app.truck.userData.setNight) app.truck.userData.setNight(app.mode.t);
   if (app.well && app.well.userData.setNight) app.well.userData.setNight(app.mode.t);
+  if (app.workshop && app.workshop.userData.setNight) app.workshop.userData.setNight(app.mode.t);
   app.farm.userData.windmill.userData.blades.rotation.z += dt * 0.55;
 
   // 云朵：绕世界原点缓慢飘动。
