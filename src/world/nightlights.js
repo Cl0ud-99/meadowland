@@ -315,7 +315,7 @@ export function buildNightLights(model, scene) {
     //   这盏灯放在中点 (35,15)，正好照亮这片开阔地。
     { x: 35, z: 15 },
     // 空地：农舍与田地之间
-    { x: 12, z: -18 },
+    { x: 18, z: -12 },
   ];
 
   for (const spot of lampSpots) {
