@@ -261,8 +261,8 @@ function localToWorld(x, z, rot, lx, lz) {
 const soilBumpFbm = makeFbm(4321, 3, 2.15, 0.5);
 
 function soilBumpAt(x, z) {
-  return soilBumpFbm(x * 0.38, z * 0.38) * 0.070
-       + soilBumpFbm(x * 1.6, z * 1.6) * 0.012;
+  return soilBumpFbm(x * 0.38, z * 0.38) * 0.030
+       + soilBumpFbm(x * 1.6, z * 1.6) * 0.005;
 }
 
 // ---------------------------------------------------------------------------
@@ -317,17 +317,17 @@ function makeSoilMesh(model, x, z, w, d, rot, color, segX = 12, segZ = 10) {
       '  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);\n' +
       '}\n' +
       'float soilFbm(vec2 p) { return soilNoise(p) * 0.62 + soilNoise(p * 2.1) * 0.38; }\n' +
-      'float soilHeight(vec2 p) { return soilFbm(p * 0.95) * 0.05 + soilNoise(p * 2.6) * 0.006; }\n';
+      'float soilHeight(vec2 p) { return soilFbm(p * 0.95) * 0.02 + soilNoise(p * 2.6) * 0.003; }\n';
     shader.fragmentShader = prefix + shader.fragmentShader.replace(
       '#include <color_fragment>',
       '#include <color_fragment>\n' +
-      '  float sCoarse = soilFbm(vSoilWorld.xz * 0.28);\n' +
-      '  float sClod = soilNoise(vSoilWorld.xz * 1.35);\n' +
-      '  float sFine = soilNoise(vSoilWorld.xz * 4.2);\n' +
-      '  float sGrit = soilHash(floor(vSoilWorld.xz * 7.0));\n' +
-      '  float sShade = 0.90 + sCoarse * 0.08 + (sClod - 0.5) * 0.07 + (sFine - 0.5) * 0.025;\n' +
-      '  vec3 sCol = diffuseColor.rgb * sShade;\n' +
-      '  sCol += vec3(0.050, 0.036, 0.022) * smoothstep(0.84, 1.0, sGrit) * 0.6;\n' +
+      '  float sCoarse = soilFbm(vSoilWorld.xz * 0.22);\n' +
+      '  float sClod = soilNoise(vSoilWorld.xz * 0.9);\n' +
+      '  float sFine = soilNoise(vSoilWorld.xz * 3.2);\n' +
+      '  float sGrit = soilHash(floor(vSoilWorld.xz * 6.0));\n' +
+      '  float sShade = 0.97 + sCoarse * 0.05 + (sClod - 0.5) * 0.035 + (sFine - 0.5) * 0.04;\n' +
+      '  vec3 sCol = diffuseColor.rgb * sShade * 1.06;\n' +
+      '  sCol += vec3(0.040, 0.030, 0.018) * smoothstep(0.86, 1.0, sGrit) * 0.45;\n' +
       '  float sFade = 1.0 - smoothstep(95.0, 320.0, vSoilDist);\n' +
       '  diffuseColor.rgb = mix(diffuseColor.rgb, sCol, sFade);'
     );
@@ -340,8 +340,8 @@ function makeSoilMesh(model, x, z, w, d, rot, color, segX = 12, segZ = 10) {
       '  float sh0 = soilHeight(sp);\n' +
       '  float shx = soilHeight(sp + vec2(se, 0.0));\n' +
       '  float shz = soilHeight(sp + vec2(0.0, se));\n' +
-      '  vec3 sN = normalize(vec3((sh0 - shx) * 6.0, 0.025, (sh0 - shz) * 6.0));\n' +
-      '  normal = normalize(normal * 0.35 + mat3(viewMatrix) * sN);'
+      '  vec3 sN = normalize(vec3((sh0 - shx) * 2.5, 0.025, (sh0 - shz) * 2.5));\n' +
+      '  normal = normalize(normal * 0.65 + mat3(viewMatrix) * sN);'
     );
     mat.userData.shader = shader;
   };
