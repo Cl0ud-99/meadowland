@@ -211,66 +211,43 @@ export function buildNightLights(model, scene) {
   group.add(barnLight);
   interiorLights.push(barnLight);
 
-  // ---------- 谷仓门口壁灯 ----------
-  //
-  // 模型里门右侧有一盏壁灯（barnDemo.js 的 K.lamp 方块），
-  // 但那只是【几何体】—— 夜里不会发光，看起来像个黑色铁盒。
-  // 这里补上真正的光源：
-  //   1) 发光灯泡（AdditiveBlending 亮块，对应模型灯罩位置）
-  //   2) 地面光斑（径向衰减，照亮门前地面）
-  //   3) 点光源（照亮门板、墙、附近的干草堆）
-  //
-  // 坐标：模型局部 (doorW/2+1.4, 5.2, D/2+0.3) = (4.4, 5.2, 10.3)
-  //       谷仓世界 (-30, 5.35, 0)，rotY = -0.22
-  //       → 旋转后偏移 (2.05, 11.01) → 世界 (-27.95, 10.86, 11.01)
-  const wallLampX = -27.95;
-  const wallLampY = by + 5.51;    // 5.35 + 5.51 = 10.86
-  const wallLampZ = 11.01;
+  // ---------- 谷仓门口壁灯（左右各一盏）----------
+  const wallLampParts = [];
+  const wallLampLocalX = 4.4;
+  for (const side of [-1, 1]) {
+    const off = new THREE.Vector3(side * wallLampLocalX, 0, bd / 2 + 0.3)
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), barn.rot);
+    const lx = barn.x + off.x;
+    const lz = barn.z + off.z;
+    const ly = by + 5.51;
 
-  // 发光灯泡
-  //   ★ 半径从 0.26 缩到 0.13：模型灯罩内腔只有 0.34 宽，
-  //     0.26 的球几乎撑满罩子，加上 Bloom 后变成一团白球，
-  //     完全看不出"灯"的形状。缩到 0.13 刚好在罩子里发出一点暖光。
-  const wallBulbMat = new THREE.MeshBasicMaterial({
-    color: 0xffc870,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  const wallBulb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), wallBulbMat);
-  wallBulb.position.set(wallLampX, wallLampY, wallLampZ);
-  wallBulb.renderOrder = 3;
-  group.add(wallBulb);
+    const bulbMat = new THREE.MeshBasicMaterial({
+      color: 0xffc870, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), bulbMat);
+    bulb.position.set(lx, ly, lz);
+    bulb.renderOrder = 3;
+    group.add(bulb);
 
-  // 地面光斑（壁灯是侧向照明，光斑略小、略偏门的方向）
-  const wallPoolMat = new THREE.ShaderMaterial({
-    uniforms: THREE.UniformsUtils.clone(PoolShader.uniforms),
-    vertexShader: PoolShader.vertexShader,
-    fragmentShader: PoolShader.fragmentShader,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-  });
-  const wallPool = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), wallPoolMat);
-  wallPool.rotation.x = -Math.PI / 2;
-  wallPool.position.set(wallLampX + 0.8, by + 0.08, wallLampZ + 2.0);
-  wallPool.renderOrder = 2;
-  group.add(wallPool);
+    const poolMat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.clone(PoolShader.uniforms),
+      vertexShader: PoolShader.vertexShader,
+      fragmentShader: PoolShader.fragmentShader,
+      transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    });
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(lx + side * 0.8, by + 0.08, lz + 2.0);
+    pool.renderOrder = 2;
+    group.add(pool);
 
-  // 点光源（暖黄，范围比路灯小）
-  //   ★ 用独立的系数驱动，不要复用路灯的 52 倍 —— 壁灯贴着墙，
-  //     强度太大会把整面墙烧成橙白色，失去木板的层次。
-  // ★ 点光源位置要和灯泡【重合】，不要往外推 ——
-  //   推到 +0.5 会让光锥偏向门外，门框边缘出现一道生硬的光边。
-  const wallLight = new THREE.PointLight(0xffb860, 0, 18, 2);
-  wallLight.position.set(wallLampX, wallLampY - 0.1, wallLampZ + 0.15);
-  group.add(wallLight);
-
-  // ★ 壁灯单独驱动（不进 lamps 数组）——
-  //   路灯的强度系数是 52，壁灯贴墙只需要 1/3 左右。
-  const wallLampParts = { bulb: wallBulb, pool: wallPool, light: wallLight };
+    const light = new THREE.PointLight(0xffb860, 0, 18, 2);
+    light.position.set(lx, ly - 0.1, lz + 0.15);
+    group.add(light);
+    wallLampParts.push({ bulb, pool, light });
+  }
 
   // ---------- 农舍 ----------
   const house = BUILDINGS.farmhouse;
@@ -347,13 +324,15 @@ export function buildNightLights(model, scene) {
       l.visible = winOpacity > 0.06;
     }
 
-    // 壁灯：灯泡 + 光斑 + 点光，强度约为路灯的 1/3
-    wallLampParts.bulb.material.opacity = winOpacity * 0.90;
-    wallLampParts.bulb.visible = winOpacity > 0.06;
-    wallLampParts.pool.material.uniforms.uOpacity.value = winOpacity * 0.16;
-    wallLampParts.pool.visible = winOpacity > 0.06;
-    wallLampParts.light.intensity = winOpacity * 20;
-    wallLampParts.light.visible = winOpacity > 0.06;
+    // 壁灯：左右两盏同步
+    for (const wl of wallLampParts) {
+      wl.bulb.material.opacity = winOpacity * 0.90;
+      wl.bulb.visible = winOpacity > 0.06;
+      wl.pool.material.uniforms.uOpacity.value = winOpacity * 0.16;
+      wl.pool.visible = winOpacity > 0.06;
+      wl.light.intensity = winOpacity * 20;
+      wl.light.visible = winOpacity > 0.06;
+    }
 
     for (const lamp of lamps) {
       const u = lamp.userData;

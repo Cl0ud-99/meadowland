@@ -529,10 +529,13 @@ export function buildBarnDemo(opts = {}) {
   part(parts, box(0.16, 0.16, 0.16, 0x5a4a3a, 0, atticY + atticH + 0.02, gableZ + 0.30));
 
   // ---- 壁灯（门右侧）----
-  const lampX = doorW / 2 + 1.4, lampY = 5.2;
-  part(parts, box(0.14, 0.5, 0.14, 0x3a2a1e, lampX, lampY + 0.5, D / 2 + 0.1));
-  part(parts, box(0.5, 0.62, 0.5, 0x3a2a1e, lampX, lampY, D / 2 + 0.28));
-  part(parts, box(0.34, 0.44, 0.34, K.lamp, lampX, lampY + 0.09, D / 2 + 0.3));
+  const lampY = 5.2;
+  for (const side of [-1, 1]) {
+    const lampX = side * (doorW / 2 + 1.4);
+    part(parts, box(0.14, 0.5, 0.14, 0x3a2a1e, lampX, lampY + 0.5, D / 2 + 0.1));
+    part(parts, box(0.5, 0.62, 0.5, 0x3a2a1e, lampX, lampY, D / 2 + 0.28));
+    part(parts, box(0.34, 0.44, 0.34, K.lamp, lampX, lampY + 0.09, D / 2 + 0.3));
+  }
 
   // ---- 木梯（靠右侧墙）----
   const lx = W / 2 + 0.35;
