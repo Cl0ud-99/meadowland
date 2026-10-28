@@ -857,7 +857,11 @@ function applySeason(t) {
   // 草簇：直接设色（冬季跟着草地一起变白，否则雪地上会留一圈绿草刺）
   if (app.grass && app.grass.material) {
     const gc = srgbOf(grassA);
-    app.grass.material.color.setRGB(gc.r, gc.g, gc.b, THREE.SRGBColorSpace);
+    // 草簇和地面同步压暗；冬季雪量上来后逐步恢复白色
+    const grassK = 1 - 0.30 * (1 - snowAmount);
+    app.grass.material.color.setRGB(
+      gc.r * grassK, gc.g * grassK, gc.b * grassK, THREE.SRGBColorSpace
+    );
   }
 
   // 地形：草地主体 + 冬季积雪。

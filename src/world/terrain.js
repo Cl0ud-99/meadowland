@@ -168,6 +168,12 @@ function makeGroundColor() {
     tmp.g = clamp(tmp.g * shade, 0, 1);
     tmp.b = clamp(tmp.b * shade, 0, 1);
 
+    // 草地整体明度下调 30%（泥斑/岩石在后面叠加，不受影响）
+    const GRASS_BRIGHTNESS = 0.70;
+    tmp.r = clamp(tmp.r * GRASS_BRIGHTNESS, 0, 1);
+    tmp.g = clamp(tmp.g * GRASS_BRIGHTNESS, 0, 1);
+    tmp.b = clamp(tmp.b * GRASS_BRIGHTNESS, 0, 1);
+
     const dirtMask = smoothstep(0.55, 0.78, fbmPatch(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
     if (dirtMask > 0.01) {
       tmp2.copy(cDirt);
