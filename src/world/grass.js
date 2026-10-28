@@ -41,6 +41,38 @@ function makeTuftGeometry() {
   return geo;
 }
 
+// 小花：5 片白色花瓣 + 黄色花心；实例色可把整朵染成黄色。
+function makeFlowerGeometry() {
+  const pos = [], col = [];
+  const pushTri = (ax, az, bx, bz, cx, cz, color) => {
+    pos.push(ax, 0.012, az, bx, 0.012, bz, cx, 0.012, cz);
+    for (let k = 0; k < 3; k++) col.push(color[0], color[1], color[2]);
+  };
+  const petals = 5;
+  for (let i = 0; i < petals; i++) {
+    const a = (i / petals) * Math.PI * 2;
+    const inner = 0.024, outer = 0.112, half = 0.046;
+    pushTri(
+      Math.cos(a) * inner, Math.sin(a) * inner,
+      Math.cos(a - half) * outer, Math.sin(a - half) * outer,
+      Math.cos(a + half) * outer, Math.sin(a + half) * outer,
+      [1.0, 0.98, 0.86]
+    );
+  }
+  // 中心黄色小花心
+  const segs = 6;
+  for (let i = 0; i < segs; i++) {
+    const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
+    pushTri(0, 0, Math.cos(a0) * 0.024, Math.sin(a0) * 0.024,
+      Math.cos(a1) * 0.032, Math.sin(a1) * 0.032, [0.98, 0.72, 0.16]);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
 // 近景草丛：实例化的小草簇：只在台地附近撒，用实例化的小三角片，保证治愈的"毛茸茸"边缘
 export function buildGrassTufts(model, rng, count = 2600) {
   const geo = makeTuftGeometry();
@@ -160,6 +192,47 @@ export function buildGrassTufts(model, rng, count = 2600) {
   }
   mesh.count = i;
   mesh.instanceMatrix.needsUpdate = true;
+
+  // 草地里稀疏点缀白/黄小花
+  {
+    const flowerCount = Math.max(120, Math.round(count * 0.06));
+    const flowers = new THREE.InstancedMesh(
+      makeFlowerGeometry(),
+      new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false }),
+      flowerCount
+    );
+    flowers.name = 'flowers';
+    flowers.frustumCulled = true;
+    const fm = new THREE.Matrix4();
+    const fq = new THREE.Quaternion();
+    const fp = new THREE.Vector3();
+    const fs = new THREE.Vector3();
+    const fc = new THREE.Color();
+    let fi = 0;
+    for (let k = 0; k < flowerCount; k++) {
+      const ang = rng.next() * Math.PI * 2;
+      const rad = 12 + Math.sqrt(rng.next()) * 168;
+      const x = Math.cos(ang) * rad;
+      const z = Math.sin(ang) * rad;
+      if (Math.abs(x) > WORLD.size * 0.48 || Math.abs(z) > WORLD.size * 0.48) continue;
+      const pond = BUILDINGS.pond;
+      if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
+      fp.set(x, model.heightAt(x, z) + 0.035, z);
+      fq.setFromAxisAngle(up, rng.next() * Math.PI * 2);
+      const sc = rng.range(0.9, 1.7);
+      fs.set(sc, sc, sc);
+      fm.compose(fp, fq, fs);
+      flowers.setMatrixAt(fi, fm);
+      if (rng.next() < 0.58) fc.setRGB(1, 1, 1);
+      else fc.setRGB(1.28, 1.0, 0.48);
+      flowers.setColorAt(fi, fc);
+      fi++;
+    }
+    flowers.count = fi;
+    flowers.instanceMatrix.needsUpdate = true;
+    if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
+    mesh.add(flowers);
+  }
 
   return {
     mesh,
