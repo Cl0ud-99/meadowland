@@ -525,14 +525,6 @@ function makeGinkgo() {
     const size = 1.15 + rnd() * 0.65;
     fanLeaf(g, x, y, z, size, golds[i % golds.length], rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
   }
-  // 树冠外飘叶
-  for (let i = 0; i < 26; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = 7.5 + rnd() * 4.5;
-    const y = 5.0 + rnd() * 14.0;
-    fanLeaf(g, Math.cos(a) * r, y, Math.sin(a) * r, 0.9 + rnd() * 0.6, golds[i % golds.length], rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
-  }
-
   return g;
 }
 
@@ -579,20 +571,6 @@ function makeAmethyst() {
     const shell = 0.55 + rnd() * 0.5;
     shard(Math.cos(phi) * rr * 7.3 * shell, 15.0 + u * 4.5 * shell, Math.sin(phi) * rr * 6.4 * shell, 0.55 + rnd() * 0.65);
   }
-  // 飘散碎片
-  for (let i = 0; i < 34; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = 7.0 + rnd() * 5.5;
-    shard(Math.cos(a) * r, 4.0 + rnd() * 15.0, Math.sin(a) * r, 0.3 + rnd() * 0.35);
-  }
-  // 细白线光环
-  for (let i = 0; i < 3; i++) {
-    const ring = addMesh(g, new THREE.TorusGeometry(7.6 + i * 1.6, 0.05, 5, 40), mat(0xece7f2), 0, 9.5 + i * 2.2, 0);
-    ring.rotation.x = Math.PI / 2 + 0.10 * (i - 1);
-    ring.rotation.z = 0.12 * i;
-    ring.castShadow = false;
-  }
-
   return g;
 }
 
