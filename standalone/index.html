@@ -51015,13 +51015,18 @@ void main() {
 
 	const soilBumpFbm = makeFbm(4321, 3, 2.15, 0.5);
 
+	function soilBumpAt(x, z) {
+	  return soilBumpFbm(x * 0.55, z * 0.55) * 0.105
+	       + soilBumpFbm(x * 2.4, z * 2.4) * 0.030;
+	}
+
 	// ---------------------------------------------------------------------------
 	// 贴合地形的土壤网格：把矩形细分成 N×M，每个顶点取地形高度 + 微抬
 	// 这样坡地上也不会悬空，且和周围草地严丝合缝
 	// ---------------------------------------------------------------------------
 	function makeSoilMesh(model, x, z, w, d, rot, color, segX = 12, segZ = 10) {
-	  const fineSegX = Math.max(segX, Math.ceil(w / 1.5));
-	  const fineSegZ = Math.max(segZ, Math.ceil(d / 1.5));
+	  const fineSegX = Math.max(segX, Math.ceil(w / 0.85));
+	  const fineSegZ = Math.max(segZ, Math.ceil(d / 0.85));
 	  const geo = new PlaneGeometry(w, d, fineSegX, fineSegZ);
 	  geo.rotateX(-Math.PI / 2);
 
@@ -51039,9 +51044,7 @@ void main() {
 	    pos.setX(i, wx);
 	    pos.setZ(i, wz);
 	    // 抬高 0.12，避免和地形 z-fighting，同时形成一点"田埂厚度"的观感
-	    const bump = soilBumpFbm(wx * 0.55, wz * 0.55) * 0.032
-	               + soilBumpFbm(wx * 2.4, wz * 2.4) * 0.010;
-	    pos.setY(i, model.heightAt(wx, wz) + 0.12 + bump);
+	    pos.setY(i, model.heightAt(wx, wz) + 0.12 + soilBumpAt(wx, wz));
 	  }
 	  geo.computeVertexNormals();
 
@@ -51068,7 +51071,8 @@ void main() {
 	      '  float c = soilHash(i + vec2(0.0, 1.0)), d = soilHash(i + vec2(1.0, 1.0));\n' +
 	      '  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);\n' +
 	      '}\n' +
-	      'float soilFbm(vec2 p) { return soilNoise(p) * 0.62 + soilNoise(p * 2.1) * 0.38; }\n';
+	      'float soilFbm(vec2 p) { return soilNoise(p) * 0.62 + soilNoise(p * 2.1) * 0.38; }\n' +
+	      'float soilHeight(vec2 p) { return soilFbm(p * 1.25) * 0.08 + soilNoise(p * 4.5) * 0.018; }\n';
 	    shader.fragmentShader = prefix + shader.fragmentShader.replace(
 	      '#include <color_fragment>',
 	      '#include <color_fragment>\n' +
@@ -51081,6 +51085,18 @@ void main() {
 	      '  sCol += vec3(0.070, 0.050, 0.030) * smoothstep(0.72, 1.0, sGrit);\n' +
 	      '  float sFade = 1.0 - smoothstep(95.0, 320.0, vSoilDist);\n' +
 	      '  diffuseColor.rgb = mix(diffuseColor.rgb, sCol, sFade);'
+	    );
+	    // 片元级法线扰动：让细碎土块在光照下也能出凹凸感
+	    shader.fragmentShader = shader.fragmentShader.replace(
+	      '#include <normal_fragment_begin>',
+	      '#include <normal_fragment_begin>\n' +
+	      '  vec2 sp = vSoilWorld.xz;\n' +
+	      '  float se = 0.18;\n' +
+	      '  float sh0 = soilHeight(sp);\n' +
+	      '  float shx = soilHeight(sp + vec2(se, 0.0));\n' +
+	      '  float shz = soilHeight(sp + vec2(0.0, se));\n' +
+	      '  vec3 sN = normalize(vec3((sh0 - shx) * 14.0, 0.025, (sh0 - shz) * 14.0));\n' +
+	      '  normal = normalize(normal * 0.25 + mat3(viewMatrix) * sN);'
 	    );
 	    mat.userData.shader = shader;
 	  };
@@ -51337,7 +51353,7 @@ void main() {
 	        const lx = baseX + rng.range(-jitterX, jitterX);
 	        const lz = baseZ + rng.range(-jitterZ, jitterZ);
 	        const [wx, wz] = localToWorld(x, z, rot, lx, lz);
-	        const wy = model.heightAt(wx, wz) + 0.12;
+	        const wy = model.heightAt(wx, wz) + 0.12 + soilBumpAt(wx, wz);
 
 	        p.set(wx, wy, wz);
 	        q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
