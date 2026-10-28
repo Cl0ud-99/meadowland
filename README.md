@@ -6,7 +6,7 @@
 
 可互动像素农场**版本 0.7.4** · [在线体验](https://Cl0ud-99.github.io/meadowland/?v=0.7.4)
 
-![Meadowland 全景](screenshots/overview.png)
+![Meadowland 全景](screenshots/overview-074.png)
 
 ---
 
@@ -33,11 +33,11 @@ Meadowland 想做的不是“又一个农场模拟器”，而是一块可以随
 - **草地层次**：中频草色团块、坡度和低洼烘焙阴影、整体明度下调 30%，让地面不再像一张纸。
 - **开屏待机视差**：开屏未点击时保留低振幅鼠标视差，但只移动相机、不跑 OrbitControls，不再抖动/撕裂。
 
-![边界山脊开屏](screenshots/intro-hills.png)
+![边界山脊开屏](screenshots/intro-hills-074.png)
 
-![修理棚配色](screenshots/workshop.png)
+![修理棚配色](screenshots/workshop-074.png)
 
-![水井配色](screenshots/well.png)
+![水井配色](screenshots/well-074.png)
 
 ---
 
@@ -45,7 +45,7 @@ Meadowland 想做的不是“又一个农场模拟器”，而是一块可以随
 
 | 清晨全景 | 冬日雪景 |
 | --- | --- |
-| ![清晨](screenshots/overview.png) | ![冬季](screenshots/winter.png) |
+| ![清晨](screenshots/overview-074.png) | ![冬季](screenshots/winter.png) |
 
 | 黄昏 | 水车 |
 | --- | --- |
