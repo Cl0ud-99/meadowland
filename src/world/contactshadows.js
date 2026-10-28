@@ -53,20 +53,8 @@ export function buildContactShadows(model, opts = {}) {
     polygonOffsetUnits: -2,
     side: THREE.DoubleSide,
   });
-  const stripMat = new THREE.MeshBasicMaterial({
-    map: stripTexture(),
-    transparent: true,
-    opacity: 0.34,
-    depthWrite: false,
-    color: 0x1c2a16,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
-    side: THREE.DoubleSide,
-  });
 
   const discs = [];
-  const strips = [];
 
   // 建筑/大物件：x,z 是中心，sx/sz 是阴影长宽
   for (const b of opts.buildings || []) {
@@ -92,13 +80,17 @@ export function buildContactShadows(model, opts = {}) {
       const dx = bx - ax, dz = bz - az;
       const len = Math.hypot(dx, dz);
       if (len < 0.1) continue;
-      strips.push({
-        x: (ax + bx) / 2,
-        z: (az + bz) / 2,
-        len,
-        width: 0.9,
-        rot: Math.atan2(dx, dz),
-      });
+      const n = Math.max(1, Math.round(len / 2.4));
+      for (let k = 0; k <= n; k++) {
+        const t = k / n;
+        discs.push({
+          x: ax + dx * t,
+          z: az + dz * t,
+          sx: 1.0,
+          sz: 0.85,
+          rot: Math.atan2(dx, dz),
+        });
+      }
     }
   }
 
@@ -114,21 +106,6 @@ export function buildContactShadows(model, opts = {}) {
       p.set(d.x, model.heightAt(d.x, d.z) + 0.035, d.z);
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), d.rot);
       s.set(d.sx * 0.82, 1, d.sz * 0.82);
-      m.compose(p, q, s);
-      im.setMatrixAt(i, m);
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.renderOrder = 1;
-    group.add(im);
-  }
-
-  if (strips.length) {
-    const im = new THREE.InstancedMesh(planeGeo, stripMat, strips.length);
-    im.name = 'contactStrips';
-    strips.forEach((d, i) => {
-      p.set(d.x, model.heightAt(d.x, d.z) + 0.032, d.z);
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), d.rot);
-      s.set(d.len, 1, d.width);
       m.compose(p, q, s);
       im.setMatrixAt(i, m);
     });

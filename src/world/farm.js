@@ -157,6 +157,7 @@ export function windmill(style = 'ranch') {
 
   group.name = 'windmill';
   group.userData.blades = blades;
+  blades.traverse((o) => { if (o.isMesh) o.castShadow = false; });
   group.userData.windmillStyle = style;
   group.userData.spinSpeed = spec.spin;
   group.userData.scaleFactor = spec.scale || 1;
@@ -373,6 +374,7 @@ export function fence(points, height = 1.5, model = null, closed = true, style =
 
   const m = meshFrom(parts, { flatShading: false });
   m.name = 'fence-' + style;
+  m.castShadow = false;   // 细长横杆/尖桩在雪地上会拉出很长的"十字线"，改由接触阴影压地
   // ★ 围栏的横杆只有 0.16~0.24 宽，用建筑级的描边厚度会把它整根吞掉，
   //   在薄雾里就变成一条粗黑虚线。单独调细。
   m.userData.outlineThickness = 0.014;
