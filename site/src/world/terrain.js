@@ -356,9 +356,9 @@ function injectGroundDetail(material) {
         float n = groundFbm(vGroundWorld.xz * 0.26) * 0.62 + groundNoise(vGroundWorld.xz * 1.65) * 0.38;
         float fine = groundNoise(vGroundWorld.xz * 4.6);
         float fleck = groundHash(floor(vGroundWorld.xz * 9.0));
-        float detail = 1.0 - smoothstep(35.0, 180.0, length(vViewPosition));
-        vec3 felt = diffuseColor.rgb * (0.86 + n * 0.14 + (fine - 0.5) * 0.05);
-        felt += vec3(0.018, 0.022, 0.012) * smoothstep(0.72, 1.0, fleck);
+        float detail = 1.0 - smoothstep(80.0, 360.0, length(vViewPosition));
+        vec3 felt = diffuseColor.rgb * (0.82 + n * 0.18 + (fine - 0.5) * 0.07);
+        felt += vec3(0.025, 0.030, 0.016) * smoothstep(0.70, 1.0, fleck);
         diffuseColor.rgb = mix(diffuseColor.rgb, felt, detail);
       }`
     );

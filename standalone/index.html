@@ -38424,7 +38424,7 @@ void main() {
 	    animalCount: { cow: 8, sheep: 11, chicken: 8 },
 	    // 森林扩大 + 加密 30%：900 -> 1170
 	    treeCount: 1170,
-	    grassCount: 3600,
+	    grassCount: 4800,
 	    terrainSegments: 190,
 	    bloomResolution: 512,
 	    tiltBlurTaps: 13,      // 13-tap
@@ -38440,7 +38440,7 @@ void main() {
 	    animalCount: { cow: 5, sheep: 7, chicken: 5 },
 	    // 同比例 +30%：520 -> 676
 	    treeCount: 676,
-	    grassCount: 1600,
+	    grassCount: 2100,
 	    terrainSegments: 120,
 	    bloomResolution: 192,
 	    tiltBlurTaps: 8,
@@ -38457,7 +38457,7 @@ void main() {
 	    animalCount: { cow: 3, sheep: 5, chicken: 4 },
 	    // 低端只 +10%（260 -> 286），避免软渲染/老手机掉帧
 	    treeCount: 286,
-	    grassCount: 650,
+	    grassCount: 850,
 	    terrainSegments: 88,
 	    // 低端也保留 Bloom（夜晚的灯光全靠它），但分辨率降到 96，
 	    // 相当于只在 1/8 分辨率上做辉光，开销很小
@@ -39047,9 +39047,9 @@ void main() {
         float n = groundFbm(vGroundWorld.xz * 0.26) * 0.62 + groundNoise(vGroundWorld.xz * 1.65) * 0.38;
         float fine = groundNoise(vGroundWorld.xz * 4.6);
         float fleck = groundHash(floor(vGroundWorld.xz * 9.0));
-        float detail = 1.0 - smoothstep(35.0, 180.0, length(vViewPosition));
-        vec3 felt = diffuseColor.rgb * (0.86 + n * 0.14 + (fine - 0.5) * 0.05);
-        felt += vec3(0.018, 0.022, 0.012) * smoothstep(0.72, 1.0, fleck);
+        float detail = 1.0 - smoothstep(80.0, 360.0, length(vViewPosition));
+        vec3 felt = diffuseColor.rgb * (0.82 + n * 0.18 + (fine - 0.5) * 0.07);
+        felt += vec3(0.025, 0.030, 0.016) * smoothstep(0.70, 1.0, fleck);
         diffuseColor.rgb = mix(diffuseColor.rgb, felt, detail);
       }`
 	    );
@@ -46264,7 +46264,7 @@ void main() {
 	      pos.push(pa[i * 3], pa[i * 3 + 1], pa[i * 3 + 2]);
 	      nrm.push(na[i * 3], na[i * 3 + 1], na[i * 3 + 2]);
 	      const t = Math.min(1, Math.max(0, pa[i * 3 + 1] / h));
-	      const f = 0.58 + 0.42 * t;
+	      const f = 0.64 + 0.36 * t;
 	      col.push(f, f, f);
 	    }
 	    g.dispose();
@@ -46322,7 +46322,7 @@ void main() {
 	      `#include <dithering_fragment>
        // three 的 Lambert 材质自带 vViewPosition（视图空间位置）
        float camDist = length(vViewPosition);
-       float fade = 1.0 - smoothstep(130.0, 220.0, camDist);
+       float fade = 1.0 - smoothstep(170.0, 300.0, camDist);
        if (fade < 0.02) discard;
        gl_FragColor.a *= fade;`
 	    );
@@ -46345,12 +46345,13 @@ void main() {
 	  while (i < count && guard < count * 20) {
 	    guard++;
 	    if (clusterLeft <= 0) {
-	      // 先撒一个簇心，再在簇心周围撒 3~6 根单锥草。
+	      // 先撒一个簇心，再在簇心周围撒 3~6 根短草叶。
 	      const ang = rng.next() * Math.PI * 2;
-	      const near = i < count * 0.65;
+	      // 一半近景、一半铺到外圈，让草簇覆盖整块农场和坡地。
+	      const near = i < count * 0.5;
 	      const rad = near
-	        ? 20 + Math.sqrt(rng.next()) * 45
-	        : 55 + Math.sqrt(rng.next()) * 115;
+	        ? 20 + Math.sqrt(rng.next()) * 50
+	        : 65 + Math.sqrt(rng.next()) * 135;
 	      clusterX = Math.cos(ang) * rad;
 	      clusterZ = Math.sin(ang) * rad;
 	      clusterLeft = 3 + Math.floor(rng.next() * 4);
@@ -46378,7 +46379,7 @@ void main() {
 	    m.compose(p, q, s);
 	    mesh.setMatrixAt(i, m);
 	    // 每根草独立色差，避免整片草一个色号
-	    const v = rng.range(0.80, 1.12);
+	    const v = rng.range(0.94, 1.22);
 	    tint.setRGB(v * rng.range(0.92, 1.04), v, v * rng.range(0.82, 0.94));
 	    mesh.setColorAt(i, tint);
 	    i++;
@@ -62849,7 +62850,7 @@ void main() {
 	  if (app.grass && app.grass.material) {
 	    const gc = srgbOf(grassA);
 	    // 草簇和地面同步压暗；冬季雪量上来后逐步恢复白色
-	    const grassK = 1 - 0.26 * (1 - snowAmount);
+	    const grassK = 1 - 0.16 * (1 - snowAmount);
 	    app.grass.material.color.setRGB(
 	      gc.r * grassK, gc.g * grassK, gc.b * grassK, SRGBColorSpace
 	    );

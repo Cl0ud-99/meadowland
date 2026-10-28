@@ -27,7 +27,7 @@ function makeTuftGeometry() {
       pos.push(pa[i * 3], pa[i * 3 + 1], pa[i * 3 + 2]);
       nrm.push(na[i * 3], na[i * 3 + 1], na[i * 3 + 2]);
       const t = Math.min(1, Math.max(0, pa[i * 3 + 1] / h));
-      const f = 0.58 + 0.42 * t;
+      const f = 0.64 + 0.36 * t;
       col.push(f, f, f);
     }
     g.dispose();
@@ -85,7 +85,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
       `#include <dithering_fragment>
        // three 的 Lambert 材质自带 vViewPosition（视图空间位置）
        float camDist = length(vViewPosition);
-       float fade = 1.0 - smoothstep(130.0, 220.0, camDist);
+       float fade = 1.0 - smoothstep(170.0, 300.0, camDist);
        if (fade < 0.02) discard;
        gl_FragColor.a *= fade;`
     );
@@ -108,12 +108,13 @@ export function buildGrassTufts(model, rng, count = 2600) {
   while (i < count && guard < count * 20) {
     guard++;
     if (clusterLeft <= 0) {
-      // 先撒一个簇心，再在簇心周围撒 3~6 根单锥草。
+      // 先撒一个簇心，再在簇心周围撒 3~6 根短草叶。
       const ang = rng.next() * Math.PI * 2;
-      const near = i < count * 0.65;
+      // 一半近景、一半铺到外圈，让草簇覆盖整块农场和坡地。
+      const near = i < count * 0.5;
       const rad = near
-        ? 20 + Math.sqrt(rng.next()) * 45
-        : 55 + Math.sqrt(rng.next()) * 115;
+        ? 20 + Math.sqrt(rng.next()) * 50
+        : 65 + Math.sqrt(rng.next()) * 135;
       clusterX = Math.cos(ang) * rad;
       clusterZ = Math.sin(ang) * rad;
       clusterLeft = 3 + Math.floor(rng.next() * 4);
@@ -141,7 +142,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
     m.compose(p, q, s);
     mesh.setMatrixAt(i, m);
     // 每根草独立色差，避免整片草一个色号
-    const v = rng.range(0.80, 1.12);
+    const v = rng.range(0.94, 1.22);
     tint.setRGB(v * rng.range(0.92, 1.04), v, v * rng.range(0.82, 0.94));
     mesh.setColorAt(i, tint);
     i++;
