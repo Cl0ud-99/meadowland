@@ -28,11 +28,11 @@ export const COOP = [
 //   原来的 scale（0.85~1.0）是按旧版调的，换成新版后明显偏小。
 //   这里整体放大一倍，让它们回到和建筑、卡车协调的体量。
 export const TREE_SPECS = [
-  { kind: 'oak',    x: -2,  z: 22,  scale: 1.872, name: '橡树' },
+  { kind: 'apple',  x: -2,  z: 22,  scale: 1.872, name: '苹果树' },
   // ★ 原"云杉"(48, -8) 已删除 —— 它紧贴水塔(48,10)北侧（距 18 单位），
   //   挡住了水塔和风车的视线。用户要求删这棵，不是羊驼群那棵橡树。
   { kind: 'birch',  x: -40, z: -25, scale: 1.7,   name: '白桦' },
-  { kind: 'birch',  x: 24,  z: -5,  scale: 1.7,   name: '白桦（卡车旁）' },
+  { kind: 'blossom', x: 24, z: -5,  scale: 1.7,   name: '樱花树' },
 ];
 
 // 参天大树（地标）
