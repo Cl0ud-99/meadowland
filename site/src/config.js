@@ -111,7 +111,7 @@ export const LIGHT = {
     hemi: 0.50,             // 0.62 -> 0.50（减少灰蒙蒙的漫射）
     sunColor: 0xffd9a8,     // 晨光：暖橙
     sunIntensity: 0.85,     // 0.55 -> 0.85（+55%，让曙光透进来）
-    sunPos: { x: 95, y: 26, z: 60 },   // 低角度斜射（长影子）
+    sunPos: { x: 95, y: 52, z: 60 },   // 抬高高度角：避免被山脊挡住，同时保留侧向斜射
     ambient: 0.24,          // 0.28 -> 0.24（略降，但别太暗）
     // 雾色不再写死：运行时由「天空地平线色 → 中层色」lerp 0.40 得出
     // （见 main.js applyMode），保证雾色永远等于远处天空的颜色，
@@ -177,7 +177,7 @@ export const LIGHT = {
     hemi: 0.42,
     sunColor: 0xff8a4a,     // 落日：强橙
     sunIntensity: 1.25,
-    sunPos: { x: -110, y: 16, z: 20 },  // 很低的角度，斜射
+    sunPos: { x: -110, y: 48, z: 20 },  // 抬高高度角：落日不再沉进山脊后面
     ambient: 0.16,
     fog: 0xd08a6a,          // 暖色薄雾（运行时按天空色校正）
     fogNear: 300,
