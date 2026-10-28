@@ -16,6 +16,7 @@ import { buildWoodpile } from './world/woodpile.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
 import { buildForest, buildScatterTrees } from './world/forest.js';
+import { buildOrchard } from './world/orchard.js';
 import { buildGrassTufts } from './world/grass.js';
 import { buildFarm } from './world/farm.js';
 import { buildFields } from './world/fields.js';
@@ -201,6 +202,10 @@ function boot() {
   extraTrees.add(scatterTrees);
 
   world.add(extraTrees);
+
+  // 右侧果园：果树 + 蜂箱 + 野餐角 + 风车花坛
+  const orchard = buildOrchard(terrainModel, rng, buildTree, extraTrees);
+  world.add(orchard);
 
   const road = buildRoad(terrainModel, ROAD_POINTS, 5.5);
   world.add(road);
