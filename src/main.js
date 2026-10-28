@@ -972,9 +972,10 @@ function loop() {
   if (app.rig.introActive) {
     app.rig.updateIntro(performance.now());
   } else if (app.rig.introPending) {
-    // 开屏待机：相机固定在世界边界机位上。
-    // 不能走 controls.update()/applyParallax —— 开屏机位在 maxDistance 之外，
-    // OrbitControls 会把相机拉回，而视差又按远距离放大，鼠标一动就抖/撕裂。
+    // 开屏待机：只跑低振幅的专用视差，不跑 OrbitControls。
+    // 开屏机位在 maxDistance 之外，走 controls.update() 会把相机拉回，
+    // 普通视差又按远距离放大，两者叠加才会抖/撕裂。
+    app.rig.applyIntroParallax(dt);
   } else {
     // ★ 关键：飞行期间【不能】调用 controls.update()。
     //   OrbitControls.update() 即使 enabled=false 也会执行，

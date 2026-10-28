@@ -804,6 +804,28 @@ export function createCameraRig(renderer, model) {
     camera.position.add(_parallaxApplied);
   }
 
+  // 开屏待机专用视差：只移动相机，不调用 controls.update()。
+  // 振幅固定且很小，和场景距离无关，避免开屏边界机位被放大成大幅抖动。
+  const _introRight = new THREE.Vector3();
+  const _introUp = new THREE.Vector3();
+  function applyIntroParallax(dt) {
+    if (!intro.pending) return;
+    const k = 1 - Math.exp(-parallax.damping * dt);
+    parallax.curX += (parallax.targetX - parallax.curX) * k;
+    parallax.curY += (parallax.targetY - parallax.curY) * k;
+
+    _introRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    _introUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+
+    // 固定振幅：鼠标到边缘时约移动 2.4 个单位，远景里只是轻微晃动
+    const offX = parallax.curX * 2.4;
+    const offY = -parallax.curY * 1.5;
+    camera.position.copy(intro.from)
+      .addScaledVector(_introRight, offX)
+      .addScaledVector(_introUp, offY);
+    camera.lookAt(intro.fromTarget);
+  }
+
   // 相机被飞行/重置移动时，重置视差基准
   function resetParallaxBase() {
     parallaxInit = false;
@@ -911,7 +933,7 @@ export function createCameraRig(renderer, model) {
 
   return {
     camera, controls, updateFov, playIntro, placeAtIntroStart, updateIntro,
-    flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
+    flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, applyIntroParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
     get introActive() { return intro.active; },
     get introPending() { return intro.pending; },
     get flyActive() { return fly.active; },
