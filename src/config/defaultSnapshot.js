@@ -18,7 +18,7 @@ export const DEFAULT_SNAPSHOT = {
   watermillStyle: 0,
   snowmenStyles: ['lowpoly', 'lowpoly', 'lowpoly'],
   fields: ['wheat', 'cabbage', 'sunflower', 'pasture2'],
-  trees: ['oak', 'birch', 'birch', 'birch', 'birch', 'birch', 'autumn', 'autumn'],
+  trees: ['apple', 'birch', 'blossom', 'camellia', 'birch', 'blossom', 'maple', 'apple'],
   bigtreeKind: 'purple',
   truckStyle: 'blue',
   muted: true,

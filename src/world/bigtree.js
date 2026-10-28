@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { makeBirch, makeOak, makeSpruce, makeAutumnTree, setSkipFallenLeaves } from './treeDemo.js';
+import { setSkipFallenLeaves } from './treeDemo.js';
+import { SMALL_TREE_MAKERS } from './smalltrees.js';
 import { BIG_TREE_KINDS as BIG_TREE_LOWPOLY } from './bigtreesLowpoly.js';
 import { tint, merge } from '../util/geo.js';
 import { toonLambert } from '../render/toon.js';
@@ -522,12 +523,8 @@ function makeMapleParts(scale) {
 // ★ 用法：新版返回 Group（多 mesh），需要合并成单个几何体。
 // ---------------------------------------------------------------------------
 // 场景里的四棵小树用【新版】体素模型
-const TREE_KINDS = {
-  oak: makeOak,
-  birch: makeBirch,
-  spruce: makeSpruce,
-  autumn: makeAutumnTree,
-};
+const TREE_KINDS = Object.fromEntries(SMALL_TREE_MAKERS.map((m) => [m.kind, m.make]));
+const TREE_ALIASES = { oak: 'apple', spruce: 'camellia', autumn: 'maple' };
 
 // 参天大树可选品种（8 种低多边形巨树）
 export const BIG_TREE_SPECIES = BIG_TREE_LOWPOLY.map((k) => ({
@@ -537,12 +534,11 @@ export const BIG_TREE_SPECIES = BIG_TREE_LOWPOLY.map((k) => ({
 }));
 
 // 小树可选品种（供 UI 使用）
-export const TREE_SPECIES = [
-  { kind: 'oak',    name: '橡树',   desc: '粗壮低矮，宽而扁的冠' },
-  { kind: 'birch',  name: '白桦',   desc: '细高，白树干带黑斑' },
-  { kind: 'spruce', name: '云杉',   desc: '针叶层叠，塔形轮廓' },
-  { kind: 'autumn', name: '秋树',   desc: '橙红树冠，秋季地标' },
-];
+export const TREE_SPECIES = SMALL_TREE_MAKERS.map((m) => ({
+  kind: m.kind,
+  name: m.name,
+  desc: '树木',
+}));
 
 // 把【新版巨树】Group 里的所有 mesh 合并成单个几何体（保留顶点色）
 const BIG_TARGET_H = 25;
@@ -602,57 +598,24 @@ function mergeTreeGroup(group) {
 }
 
 // ---------- 品种高度归一化 ----------
-//
-// ★ 问题：4 个品种的原始高度差得很多（实测，scale=1 时）：
-//     橡树 8.09 / 白桦 8.94 / 云杉 12.52 / 秋树 6.14
-//   而场景里每棵树只有一个 scale，直接乘上去就会——
-//     同一棵树切到秋树时矮了 3.65 米，树冠沉到地面；
-//     切到云杉时又高了 6 米，像换了一棵树。
-//   用户反馈的"秋树位置有高度差"就是这个。
-//
-// ★ 做法：每个品种先乘一个修正系数，把高度拉回同一个基准（橡树 8.09），
-//   再乘树自己的 scale。这样换品种只换形态，不换体量。
-//   参天大树用的是同一套思路（统一高度 25、最大宽度 28）。
-//   实测基准高度（scale=1 时的模型总高）：
-//     橡树 8.09 / 白桦 8.12 / 云杉 11.37 / 秋树 6.14
-//   参考高度取橡树的 8.09 —— 场景里橡树和白桦的现有 scale 是按它调的，
-//   这样归一化后它们的实际高度几乎不变，只有矮的秋树和高的云杉被拉平。
-const TREE_BASE_H = { oak: 8.09, birch: 8.12, spruce: 11.37, autumn: 6.14 };
 export const TREE_REF_H = 8.09;
-
-export function treeHeightFix(kind) {
-  return TREE_REF_H / (TREE_BASE_H[kind] || TREE_REF_H);
-}
-
-// ---------- 品种宽度微收 ----------
-//
-// 秋树模型是"矮而宽"的（原始 6.14 高、7.24 宽），
-// 按高度拉齐到橡树后，树冠横向会达到 17.9，比橡树（14.8）宽 21%，
-// 近景时整棵树冠把谷仓都盖住 —— 用户反馈的"位置有高度差"修好后
-// 又会变成"换品种后体量明显变大"。
-//
-// 这里只对明显偏宽的品种做 x/z 微收，云杉这种本来就细高的不动。
-const TREE_WIDTH_FIX = { autumn: 0.88 };
+export function treeHeightFix(kind) { return 1; }
 
 // 构建指定品种的几何体（已按 scale 缩放）
 function makeTreeGeo(kind, scale = 1) {
-  const maker = TREE_KINDS[kind] || TREE_KINDS.oak;
-  // ★ 场景里跳过模型自带的落叶（4 棵树各散十几片，草地上会变成碎点）
-  setSkipFallenLeaves(true);
-  const geo = mergeTreeGroup(maker());
-  setSkipFallenLeaves(false);
-  // 先归一化到统一高度，再乘这棵树自己的 scale
-  const s = scale * treeHeightFix(kind);
+  const maker = TREE_KINDS[kind] || TREE_KINDS.apple;
+  const mesh = maker();
+  const geo = mesh.geometry;
+  geo.computeBoundingBox();
+  const h = geo.boundingBox.max.y - geo.boundingBox.min.y;
+  const s = scale * (TREE_REF_H / Math.max(1e-3, h));
   geo.scale(s, s, s);
-  // 横向微收（只作用于偏宽的品种，见 TREE_WIDTH_FIX）
-  const wf = TREE_WIDTH_FIX[kind];
-  if (wf) geo.scale(wf, 1, wf);
   geo.computeBoundingBox();
   return geo;
 }
 
 export function buildTree(model, rng, opts) {
-  const { x, z, kind = 'oak', scale = 1 } = opts;
+  const { x, z, kind = 'apple', scale = 1 } = opts;
   const group = new THREE.Group();
   group.name = 'tree-' + kind;
 
@@ -708,15 +671,16 @@ export function buildTree(model, rng, opts) {
   // ★ 雪花必须跟着重建：它是贴着【旧品种表面】撒的，
   //   换了形态（尤其秋树矮、云杉高）之后，雪会悬在半空或埋进树冠。
   group.userData.setKind = (newKind) => {
-    if (!TREE_KINDS[newKind]) return false;
-    const newGeo = makeTreeGeo(newKind, scale);
+    const kind = TREE_ALIASES[newKind] || newKind;
+    if (!TREE_KINDS[kind]) return false;
+    const newGeo = makeTreeGeo(kind, scale);
     // ★ 同步更新描边几何体（见上）
     outlineRef = findOutline();
     if (outlineRef) outlineRef.geometry = newGeo;
     mesh.geometry.dispose();
     mesh.geometry = newGeo;
-    group.name = 'tree-' + newKind;
-    group.userData.kind = newKind;
+    group.name = 'tree-' + kind;
+    group.userData.kind = kind;
     // 换形状后重撒雪花（沿用当前季节可见性）
     snowDots.group.removeFromParent();
     snowDots.group.traverse((o) => {
@@ -725,7 +689,7 @@ export function buildTree(model, rng, opts) {
         if (o.material) o.material.dispose();
       }
     });
-    const fresh = makeSnowDots(mesh, newKind, scale);
+    const fresh = makeSnowDots(mesh, kind, scale);
     group.add(fresh.group);
     snowDots.group = fresh.group;
     snowDots.material = fresh.material;

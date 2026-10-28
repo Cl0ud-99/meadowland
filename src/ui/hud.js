@@ -995,7 +995,7 @@ export function createHud(app) {
     wheat: '🌾', cabbage: '🥬', pumpkin: '🎃', sunflower: '🌻',
     corn: '🌽', tomato: '🍅', carrot: '🥕', lavender: '💜',
   };
-  const TREE_ICON = { oak: '🌳', birch: '🍃', spruce: '🌲', autumn: '🍁' };
+  const TREE_ICON = { apple: '🍎', blossom: '🌸', maple: '🍁', birch: '🍃', camellia: '🌼' };
   const BIG_TREE_ICON = {
     broadleaf: '🌳', poinciana: '🌺', cactus: '🌵', purple: '🟣',
     baobab: '🪵', fir: '🌲', acacia: '🌿', ginkgo: '🌟',
@@ -1430,7 +1430,7 @@ export function createHud(app) {
         const nodes = collectTreeNodes();
         d.trees.forEach((kind, i) => {
           const t = nodes[i];
-          if (t && t.userData.setKind && TREE_SPECIES.some(sp => sp.kind === kind)) {
+          if (t && t.userData.setKind) {
             try { t.userData.setKind(kind); } catch (e) {}
           }
         });
@@ -1438,9 +1438,7 @@ export function createHud(app) {
 
       if (d.bigtreeKind && app.bigtree && app.bigtree.userData.setKind) {
         // ★ setKind 内部兼容旧存档的品种名
-        if (BIG_TREE_SPECIES.some(sp => sp.kind === d.bigtreeKind)) {
-          try { app.bigtree.userData.setKind(d.bigtreeKind); } catch (e) {}
-        }
+        try { app.bigtree.userData.setKind(d.bigtreeKind); } catch (e) {}
       }
 
       if (typeof d.truckStyle === 'string' && app.truck && app.rebuildTruck) {
