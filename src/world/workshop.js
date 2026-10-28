@@ -317,17 +317,6 @@ export function buildWorkshop(model, rng) {
   const group = new THREE.Group();
   group.name = 'workshop';
 
-  // 碎石/泥土地坪
-  const groundY = model.heightAt(66, 1) + 0.02;
-  const pad = new THREE.Mesh(
-    new THREE.PlaneGeometry(18, 13),
-    toonLambert({ color: 0x8f8a78, flatShading: true, shared: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })
-  );
-  pad.rotation.x = -Math.PI / 2;
-  pad.position.set(66, groundY, 2.6);
-  pad.receiveShadow = true;
-  group.add(pad);
-
   // 棚子 + 工作台 + 工具墙 + 台钳 + 工具柜
   group.add(makeShed(model));
   group.add(makeToolWall(model, 66, -2.55));
