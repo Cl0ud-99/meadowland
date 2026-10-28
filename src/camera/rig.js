@@ -156,6 +156,7 @@ export function createCameraRig(renderer, model) {
 
   function placeAtIntroStart() {
     computeIntroPoints();
+    intro.pending = true;
     camera.position.copy(intro.from);
     controls.target.copy(intro.fromTarget);
     // 开屏机位在世界边界之外，必须先放开 OrbitControls 的距离上限，
@@ -171,6 +172,7 @@ export function createCameraRig(renderer, model) {
   // （之前每次都 copy(intro.from)，如果相机被别的东西移动过，
   //   就会先"啪"地弹回起点再飞出去。）
   function playIntro(onDone) {
+    intro.pending = false;
     computeIntroPoints();
 
     // 起点 = 当前相机位置（点击那一刻的画面）
@@ -206,6 +208,7 @@ export function createCameraRig(renderer, model) {
 
     if (raw >= 1) {
       intro.active = false;
+      intro.pending = false;
 
       // 交接帧：先关阻尼同步一次 OrbitControls，再恢复阻尼
       // 同时把开屏时临时放开的距离上限收回正常值。
@@ -910,6 +913,7 @@ export function createCameraRig(renderer, model) {
     camera, controls, updateFov, playIntro, placeAtIntroStart, updateIntro,
     flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
     get introActive() { return intro.active; },
+    get introPending() { return intro.pending; },
     get flyActive() { return fly.active; },
     get resetActive() { return resetAnim.active; },
     get moving() { return moveState.active; },
