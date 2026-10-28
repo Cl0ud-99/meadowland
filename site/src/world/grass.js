@@ -193,6 +193,9 @@ export function buildGrassTufts(model, rng, count = 2600) {
       const pond = BUILDINGS.pond;
       if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
       const y = model.heightAt(x, z);
+      // 黄土地上的草在当前密度基础上随机减半。
+      const dirt = dirtAmountAt(x, z);
+      if (dirt > 0.25 && rng.next() < 0.5) continue;
 
       p.set(x, y, z);
       q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
