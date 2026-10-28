@@ -249,6 +249,53 @@ export function buildNightLights(model, scene) {
     wallLampParts.push({ bulb, pool, light });
   }
 
+  // ---------- 牛羊圈苹果树：吊灯 ----------
+  // 树 (-38, 50) 是牧场里唯一的树；灯泡挂在树冠下，夜里作为树下照明。
+  const treeLampX = -35.2;
+  const treeLampZ = 53.0;
+  const treeLampY = groundAt(treeLampX, treeLampZ);
+  const treeLamp = new THREE.Group();
+  treeLamp.name = 'tree-hanging-lamp';
+
+  const cord = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.028, 1.8, 5),
+    new THREE.MeshBasicMaterial({ color: 0x2f241b })
+  );
+  cord.position.set(treeLampX, treeLampY + 3.2, treeLampZ);
+  treeLamp.add(cord);
+
+  const socket = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.10, 0.12, 0.16, 8),
+    new THREE.MeshBasicMaterial({ color: 0x2a2018 })
+  );
+  socket.position.set(treeLampX, treeLampY + 2.35, treeLampZ);
+  treeLamp.add(socket);
+
+  const treeBulbMat = new THREE.MeshBasicMaterial({
+    color: 0xffc46a,
+    transparent: true,
+    opacity: 0.72,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const treeBulb = new THREE.Mesh(new THREE.SphereGeometry(0.21, 8, 6), treeBulbMat);
+  treeBulb.position.set(treeLampX, treeLampY + 2.2, treeLampZ);
+  treeBulb.renderOrder = 3;
+  treeLamp.add(treeBulb);
+
+  const treeLight = new THREE.PointLight(0xffb060, 0, 15, 2);
+  treeLight.position.set(treeLampX, treeLampY + 2.14, treeLampZ);
+
+  const shade = new THREE.Mesh(
+    new THREE.ConeGeometry(0.30, 0.22, 8),
+    new THREE.MeshBasicMaterial({ color: 0x2a2018 })
+  );
+  shade.position.set(treeLampX, treeLampY + 2.44, treeLampZ);
+  treeLamp.add(shade);
+  treeLamp.add(treeLight);
+
+  group.add(treeLamp);
+
   // ---------- 农舍 ----------
   const house = BUILDINGS.farmhouse;
   const hy = groundAt(house.x, house.z);
@@ -333,6 +380,12 @@ export function buildNightLights(model, scene) {
       wl.light.intensity = winOpacity * 20;
       wl.light.visible = winOpacity > 0.06;
     }
+
+    // 树吊灯：白天保留暗黄玻璃，夜里点亮
+    treeBulb.material.opacity = 0.72 + winOpacity * 0.28;
+    treeBulb.visible = true;
+    treeLight.intensity = winOpacity * 16;
+    treeLight.visible = winOpacity > 0.06;
 
     for (const lamp of lamps) {
       const u = lamp.userData;
