@@ -611,10 +611,12 @@ export function createCameraRig(renderer, model) {
   // WASD 自由移动
   //   W/S 前后，A/D 左右（相对当前镜头朝向的水平面）
   //   Q/E 升降 target（相当于整体上下平移视角）
-  //   Shift 加速，空格 上升，Ctrl 下降
+  //   Shift 加速，空格/E 上升，Q/C 下降
+  //   ★ 不用 Ctrl 下降：Ctrl+W 是浏览器关闭标签页的快捷键，
+  //     网页无法拦截，按住 Ctrl+WASD 会直接把页面关掉（看起来像闪退）。
   // ---------------------------------------------------------------------------
   const keys = new Set();
-  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', ' ', 'control', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'c', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 
   function onKeyDown(e) {
     const k = e.key.toLowerCase();
@@ -632,6 +634,19 @@ export function createCameraRig(renderer, model) {
     keys.clear();
   }
 
+  // ★ Ctrl+W 是浏览器级快捷键，网页无法 preventDefault。
+  //   这里做最后一道保险：一旦检测到 Ctrl+W，关闭前弹确认框，
+  //   用户可以选择留在页面，不会"啪"一下闪退。
+  let ctrlWGuard = false;
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'w') ctrlWGuard = true;
+  }, true);
+  window.addEventListener('beforeunload', (e) => {
+    if (!ctrlWGuard) return;
+    e.preventDefault();
+    e.returnValue = '';
+    setTimeout(() => { ctrlWGuard = false; }, 0);
+  });
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
@@ -843,7 +858,7 @@ export function createCameraRig(renderer, model) {
     if (keys.has('d') || keys.has('arrowright')) _delta.add(_right);
     if (keys.has('a') || keys.has('arrowleft')) _delta.sub(_right);
     if (keys.has('e') || keys.has(' ')) _delta.y += 1;
-    if (keys.has('q') || keys.has('control')) _delta.y -= 1;
+    if (keys.has('q') || keys.has('c')) _delta.y -= 1;
 
     if (_delta.lengthSq() < 1e-6) return;
 
