@@ -46342,20 +46342,33 @@ void main() {
 
 	  let i = 0, guard = 0;
 	  let clusterX = 0, clusterZ = 0, clusterLeft = 0, clusterRadius = 1.5;
+	  // 黄金角螺旋：簇心均匀铺满整个圆环，再加一点抖动避免机械感。
+	  const clusterCount = Math.max(1, Math.ceil(count / 4));
+	  let clusterIndex = 0;
+	  const GOLDEN = 2.399963229728653;
 	  while (i < count && guard < count * 20) {
 	    guard++;
 	    if (clusterLeft <= 0) {
-	      // 先撒一个簇心，再在簇心周围撒 3~6 根短草叶。
-	      const ang = rng.next() * Math.PI * 2;
-	      // 一半近景、一半铺到外圈，让草簇覆盖整块农场和坡地。
-	      const near = i < count * 0.5;
-	      const rad = near
-	        ? 20 + Math.sqrt(rng.next()) * 50
-	        : 65 + Math.sqrt(rng.next()) * 135;
-	      clusterX = Math.cos(ang) * rad;
-	      clusterZ = Math.sin(ang) * rad;
-	      clusterLeft = 3 + Math.floor(rng.next() * 4);
-	      clusterRadius = rng.range(0.8, 2.4);
+	      // 一半簇心落在近圈，一半铺到外圈，避免全场都稀。
+	      const half = Math.floor(clusterCount * 0.5);
+	      let t, rad, ang;
+	      if (clusterIndex < half) {
+	        t = (clusterIndex + 0.5) / Math.max(1, half);
+	        rad = 20 + Math.sqrt(t) * (62 - 20);
+	        ang = clusterIndex * GOLDEN;
+	      } else {
+	        const j = clusterIndex - half;
+	        const n = Math.max(1, clusterCount - half);
+	        t = (j + 0.5) / n;
+	        rad = 62 + Math.sqrt(t) * (190 - 62);
+	        ang = j * GOLDEN + 2.1;
+	      }
+	      ang += rng.range(-0.18, 0.18);
+	      clusterX = Math.cos(ang) * rad + rng.range(-0.7, 0.7);
+	      clusterZ = Math.sin(ang) * rad + rng.range(-0.7, 0.7);
+	      clusterLeft = 4;
+	      clusterRadius = rng.range(0.8, 2.2);
+	      clusterIndex++;
 	    }
 	    clusterLeft--;
 	    const ca = rng.next() * Math.PI * 2;
