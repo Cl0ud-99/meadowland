@@ -759,8 +759,9 @@ function applyMode(t) {
       su.uSunIntensity.value = (1.0 - nightW * 0.45) * (0.75 + 0.25 * smoothNoon);
       su.uSunSize.value = 0.022 - nightW * 0.008;
       su.uSunHaloSize.value = 0.18 - nightW * 0.06;
-      // 核心亮度：让核心越过 Bloom 阈值 0.90，自然带出一圈辉光
-      su.uSunCoreBoost.value = 6.0 + smoothNoon * 2.5;
+      // 核心亮度：只压太阳本体，不改变主光/环境光。
+      // 原值 6.0 + 2.5，整体降低 30% 以避免日盘过爆。
+      su.uSunCoreBoost.value = (6.0 + smoothNoon * 2.5) * 0.7;
     }
   }
 

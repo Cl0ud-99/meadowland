@@ -31,7 +31,7 @@ export function buildSky() {
       uSunIntensity: { value: 0.0 },   // 0 = 关闭
       uSunSize: { value: 0.022 },      // 核心角半径（弧度）≈ 1.26°
       uSunHaloSize: { value: 0.18 },   // 光晕角半径（弧度）≈ 10.3°
-      uSunCoreBoost: { value: 6.0 },   // 核心亮度倍数（要压过 ACES 才够白）
+      uSunCoreBoost: { value: 4.2 },   // 核心亮度倍数（已降低 30%，避免本体过爆）
     },
     vertexShader: /* glsl */`
       varying vec3 vWorldPos;
