@@ -21,6 +21,26 @@ export function buildWell(model, rng, opts = {}) {
   const ropeMat = toonLambert({ color: 0x4a3a28, flatShading: true, shared: false });
   const metalMat = toonLambert({ color: 0x5a5a58, flatShading: true, shared: false });
 
+  // 四套配色：石头 / 木架 / 屋顶 / 井水
+  const WELL_THEMES = [
+    { name: '石砌木井', stone: [0x9a9a94, 0x8d8d87, 0xa7a7a0], wood: 0x8a6a44, dark: 0x6f5236, roof: 0x7a4a38, water: 0x2f5f6a },
+    { name: '红砖井',   stone: [0xa85442, 0x944536, 0xb86650], wood: 0x7a5a3a, dark: 0x5f4330, roof: 0x5a6570, water: 0x35697a },
+    { name: '青石井',   stone: [0x7f8b86, 0x6e7a75, 0x8f9b96], wood: 0x6f5b40, dark: 0x51402c, roof: 0x4f6152, water: 0x2f5a68 },
+    { name: '白灰井',   stone: [0xd2ccbc, 0xbdb7a7, 0xe0dacc], wood: 0x9a7a54, dark: 0x6f5540, roof: 0x8a5a4a, water: 0x426f78 },
+  ];
+  let styleIdx = 0;
+  function setStyle(idx) {
+    const t = WELL_THEMES[idx];
+    if (!t) return false;
+    styleIdx = idx;
+    stoneMats.forEach((m, k) => m.color.setHex(t.stone[k]));
+    woodMat.color.setHex(t.wood);
+    darkWood.color.setHex(t.dark);
+    roofMat.color.setHex(t.roof);
+    waterMat.color.setHex(t.water);
+    return true;
+  }
+
   // 井壁
   const outer = new THREE.Mesh(
     new THREE.CylinderGeometry(1.55, 1.65, 0.72, 16, 1, true),
@@ -156,5 +176,9 @@ export function buildWell(model, rng, opts = {}) {
   group.add(handle);
 
   group.castShadow = true;
+  group.userData.styleNames = WELL_THEMES.map((t) => t.name);
+  group.userData.getStyle = () => ({ idx: styleIdx, name: WELL_THEMES[styleIdx].name });
+  group.userData.setStyle = setStyle;
+  setStyle(0);
   return group;
 }
