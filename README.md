@@ -4,7 +4,7 @@
 
 **DSH-PTC**
 
-可互动像素农场**版本 0.7.4** · [在线体验](https://Cl0ud-99.github.io/meadowland/)
+可互动像素农场**版本 0.7.4** · [在线体验](https://Cl0ud-99.github.io/meadowland/?v=0.7.4)
 
 ![Meadowland 全景](screenshots/overview.png)
 
@@ -89,7 +89,7 @@ node scripts/serve.mjs
 
 ### 在线体验
 
-<https://Cl0ud-99.github.io/meadowland/>
+<https://Cl0ud-99.github.io/meadowland/?v=0.7.4>
 
 ---
 
