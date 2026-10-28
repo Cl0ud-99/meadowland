@@ -13,6 +13,7 @@ import { buildCampfire } from './world/campfire.js';
 import { buildOwl, refreshWatertowerPerch, refreshWindmillPerch } from './world/owl.js';
 import { buildBigTree, buildTree } from './world/bigtree.js';
 import { buildWoodpile } from './world/woodpile.js';
+import { buildWell } from './world/well.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
 import { buildForest, buildScatterTrees } from './world/forest.js';
@@ -187,6 +188,10 @@ function boot() {
   // 实测中心 (2.5, -17) 时左边界 -1.0 会碰到树干，改到 (6.5, -16)。
   const woodpile = buildWoodpile(terrainModel, rng, { x: WOODPILE.x, z: WOODPILE.z });
   world.add(woodpile);
+
+  // 水井：木材堆另一边
+  const well = buildWell(terrainModel, rng, { x: 9.5, z: -23.5 });
+  world.add(well);
 
   // 另外 3 棵不同品种的树（有大有小，丰富场景）
   // 位置都经过间隙检查（≥3 单位），不会穿模
