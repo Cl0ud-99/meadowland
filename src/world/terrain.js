@@ -321,6 +321,46 @@ function makeGroundDetailTextures(size = 256) {
   return { map, normalMap };
 }
 
+// 世界空间程序化草地细节：不使用 UV 平铺，避免出现规律网格。
+// 用两三组不同尺度的 value noise 叠加，近处增加颗粒，远处淡出。
+function injectGroundDetail(material) {
+  const prev = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    if (prev) prev(shader, renderer);
+    shader.vertexShader = 'varying vec3 vGroundWorld;\n' + shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\nvGroundWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+    );
+    const helper = `varying vec3 vGroundWorld;
+      float groundHash(vec2 p) {
+        p = fract(p * 0.1031);
+        p += dot(p, p.yx + 33.33);
+        return fract((p.x + p.y) * p.x * 17.17);
+      }
+      float groundNoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(groundHash(i), groundHash(i + vec2(1.0, 0.0)), f.x),
+                   mix(groundHash(i + vec2(0.0, 1.0)), groundHash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float groundFbm(vec2 p) {
+        float v = 0.0, a = 0.55;
+        for (int i = 0; i < 3; i++) { v += groundNoise(p) * a; p *= 2.07; a *= 0.5; }
+        return v;
+      }
+    `;
+    shader.fragmentShader = helper + shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      {
+        float n = groundFbm(vGroundWorld.xz * 0.26) * 0.62 + groundNoise(vGroundWorld.xz * 1.65) * 0.38;
+        float detail = 1.0 - smoothstep(35.0, 180.0, length(vViewPosition));
+        diffuseColor.rgb *= mix(1.0, 0.84 + n * 0.16, detail);
+      }`
+    );
+  };
+}
+
 export function buildTerrain(model, segments = WORLD.segments) {
   const geo = new THREE.PlaneGeometry(WORLD.size, WORLD.size, segments, segments);
   geo.rotateX(-Math.PI / 2);
@@ -356,11 +396,8 @@ export function buildTerrain(model, segments = WORLD.segments) {
 
   // shared:false —— main.js 每季改 app.terrain.material.color，必须独占
   const mat = toonLambert({ vertexColors: true, shared: false });
-  // 顶点色负责大尺度草色，贴图负责近景高频细节
-  const detail = makeGroundDetailTextures();
-  mat.map = detail.map;
-  mat.normalMap = detail.normalMap;
-  mat.normalScale.set(0.30, 0.30);
+  // 顶点色负责大尺度，世界空间程序化噪声负责近景细节（无 UV 网格）
+  injectGroundDetail(mat);
   mat.needsUpdate = true;
   // 暴露给季节切换（地形是草地的主体，必须一起染色）
   mat.userData.isTerrain = true;
