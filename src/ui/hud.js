@@ -820,9 +820,9 @@ export function createHud(app) {
     if (root.name === 'workshop' && app.workshop?.userData?.setStyle) {
       const info = app.workshop.userData.getStyle();
       const names = app.workshop.userData.styleNames || [];
-      const icons = ['🪵', '🌿', '🏭', '🏜️'];
+      const swatches = ['#8a6a44', '#6f7a4a', '#5a6f86', '#b08a58'];
       app.focusedBuilding = { kind: 'workshop' };
-      const items = names.map((name, i) => ({ id: String(i), name, icon: icons[i] || '🎨' }));
+      const items = names.map((name, i) => ({ id: String(i), name, swatch: swatches[i] || '#888' }));
       app.showOptionPanel('修理棚 配色', items, info.idx, (pick) => {
         if (app.workshop.userData.setStyle(Number(pick))) {
           if (app.markDirty) app.markDirty();
