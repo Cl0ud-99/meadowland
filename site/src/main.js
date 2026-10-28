@@ -1025,6 +1025,7 @@ function loop() {
   app.forest.userData.update(elapsed);
   if (app.farm && app.farm.userData.update) app.farm.userData.update(elapsed, dt);
   app.grass.update(elapsed);
+  if (app.fields && app.fields.userData.update) app.fields.userData.update(elapsed);
   app.animals.userData.update(elapsed, dt);
   app.people.userData.update(elapsed, dt);
   app.pets.userData.update(elapsed, dt);

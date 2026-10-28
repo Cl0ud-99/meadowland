@@ -536,6 +536,24 @@ function buildField(model, rng, opts) {
     });
 
     cropMat = mat;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = { value: 0 };
+      shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\n' +
+        '#ifdef USE_INSTANCING\n' +
+        '  vec3 co = instanceMatrix[3].xyz;\n' +
+        '  float ch = fract(sin(dot(co.xz, vec2(127.1, 311.7))) * 43758.5453);\n' +
+        '  float cspd = 0.8 + ch * 1.0;\n' +
+        '  float cph = ch * 6.2831;\n' +
+        '  float csway = transformed.y * (0.012 + ch * 0.010);\n' +
+        '  transformed.x += sin(uTime * cspd + cph + co.x * 0.25) * csway;\n' +
+        '  transformed.z += cos(uTime * cspd * 0.83 + cph * 1.3 + co.z * 0.2) * csway * 0.65;\n' +
+        '#endif'
+      );
+      mat.userData.shader = shader;
+    };
+    mat.customProgramCacheKey = () => 'crop-wind';
 
     const mesh = new THREE.InstancedMesh(geo, mat, rows * cols);
     mesh.name = 'crops';
@@ -627,6 +645,11 @@ function buildField(model, rng, opts) {
     buildCrops(newKind, newColor);
   };
   group.userData.cropKind = kind;
+  group.userData.update = (t) => {
+    if (cropMat && cropMat.userData.shader) {
+      cropMat.userData.shader.uniforms.uTime.value = t;
+    }
+  };
 
   return group;
 }
@@ -651,6 +674,12 @@ export function buildFields(model, rng) {
   group.userData.getFieldCrop = (fieldIdx) => {
     const field = group.children[fieldIdx];
     return field ? field.userData.cropKind : null;
+  };
+
+  group.userData.update = (t) => {
+    for (const field of group.children) {
+      if (field.userData.update) field.userData.update(t);
+    }
   };
 
   return group;

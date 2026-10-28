@@ -51394,6 +51394,7 @@ void main() {
 	  // ---------- 作物（可运行时重建）----------
 	  // 抽成函数，换作物时先 dispose 旧的再重建
 	  let cropMesh = null;
+	  let cropMat = null;
 
 	  function buildCrops(kindNow, colorNow) {
 	    // 清掉旧的
@@ -51432,6 +51433,26 @@ void main() {
 	      vertexColors: true,
 	      shared: false,
 	    });
+
+	    cropMat = mat;
+	    mat.onBeforeCompile = (shader) => {
+	      shader.uniforms.uTime = { value: 0 };
+	      shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+	        '#include <begin_vertex>',
+	        '#include <begin_vertex>\n' +
+	        '#ifdef USE_INSTANCING\n' +
+	        '  vec3 co = instanceMatrix[3].xyz;\n' +
+	        '  float ch = fract(sin(dot(co.xz, vec2(127.1, 311.7))) * 43758.5453);\n' +
+	        '  float cspd = 0.8 + ch * 1.0;\n' +
+	        '  float cph = ch * 6.2831;\n' +
+	        '  float csway = transformed.y * (0.012 + ch * 0.010);\n' +
+	        '  transformed.x += sin(uTime * cspd + cph + co.x * 0.25) * csway;\n' +
+	        '  transformed.z += cos(uTime * cspd * 0.83 + cph * 1.3 + co.z * 0.2) * csway * 0.65;\n' +
+	        '#endif'
+	      );
+	      mat.userData.shader = shader;
+	    };
+	    mat.customProgramCacheKey = () => 'crop-wind';
 
 	    const mesh = new InstancedMesh(geo, mat, rows * cols);
 	    mesh.name = 'crops';
@@ -51523,6 +51544,11 @@ void main() {
 	    buildCrops(newKind);
 	  };
 	  group.userData.cropKind = kind;
+	  group.userData.update = (t) => {
+	    if (cropMat && cropMat.userData.shader) {
+	      cropMat.userData.shader.uniforms.uTime.value = t;
+	    }
+	  };
 
 	  return group;
 	}
@@ -51547,6 +51573,12 @@ void main() {
 	  group.userData.getFieldCrop = (fieldIdx) => {
 	    const field = group.children[fieldIdx];
 	    return field ? field.userData.cropKind : null;
+	  };
+
+	  group.userData.update = (t) => {
+	    for (const field of group.children) {
+	      if (field.userData.update) field.userData.update(t);
+	    }
 	  };
 
 	  return group;
@@ -63525,6 +63557,7 @@ void main() {
 	  app.forest.userData.update(elapsed);
 	  if (app.farm && app.farm.userData.update) app.farm.userData.update(elapsed, dt);
 	  app.grass.update(elapsed);
+	  if (app.fields && app.fields.userData.update) app.fields.userData.update(elapsed);
 	  app.animals.userData.update(elapsed, dt);
 	  app.people.userData.update(elapsed, dt);
 	  app.pets.userData.update(elapsed, dt);
