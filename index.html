@@ -91,7 +91,7 @@
         </svg>
       </div>
       <h2 class="about-name">Cloud99</h2>
-      <p class="about-sub">Meadowland · 0.7.2 · 边界山脊 / 早中晚 / 修理棚 / 水井</p>
+      <p class="about-sub">Meadowland · 0.7.3 · 边界山脊 / 早中晚 / 修理棚 / 水井</p>
     </div>
     <button class="about-close" id="about-close" type="button" aria-label="关闭">×</button>
   </div>
@@ -59456,6 +59456,28 @@ void main() {
 	    camera.position.add(_parallaxApplied);
 	  }
 
+	  // 开屏待机专用视差：只移动相机，不调用 controls.update()。
+	  // 振幅固定且很小，和场景距离无关，避免开屏边界机位被放大成大幅抖动。
+	  const _introRight = new Vector3();
+	  const _introUp = new Vector3();
+	  function applyIntroParallax(dt) {
+	    if (!intro.pending) return;
+	    const k = 1 - Math.exp(-2.4 * dt);
+	    parallax.curX += (parallax.targetX - parallax.curX) * k;
+	    parallax.curY += (parallax.targetY - parallax.curY) * k;
+
+	    _introRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+	    _introUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+
+	    // 固定振幅：鼠标到边缘时约移动 2.4 个单位，远景里只是轻微晃动
+	    const offX = parallax.curX * 2.4;
+	    const offY = -parallax.curY * 1.5;
+	    camera.position.copy(intro.from)
+	      .addScaledVector(_introRight, offX)
+	      .addScaledVector(_introUp, offY);
+	    camera.lookAt(intro.fromTarget);
+	  }
+
 	  // 相机被飞行/重置移动时，重置视差基准
 	  function resetParallaxBase() {
 	    parallaxInit = false;
@@ -59563,7 +59585,7 @@ void main() {
 
 	  return {
 	    camera, controls, updateFov, playIntro, placeAtIntroStart, updateIntro,
-	    flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
+	    flyTo, updateFly, reset, updateReset, updateMovement, restoreMinDistance, applyParallax, applyIntroParallax, resetParallaxBase, clampCameraAboveGround, setTargetMaxY, resetTargetMaxY, syncRotateSpeed,
 	    get introActive() { return intro.active; },
 	    get introPending() { return intro.pending; },
 	    get flyActive() { return fly.active; },
@@ -62836,7 +62858,12 @@ void main() {
 
 	  if (app.rig.introActive) {
 	    app.rig.updateIntro(performance.now());
-	  } else if (app.rig.introPending) ; else {
+	  } else if (app.rig.introPending) {
+	    // 开屏待机：只跑低振幅的专用视差，不跑 OrbitControls。
+	    // 开屏机位在 maxDistance 之外，走 controls.update() 会把相机拉回，
+	    // 普通视差又按远距离放大，两者叠加才会抖/撕裂。
+	    app.rig.applyIntroParallax(dt);
+	  } else {
 	    // ★ 关键：飞行期间【不能】调用 controls.update()。
 	    //   OrbitControls.update() 即使 enabled=false 也会执行，
 	    //   它会用内部缓存的球坐标重算 camera.position，
