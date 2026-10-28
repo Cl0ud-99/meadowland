@@ -127,7 +127,7 @@ function boot() {
   world.add(groundStones);
 
   // 动物圈里的刨土坑：优先落在黄土地上，带翻出的土块
-  const dirtPits = buildDirtPits(terrainModel, rng, quality.tier === 'low' ? 10 : 20);
+  const dirtPits = buildDirtPits(terrainModel, rng, quality.tier === 'low' ? 5 : 10);
   world.add(dirtPits);
 
   const farm = buildFarm(terrainModel);

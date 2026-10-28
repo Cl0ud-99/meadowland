@@ -58,7 +58,7 @@ function makePatch(model, cx, cz, radius, seed) {
 }
 
 // 动物圈里的刨土坑：不规则泥色斑块 + 周围翻出的土块。
-export function buildDirtPits(model, rng, count = 20) {
+export function buildDirtPits(model, rng, count = 10) {
   const group = new THREE.Group();
   group.name = 'dirt-pits';
   const mat = toonLambert({
@@ -72,8 +72,8 @@ export function buildDirtPits(model, rng, count = 20) {
     polygonOffsetUnits: -2,
   });
   // 固定配额：牛圈/羊驼圈为主，鸡舍少量，避免全都抽到同一块牧场。
-  const qPasture = count >= 15 ? 8 : 4;
-  const qHorse = count >= 15 ? 8 : 4;
+  const qPasture = count >= 15 ? 8 : count <= 6 ? 2 : 4;
+  const qHorse = count >= 15 ? 8 : count <= 6 ? 2 : 4;
   const clods = [];
   const clodCols = [0x4a3020, 0x6e4a2e, 0x8a6242, 0x3a2618];
 
