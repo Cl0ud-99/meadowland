@@ -46289,42 +46289,52 @@ void main() {
 	  return geo;
 	}
 
-	// 小花：5 片白色花瓣 + 黄色花心；实例色可把整朵染成黄色。
-	function makeFlowerGeometry() {
+	// 小花：不同瓣数/花色的低多边形花，统一用长花茎高过草。
+	function makeFlowerGeometry(petalCount, petalColor, centerColor, outer, half) {
 	  const pos = [], col = [];
 	  const pushTri = (ax, ay, az, bx, by, bz, cx, cy, cz, color) => {
 	    pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
 	    for (let k = 0; k < 3; k++) col.push(color[0], color[1], color[2]);
 	  };
-	  // 短茎：让花头离开地面，避免贴地看不见
-	  const stem = new CylinderGeometry(0.008, 0.012, 0.16, 3);
-	  stem.translate(0, 0.08, 0);
+	  const stemH = 0.9;
+	  const stem = new CylinderGeometry(0.008, 0.012, stemH, 3);
+	  stem.translate(0, stemH / 2, 0);
 	  const sn = stem.toNonIndexed();
 	  const sa = sn.attributes.position.array;
 	  for (let i = 0; i < sn.attributes.position.count; i++) {
 	    pos.push(sa[i * 3], sa[i * 3 + 1], sa[i * 3 + 2]);
-	    col.push(0.34, 0.54, 0.22);
+	    col.push(0.28, 0.48, 0.18);
 	  }
 	  stem.dispose(); sn.dispose();
 
-	  const y = 0.16;
-	  const petals = 5;
-	  for (let i = 0; i < petals; i++) {
-	    const a = (i / petals) * Math.PI * 2;
-	    const inner = 0.024, outer = 0.112, half = 0.046;
+	  const y = stemH;
+	  const headR = outer * 1.8;
+	  // 横放花头
+	  for (let i = 0; i < petalCount; i++) {
+	    const a = (i / petalCount) * Math.PI * 2;
 	    pushTri(
-	      Math.cos(a) * inner, y, Math.sin(a) * inner,
-	      Math.cos(a - half) * outer, y, Math.sin(a - half) * outer,
-	      Math.cos(a + half) * outer, y, Math.sin(a + half) * outer,
-	      [1, 1, 1]
+	      Math.cos(a) * 0.018, y, Math.sin(a) * 0.018,
+	      Math.cos(a - half) * headR, y + 0.02, Math.sin(a - half) * headR,
+	      Math.cos(a + half) * headR, y + 0.02, Math.sin(a + half) * headR,
+	      petalColor
 	    );
 	  }
-	  // 中心黄色小花心
-	  const segs = 6;
-	  for (let i = 0; i < segs; i++) {
-	    const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
-	    pushTri(0, y + 0.002, 0, Math.cos(a0) * 0.032, y + 0.002, Math.sin(a0) * 0.032,
-	      Math.cos(a1) * 0.032, y + 0.002, Math.sin(a1) * 0.032, [0.98, 0.72, 0.16]);
+	  // 竖立花头：从低机位看也不至于只剩一根茎
+	  for (let i = 0; i < petalCount; i++) {
+	    const a = (i / petalCount) * Math.PI * 2;
+	    pushTri(
+	      0, y, 0,
+	      Math.cos(a - half) * headR, y + Math.sin(a - half) * headR, 0,
+	      Math.cos(a + half) * headR, y + Math.sin(a + half) * headR, 0,
+	      petalColor
+	    );
+	  }
+	  for (let i = 0; i < 6; i++) {
+	    const a0 = (i / 6) * Math.PI * 2, a1 = ((i + 1) / 6) * Math.PI * 2;
+	    pushTri(0, y, 0, Math.cos(a0) * 0.05, y + Math.sin(a0) * 0.05, 0.01,
+	      Math.cos(a1) * 0.05, y + Math.sin(a1) * 0.05, 0.01, centerColor);
+	    pushTri(0, y + 0.015, 0, Math.cos(a0) * 0.032, y + 0.015, Math.sin(a0) * 0.032,
+	      Math.cos(a1) * 0.032, y + 0.015, Math.sin(a1) * 0.032, centerColor);
 	  }
 	  const geo = new BufferGeometry();
 	  geo.setAttribute('position', new Float32BufferAttribute(pos, 3));
@@ -46434,9 +46444,10 @@ void main() {
 	      const pond = BUILDINGS.pond;
 	      if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
 	      const y = model.heightAt(x, z);
-	      // 黄土地上的草在当前密度基础上随机减半。
+	      // 黄土地上的草：密度减半，并随土斑程度变黄、变矮。
 	      const dirt = dirtAmountAt(x, z);
 	      if (dirt > 0.25 && rng.next() < 0.5) continue;
+	      const dry = Math.max(0, Math.min(1, (dirt - 0.18) / 0.55));
 
 	      p.set(x, y, z);
 	      q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
@@ -46444,14 +46455,17 @@ void main() {
 	      const sc = pick < 0.28 ? rng.range(0.45, 0.72)
 	               : pick < 0.8 ? rng.range(0.8, 1.15)
 	               : rng.range(1.25, 1.75);
-	      // 每簇高矮、宽窄都独立变化，避免一片草同一个尺寸
-	      s.set(sc * rng.range(0.78, 1.22), sc * rng.range(0.75, 1.5), sc * rng.range(0.78, 1.22));
+	      // 每簇高矮、宽窄都独立变化；黄土地上的草再压低 45%。
+	      const dryScale = 1 - dry * 0.45;
+	      s.set(sc * rng.range(0.78, 1.22) * dryScale, sc * rng.range(0.75, 1.5) * dryScale, sc * rng.range(0.78, 1.22) * dryScale);
 	      m.compose(p, q, s);
 	      mesh.setMatrixAt(i, m);
 	      const v = rng.range(0.88, 1.24);
 	      const warm = rng.range(0.92, 1.08);
 	      const cool = rng.range(0.80, 0.96);
-	      tint.setRGB(v * warm, v, v * cool);
+	      const gR = v * warm, gG = v, gB = v * cool;
+	      const dR = v * 2.05, dG = v * 1.12, dB = v * 0.26;
+	      tint.setRGB(gR + (dR - gR) * dry, gG + (dG - gG) * dry, gB + (dB - gB) * dry);
 	      mesh.setColorAt(i, tint);
 	      i++;
 	    }
@@ -46459,47 +46473,55 @@ void main() {
 	  mesh.count = i;
 	  mesh.instanceMatrix.needsUpdate = true;
 
-	  // 草地里稀疏点缀白/黄小花
+	  // 五种小花：雏菊、金凤、虞美人、矢车菊、粉花；总数量比上一版少 30%。
+	  // 花茎统一高于草簇，主要长在绿色草皮上。
 	  {
-	    const flowerCount = Math.max(180, Math.round(count * 0.11));
-	    const flowers = new InstancedMesh(
-	      makeFlowerGeometry(),
-	      new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, toneMapped: false }),
-	      flowerCount
-	    );
-	    flowers.name = 'flowers';
-	    flowers.frustumCulled = true;
+	    const flowerTypes = [
+	      { petals: 8, petal: [1.00, 1.00, 1.00], center: [0.96, 0.74, 0.16], frac: 0.35, outer: 0.115, half: 0.155 },
+	      { petals: 5, petal: [1.00, 0.82, 0.12], center: [0.86, 0.44, 0.08], frac: 0.25, outer: 0.105, half: 0.22 },
+	      { petals: 4, petal: [0.82, 0.16, 0.12], center: [0.18, 0.07, 0.05], frac: 0.15, outer: 0.125, half: 0.30 },
+	      { petals: 6, petal: [0.38, 0.55, 0.95], center: [0.84, 0.80, 0.50], frac: 0.10, outer: 0.095, half: 0.18 },
+	      { petals: 5, petal: [0.95, 0.55, 0.72], center: [0.96, 0.82, 0.30], frac: 0.15, outer: 0.100, half: 0.20 },
+	    ];
+	    const total = Math.max(160, Math.round(count * 0.077));
 	    const fm = new Matrix4();
 	    const fq = new Quaternion();
 	    const fp = new Vector3();
 	    const fs = new Vector3();
-	    const fc = new Color();
-	    let fi = 0;
-	    for (let k = 0; k < flowerCount; k++) {
-	      const ang = rng.next() * Math.PI * 2;
-	      const rad = 12 + Math.sqrt(rng.next()) * 138;
-	      const x = Math.cos(ang) * rad;
-	      const z = Math.sin(ang) * rad;
-	      if (Math.abs(x) > WORLD.size * 0.48 || Math.abs(z) > WORLD.size * 0.48) continue;
-	      const pond = BUILDINGS.pond;
-	      if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
-	      // 主要长在绿色草皮上，不落在黄土地上
-	      if (dirtAmountAt(x, z) > 0.22) continue;
-	      fp.set(x, model.heightAt(x, z) + 0.02, z);
-	      fq.setFromAxisAngle(up, rng.next() * Math.PI * 2);
-	      const sc = rng.range(1.0, 1.8);
-	      fs.set(sc, sc, sc);
-	      fm.compose(fp, fq, fs);
-	      flowers.setMatrixAt(fi, fm);
-	      if (rng.next() < 0.58) fc.setRGB(1, 1, 1);
-	      else fc.setRGB(1.28, 1.0, 0.48);
-	      flowers.setColorAt(fi, fc);
-	      fi++;
+
+	    for (let ti = 0; ti < flowerTypes.length; ti++) {
+	      const type = flowerTypes[ti];
+	      const meshCount = ti === flowerTypes.length - 1
+	        ? Math.max(1, total - flowerTypes.slice(0, ti).reduce((a, t) => a + Math.round(total * t.frac), 0))
+	        : Math.round(total * type.frac);
+	      const flowers = new InstancedMesh(
+	        makeFlowerGeometry(type.petals, type.petal, type.center, type.outer, type.half),
+	        new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, toneMapped: false }),
+	        meshCount
+	      );
+	      flowers.name = 'flowers-' + ti;
+	      flowers.frustumCulled = true;
+	      let fi = 0;
+	      for (let k = 0; k < meshCount; k++) {
+	        const ang = rng.next() * Math.PI * 2;
+	        const rad = 12 + Math.sqrt(rng.next()) * 138;
+	        const x = Math.cos(ang) * rad;
+	        const z = Math.sin(ang) * rad;
+	        if (Math.abs(x) > WORLD.size * 0.48 || Math.abs(z) > WORLD.size * 0.48) continue;
+	        const pond = BUILDINGS.pond;
+	        if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
+	        if (dirtAmountAt(x, z) > 0.22) continue;
+	        fp.set(x, model.heightAt(x, z) + 0.02, z);
+	        fq.setFromAxisAngle(up, rng.next() * Math.PI * 2);
+	        const sc = rng.range(0.9, 1.3);
+	        fs.set(sc, sc, sc);
+	        fm.compose(fp, fq, fs);
+	        flowers.setMatrixAt(fi++, fm);
+	      }
+	      flowers.count = fi;
+	      flowers.instanceMatrix.needsUpdate = true;
+	      mesh.add(flowers);
 	    }
-	    flowers.count = fi;
-	    flowers.instanceMatrix.needsUpdate = true;
-	    if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
-	    mesh.add(flowers);
 	  }
 
 	  return {
