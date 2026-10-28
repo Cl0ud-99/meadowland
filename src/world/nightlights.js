@@ -287,39 +287,70 @@ export function buildNightLights(model, scene) {
   treeLamp.add(cord, socket, treeBulb, shade, treeLight);
   group.add(treeLamp);
 
+  let treeMesh = null;
+  if (pastureTree) {
+    pastureTree.traverse((o) => {
+      if (!treeMesh && o.isMesh && o.geometry && o.geometry.attributes.color) treeMesh = o;
+    });
+  }
+
   const treeBox = new THREE.Box3();
+  let leafKind = '';
+  let leafBounds = null;
+
+  // 扫描树冠顶点（叶子颜色），得到真实叶底范围。
+  // 不靠整棵树包围盒猜，避免挂点落在树干或树冠内部。
+  function scanLeafBounds() {
+    if (!pastureTree || !treeMesh) { leafBounds = null; return; }
+    const kind = pastureTree.userData.kind || '';
+    if (leafBounds && kind === leafKind) return;
+    const geo = treeMesh.geometry;
+    const pos = geo.attributes.position;
+    const col = geo.attributes.color;
+    if (!pos || !col) return;
+    pastureTree.updateMatrixWorld(true);
+    const tmp = treeMesh.position.clone();
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, minZ = 1e9, maxZ = -1e9, n = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const r = col.getX(i), g = col.getY(i), b = col.getZ(i);
+      if (!(g > r * 1.05 && g > b * 1.05)) continue;
+      tmp.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+      treeMesh.localToWorld(tmp);
+      minX = Math.min(minX, tmp.x); maxX = Math.max(maxX, tmp.x);
+      minY = Math.min(minY, tmp.y); maxY = Math.max(maxY, tmp.y);
+      minZ = Math.min(minZ, tmp.z); maxZ = Math.max(maxZ, tmp.z);
+      n++;
+    }
+    if (n > 0) leafBounds = { minX, maxX, minY, maxY, minZ, maxZ };
+    leafKind = kind;
+  }
+
   function updateTreeLamp() {
     if (!pastureTree) { treeLamp.visible = false; return; }
     treeLamp.visible = true;
+    scanLeafBounds();
+
     treeBox.setFromObject(pastureTree);
-    const min = treeBox.min, max = treeBox.max;
-    const h = Math.max(0.8, max.y - min.y);
-    const cx = (min.x + max.x) * 0.5;
-    const cz = (min.z + max.z) * 0.5;
-    const rx = Math.max(0.6, (max.x - min.x) * 0.5);
-    const rz = Math.max(0.6, (max.z - min.z) * 0.5);
-    // 灯泡挂在树冠外的枝端，再用一根小树枝连回树干，避免浮空。
-    const x = cx + rx * 0.62;
-    const z = cz + rz * 0.68;
+    const bmin = treeBox.min, bmax = treeBox.max;
+    const lb = leafBounds || {
+      minX: bmin.x, maxX: bmax.x, minY: bmin.y, maxY: bmax.y,
+      minZ: bmin.z, maxZ: bmax.z,
+    };
+    const cx = (lb.minX + lb.maxX) * 0.5;
+    const cz = (lb.minZ + lb.maxZ) * 0.5;
+    const w = Math.max(1, lb.maxX - lb.minX);
+    const d = Math.max(1, lb.maxZ - lb.minZ);
+    const x = cx + w * 0.30;
+    const z = cz + d * 0.34;
     const gy = groundAt(x, z);
-    const bulbY = gy + h * 0.32;
-    // 挂枝只比灯泡高一点，保证从树冠下缘就能看到连接
-    const cordTop = gy + h * 0.32 + 0.75;
-    const cordLen = Math.max(0.7, cordTop - bulbY - 0.1);
+    // 灯泡在叶底下方，吊线上端进入树冠，整根吊线保持垂直。
+    const bulbY = Math.max(gy + 1.0, lb.minY - 1.45);
+    const cordTop = lb.minY + 0.5;
+    const topY = bulbY + 0.16;
+    const cordLen = Math.max(0.35, cordTop - topY);
     cord.scale.y = cordLen / cordH;
-    // 纯吊灯：吊线上端埋在树冠内侧，下端连到灯泡，不做横向树枝。
-    const anchorX = cx + rx * 0.30;
-    const anchorZ = cz + rz * 0.36;
-    const anchorY = gy + h * 0.52;
-    const topX = x, topZ = z, topY = bulbY + 0.16;
-    const dx = topX - anchorX, dz = topZ - anchorZ, dy = topY - anchorY;
-    const wireLen = Math.max(0.2, Math.hypot(dx, dy, dz));
-    cord.scale.y = wireLen / cordH;
-    cord.position.set((anchorX + topX) * 0.5, (anchorY + topY) * 0.5, (anchorZ + topZ) * 0.5);
-    cord.quaternion.setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      new THREE.Vector3(dx, dy, dz).normalize()
-    );
+    cord.position.set(x, (cordTop + topY) * 0.5, z);
+    cord.quaternion.identity();
     socket.position.set(x, bulbY + 0.13, z);
     treeBulb.position.set(x, bulbY, z);
     shade.position.set(x, bulbY + 0.24, z);
