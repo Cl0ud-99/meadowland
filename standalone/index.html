@@ -54339,6 +54339,21 @@ void main() {
 	    return true;
 	  };
 
+	  // 如果角色已经被树干/石头挤进碰撞体，先沿径向推出，避免原地永远无路可走。
+	  const pushOutOfStatic = (u) => {
+	    const obs = [...TREE_OBSTACLES, ...STONE_COLLIDERS];
+	    for (let pass = 0; pass < 2; pass++) {
+	      for (const ob of obs) {
+	        const dx = u.x - ob.x, dz = u.z - ob.z;
+	        const d = Math.hypot(dx, dz);
+	        const minD = ob.r + 0.65;
+	        if (d >= minD || d < 1e-4) continue;
+	        u.x = ob.x + (dx / d) * minD;
+	        u.z = ob.z + (dz / d) * minD;
+	      }
+	    }
+	  };
+
 	  // 在活动范围内找一个安全的目标点
 	  const pickTarget = (u) => {
 	    for (let tries = 0; tries < 24; tries++) {
@@ -54397,6 +54412,7 @@ void main() {
 	      // 状态：走 / 停 / 转身
 	      state: 'walk',
 	      stateTimer: 1 + rng.next() * 3,
+	      stuckX: sx, stuckZ: sz, stuckTimer: 0,
 	      walkAmount: 0,
 	      // 打招呼
 	      greetTimer: 0,
@@ -54420,6 +54436,7 @@ void main() {
 
 	    for (const p of list) {
 	      const u = p.userData;
+	      pushOutOfStatic(u);
 
 	      // ---------- 状态机 ----------
 	      u.stateTimer -= step;
@@ -54483,20 +54500,37 @@ void main() {
 	            while (diff < -Math.PI) diff += Math.PI * 2;
 	            u.heading += diff * Math.min(1, step * 4);
 	          } else {
-	            // 撞到障碍：原地停下，重新选目标
-	            u.state = 'pause';
-	            u.stateTimer = 0.4 + rng.next() * 1.2;
-	            u.walkAmount = 0;
-
-	            // 尝试沿墙滑动（换一个方向绕过去）
-	            const slideAngle = u.heading + (rng.next() > 0.5 ? 1 : -1) * 1.2;
-	            const sx = u.x + Math.sin(slideAngle) * u.speed * step;
-	            const sz = u.z + Math.cos(slideAngle) * u.speed * step;
-	            if (isWalkable(sx, sz)) {
-	              u.x = sx;
-	              u.z = sz;
-	              u.heading = slideAngle;
+	            // 撞到障碍：围绕目标方向依次尝试左右绕行，选最接近目标的可行方向。
+	            const base = Math.atan2(nx, nz);
+	            const offsets = [0.55, -0.55, 1.05, -1.05, 1.55, -1.55, 2.0, -2];
+	            let best = null;
+	            for (const off of offsets) {
+	              const a = base + off;
+	              const sx = u.x + Math.sin(a) * u.speed * step;
+	              const sz = u.z + Math.cos(a) * u.speed * step;
+	              if (!isWalkable(sx, sz)) continue;
+	              const d = Math.hypot(u.targetX - sx, u.targetZ - sz);
+	              if (!best || d < best.d) best = { x: sx, z: sz, a, d };
 	            }
+	            if (best) {
+	              u.x = best.x;
+	              u.z = best.z;
+	              u.walkAmount = 1;
+	              u.heading = best.a;
+	            } else {
+	              u.state = 'pause';
+	              u.stateTimer = 0.25 + rng.next() * 0.5;
+	              u.walkAmount = 0;
+	            }
+	          }
+	          // 连续一段时间没有实际位移：强制换目标，避免永久顶着障碍发呆
+	          u.stuckTimer += step;
+	          if (Math.hypot(u.x - u.stuckX, u.z - u.stuckZ) > 0.18) {
+	            u.stuckX = u.x; u.stuckZ = u.z; u.stuckTimer = 0;
+	          } else if (u.stuckTimer > 1.4) {
+	            u.state = 'pause';
+	            u.stateTimer = 0.15;
+	            u.stuckTimer = 0;
 	          }
 	        }
 	      } else if (u.state === 'pause') {
