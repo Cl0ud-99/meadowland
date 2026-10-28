@@ -16,7 +16,6 @@ import { buildWoodpile } from './world/woodpile.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
 import { buildForest, buildScatterTrees } from './world/forest.js';
-import { buildFlowerGarden } from './world/flowergarden.js';
 import { buildGrassTufts } from './world/grass.js';
 import { buildFarm } from './world/farm.js';
 import { buildFields } from './world/fields.js';
@@ -203,10 +202,6 @@ function boot() {
 
   world.add(extraTrees);
 
-  // 右侧花田：成片花丛 + 蜂箱 + 蜜蜂 + 野餐角
-  const flowerGarden = buildFlowerGarden(terrainModel, rng);
-  world.add(flowerGarden);
-
   const road = buildRoad(terrainModel, ROAD_POINTS, 5.5);
   world.add(road);
 
@@ -274,7 +269,7 @@ function boot() {
 
   Object.assign(app, {
     renderer, scene, terrainModel, terrain, sky, stars, clouds, birds, lighting, rig, device, quality,
-    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, road, car, truck, animals, people, pets, logLady, nightLights, flowerGarden, post, ambient,
+    world, forest, grass, farm, fields, pond, pondLife, seasonFX, campfire, watermill, owl, bigtree, extraTrees, woodpile, road, car, truck, animals, people, pets, logLady, nightLights, post, ambient,
     // 默认从中午开始（t=0.5），滑杆向左是早晨迷雾，向右是夜晚
     mode: { t: 0.5, target: 0.5 },
     // 调试/调参用：描边雾衰减（farScale<1 更早入雾，power<1 更早饱和）
@@ -973,9 +968,6 @@ function loop() {
   app.birds.userData.update(elapsed, dt, app.rig.camera);
   if (app.pondLife) app.pondLife.userData.update(elapsed, dt);
   app.seasonFX.userData.tick(dt, elapsed);
-  if (app.flowerGarden && app.flowerGarden.userData.update) {
-    app.flowerGarden.userData.update(elapsed, dt);
-  }
 
   // 篝火：只在夜晚点亮（t > 0.55 开始，0.85 全亮）
   {
