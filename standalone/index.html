@@ -44861,6 +44861,193 @@ void main() {
 	  return mesh;
 	}
 
+	// ---------------------------------------------------------------------------
+	// 多边形工具：判断点/圆是否落在围栏内部，用于把动物关在栏里
+	// ---------------------------------------------------------------------------
+
+	// 射线法
+	function pointInPolygon(x, z, poly) {
+	  let inside = false;
+	  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+	    const xi = poly[i][0], zi = poly[i][1];
+	    const xj = poly[j][0], zj = poly[j][1];
+	    const intersect = zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi;
+	    if (intersect) inside = !inside;
+	  }
+	  return inside;
+	}
+
+	// 点到线段距离
+	function distToSegment(px, pz, ax, az, bx, bz) {
+	  const dx = bx - ax, dz = bz - az;
+	  const len2 = dx * dx + dz * dz;
+	  if (len2 === 0) return Math.hypot(px - ax, pz - az);
+	  let t = ((px - ax) * dx + (pz - az) * dz) / len2;
+	  t = Math.max(0, Math.min(1, t));
+	  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+	}
+
+	// 点到多边形边界的最短距离
+	function distToPolygonEdge(x, z, poly) {
+	  let best = Infinity;
+	  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+	    const d = distToSegment(x, z, poly[j][0], poly[j][1], poly[i][0], poly[i][1]);
+	    if (d < best) best = d;
+	  }
+	  return best;
+	}
+
+	// 半径 r 的圆是否完整落在多边形内部（留出 margin 余量）
+	function circleInsidePolygon(x, z, r, poly, margin = 0) {
+	  if (!pointInPolygon(x, z, poly)) return false;
+	  return distToPolygonEdge(x, z, poly) >= r + margin;
+	}
+
+	// 矩形是否与多边形相交（用于检查人走的路有没有撞到围栏）
+
+	const dirtFbm$1 = makeFbm(777, 3, 2.1, 0.5);
+	function dirtAmountAt$1(x, z) {
+	  return smoothstep$1(0.47, 0.715, dirtFbm$1(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
+	}
+
+	function makePatch(model, cx, cz, radius, seed) {
+	  const segs = 14;
+	  const pos = [], col = [], idx = [];
+	  const ringVals = [0.52, 1.0, 1.18];
+	  const ringOff = [0.02, 0.035, 0.075];
+	  const ringCol = [
+	    [0.22, 0.14, 0.09],
+	    [0.36, 0.24, 0.15],
+	    [0.50, 0.36, 0.23],
+	  ];
+	  pos.push(cx, model.heightAt(cx, cz) + 0.025, cz);
+	  col.push(0.16, 0.10, 0.06);
+
+	  for (let ri = 0; ri < ringVals.length; ri++) {
+	    for (let i = 0; i < segs; i++) {
+	      const a = (i / segs) * Math.PI * 2;
+	      const wobble = 1 + Math.sin(a * 3 + seed) * 0.13 + Math.sin(a * 5 + seed * 2.1) * 0.07;
+	      const rr = radius * ringVals[ri] * wobble;
+	      const x = cx + Math.cos(a) * rr;
+	      const z = cz + Math.sin(a) * rr;
+	      pos.push(x, model.heightAt(x, z) + ringOff[ri], z);
+	      const c = ringCol[ri];
+	      col.push(c[0], c[1], c[2]);
+	    }
+	  }
+
+	  for (let i = 0; i < segs; i++) {
+	    const n = (i + 1) % segs;
+	    idx.push(0, 1 + n, 1 + i);
+	  }
+	  for (let ri = 0; ri < ringVals.length - 1; ri++) {
+	    const a = 1 + ri * segs;
+	    const b = 1 + (ri + 1) * segs;
+	    for (let i = 0; i < segs; i++) {
+	      const n = (i + 1) % segs;
+	      idx.push(a + i, a + n, b + i);
+	      idx.push(b + i, a + n, b + n);
+	    }
+	  }
+
+	  const geo = new BufferGeometry();
+	  geo.setAttribute('position', new Float32BufferAttribute(pos, 3));
+	  geo.setAttribute('color', new Float32BufferAttribute(col, 3));
+	  geo.setIndex(idx);
+	  geo.computeVertexNormals();
+	  return geo;
+	}
+
+	// 动物圈里的刨土坑：不规则泥色斑块 + 周围翻出的土块。
+	function buildDirtPits(model, rng, count = 20) {
+	  const group = new Group();
+	  group.name = 'dirt-pits';
+	  const mat = toonLambert({
+	    color: 0xffffff,
+	    vertexColors: true,
+	    flatShading: true,
+	    side: DoubleSide,
+	    shared: false,
+	    polygonOffset: true,
+	    polygonOffsetFactor: -2,
+	    polygonOffsetUnits: -2,
+	  });
+	  // 固定配额：牛圈/羊驼圈为主，鸡舍少量，避免全都抽到同一块牧场。
+	  const qPasture = count >= 15 ? 8 : 4;
+	  const qHorse = count >= 15 ? 8 : 4;
+	  const clods = [];
+	  const clodCols = [0x4a3020, 0x6e4a2e, 0x8a6242, 0x3a2618];
+
+	  for (let n = 0; n < count; n++) {
+	    const poly = n < qPasture ? PASTURE : n < qPasture + qHorse ? HORSE_PASTURE : COOP;
+	    let best = null, bestDirt = -1;
+	    // 优先在黄土地里落坑，最多尝试 30 次
+	    for (let k = 0; k < 30; k++) {
+	      const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]);
+	      const x = rng.range(Math.min(...xs) + 2, Math.max(...xs) - 2);
+	      const z = rng.range(Math.min(...zs) + 2, Math.max(...zs) - 2);
+	      if (!pointInPolygon(x, z, poly)) continue;
+	      if (distToPolygonEdge(x, z, poly) < 2.2) continue;
+	      const d = dirtAmountAt$1(x, z);
+	      if (d > bestDirt) { bestDirt = d; best = { x, z }; }
+	      if (d > 0.28) break;
+	    }
+	    if (!best) continue;
+
+	    const cluster = 1 + Math.floor(rng.next() * 3);
+	    for (let c = 0; c < cluster; c++) {
+	      const a = rng.next() * Math.PI * 2;
+	      const off = c === 0 ? 0 : rng.range(0.45, 1.8);
+	      const cx = best.x + Math.cos(a) * off;
+	      const cz = best.z + Math.sin(a) * off;
+	      if (!pointInPolygon(cx, cz, poly) || distToPolygonEdge(cx, cz, poly) < 1.2) continue;
+	      const radius = rng.range(0.38, 1.15) * (c === 0 ? 1.15 : 0.9);
+	      const mesh = new Mesh(makePatch(model, cx, cz, radius, rng.next() * 10), mat);
+	      mesh.receiveShadow = true;
+	      mesh.name = 'dirt-pit';
+	      group.add(mesh);
+
+	      // 坑边翻出的土块，沿不规则边缘随机散布
+	      const lumps = 2 + Math.floor(rng.next() * 4);
+	      for (let j = 0; j < lumps; j++) {
+	        const aa = rng.next() * Math.PI * 2;
+	        const rr = radius * rng.range(0.75, 1.25);
+	        const x = cx + Math.cos(aa) * rr;
+	        const z = cz + Math.sin(aa) * rr;
+	        const sx = rng.range(0.06, 0.2);
+	        const sy = rng.range(0.04, 0.12);
+	        const sz = rng.range(0.06, 0.2);
+	        const y = model.heightAt(x, z) + sy * 0.55;
+	        clods.push({ x, y, z, sx, sy, sz, rot: rng.next() * Math.PI * 2, color: clodCols[Math.floor(rng.next() * clodCols.length)] });
+	      }
+	    }
+	  }
+
+	  if (clods.length) {
+	    const clodGeo = new DodecahedronGeometry(1, 0);
+	    const clodMat = toonLambert({ color: 0xffffff, flatShading: true, shared: false });
+	    const cm = new InstancedMesh(clodGeo, clodMat, clods.length);
+	    cm.name = 'dirt-clods';
+	    cm.castShadow = true;
+	    const m = new Matrix4(), q = new Quaternion(), p = new Vector3(), s = new Vector3();
+	    const up = new Vector3(0, 1, 0);
+	    const c2 = new Color();
+	    clods.forEach((cl, i) => {
+	      q.setFromAxisAngle(up, cl.rot);
+	      p.set(cl.x, cl.y, cl.z);
+	      s.set(cl.sx, cl.sy, cl.sz);
+	      m.compose(p, q, s);
+	      cm.setMatrixAt(i, m);
+	      c2.setHex(cl.color);
+	      cm.setColorAt(i, c2);
+	    });
+	    cm.instanceMatrix.needsUpdate = true;
+	    if (cm.instanceColor) cm.instanceColor.needsUpdate = true;
+	    group.add(cm);
+	  }
+	  return group;
+	}
+
 	// 接触阴影：贴在物体脚下的半透明暗斑，用来把建筑/树/围栏“压”回地面。
 	// 全部用 InstancedMesh，避免为每棵树/每段围栏增加 draw call。
 
@@ -45873,50 +46060,6 @@ void main() {
 
 	  return group;
 	}
-
-	// ---------------------------------------------------------------------------
-	// 多边形工具：判断点/圆是否落在围栏内部，用于把动物关在栏里
-	// ---------------------------------------------------------------------------
-
-	// 射线法
-	function pointInPolygon(x, z, poly) {
-	  let inside = false;
-	  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-	    const xi = poly[i][0], zi = poly[i][1];
-	    const xj = poly[j][0], zj = poly[j][1];
-	    const intersect = zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi;
-	    if (intersect) inside = !inside;
-	  }
-	  return inside;
-	}
-
-	// 点到线段距离
-	function distToSegment(px, pz, ax, az, bx, bz) {
-	  const dx = bx - ax, dz = bz - az;
-	  const len2 = dx * dx + dz * dz;
-	  if (len2 === 0) return Math.hypot(px - ax, pz - az);
-	  let t = ((px - ax) * dx + (pz - az) * dz) / len2;
-	  t = Math.max(0, Math.min(1, t));
-	  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
-	}
-
-	// 点到多边形边界的最短距离
-	function distToPolygonEdge(x, z, poly) {
-	  let best = Infinity;
-	  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-	    const d = distToSegment(x, z, poly[j][0], poly[j][1], poly[i][0], poly[i][1]);
-	    if (d < best) best = d;
-	  }
-	  return best;
-	}
-
-	// 半径 r 的圆是否完整落在多边形内部（留出 margin 余量）
-	function circleInsidePolygon(x, z, r, poly, margin = 0) {
-	  if (!pointInPolygon(x, z, poly)) return false;
-	  return distToPolygonEdge(x, z, poly) >= r + margin;
-	}
-
-	// 矩形是否与多边形相交（用于检查人走的路有没有撞到围栏）
 
 	// ---------------------------------------------------------------------------
 	// 树林：全部 InstancedMesh。树身 + 树冠分开两个实例化网格（不同材质）
@@ -62467,6 +62610,10 @@ void main() {
 	  // 地面散石：单块/成对/成群，避开田地、建筑和池塘
 	  const groundStones = buildGroundStones(terrainModel, rng, quality.tier === 'low' ? 55 : 95);
 	  world.add(groundStones);
+
+	  // 动物圈里的刨土坑：优先落在黄土地上，带翻出的土块
+	  const dirtPits = buildDirtPits(terrainModel, rng, quality.tier === 'low' ? 10 : 20);
+	  world.add(dirtPits);
 
 	  const farm = buildFarm(terrainModel);
 	  world.add(farm);

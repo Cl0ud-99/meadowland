@@ -16,6 +16,7 @@ import { buildWoodpile } from './world/woodpile.js';
 import { buildWell } from './world/well.js';
 import { buildWorkshop } from './world/workshop.js';
 import { buildGroundStones } from './world/groundstones.js';
+import { buildDirtPits } from './world/dirtpits.js';
 import { buildContactShadows } from './world/contactshadows.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
@@ -124,6 +125,10 @@ function boot() {
   // 地面散石：单块/成对/成群，避开田地、建筑和池塘
   const groundStones = buildGroundStones(terrainModel, rng, quality.tier === 'low' ? 55 : 95);
   world.add(groundStones);
+
+  // 动物圈里的刨土坑：优先落在黄土地上，带翻出的土块
+  const dirtPits = buildDirtPits(terrainModel, rng, quality.tier === 'low' ? 10 : 20);
+  world.add(dirtPits);
 
   const farm = buildFarm(terrainModel);
   world.add(farm);
