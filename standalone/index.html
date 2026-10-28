@@ -38952,10 +38952,11 @@ void main() {
 	    tmp.g = clamp(tmp.g * GRASS_BRIGHTNESS, 0, 1);
 	    tmp.b = clamp(tmp.b * GRASS_BRIGHTNESS, 0, 1);
 
-	    const dirtMask = smoothstep$1(0.55, 0.78, fbmPatch(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
+	    // 毛毡实验：土斑面积比上一版约 +30%，让黄色秃地更明显
+	    const dirtMask = smoothstep$1(0.45, 0.70, fbmPatch(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
 	    if (dirtMask > 0.01) {
 	      tmp2.copy(cDirt);
-	      tmp.lerp(tmp2, dirtMask * 0.5);
+	      tmp.lerp(tmp2, dirtMask * 0.72);
 	    }
 
 	    const high = smoothstep$1(26, 82, y);
