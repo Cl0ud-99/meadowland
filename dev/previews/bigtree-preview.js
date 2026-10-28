@@ -303,15 +303,15 @@ function makePoinciana() {
   const rings = [
     { y: 14.8, r: 0.0, n: 1, s: 3.8 },
     { y: 14.2, r: 3.2, n: 8, s: 2.8 },
-    { y: 13.4, r: 6.0, n: 12, s: 2.5 },
-    { y: 11.2, r: 9.2, n: 26, s: 2.7 },
+    { y: 13.6, r: 6.8, n: 16, s: 3.0 },
+    { y: 13.0, r: 9.6, n: 24, s: 2.8 },
   ];
   let ci = 0;
   rings.forEach((ring, ri) => {
     for (let i = 0; i < ring.n; i++) {
       const a = (i / ring.n) * Math.PI * 2 + ri * 0.4;
       const rr = ring.r + (i % 2) * 0.4 - 0.2;
-      const y = ring.y + (((i * 37) % 100) / 100 - 0.5) * (ri === 4 ? 1.2 : 0.5);
+      const y = ring.y - 1.0 + (((i * 37) % 100) / 100 - 0.5) * 0.5;
       blob(g,
         Math.cos(a) * rr, y, Math.sin(a) * rr,
         ring.s * (0.88 + (i % 3) * 0.10),
@@ -325,7 +325,7 @@ function makePoinciana() {
   for (let i = 0; i < 18; i++) {
     const a = (i / 18) * Math.PI * 2 + 0.2;
     const r = 9.4 + (i % 3) * 0.5;
-    blob(g, Math.cos(a) * r, 10.2 + (i % 4) * 0.35, Math.sin(a) * r, 0.4, 0.34, 0.4, 0xf5c542, 0, i);
+    blob(g, Math.cos(a) * r, 11.3 + (i % 4) * 0.3, Math.sin(a) * r, 0.4, 0.34, 0.4, 0xf5c542, 0, i);
   }
 
   return g;
@@ -458,18 +458,17 @@ function makeAcacia() {
   const rings = [
     { y: 15.1, r: 0.0, n: 1, s: 3.0 },
     { y: 14.6, r: 3.4, n: 8, s: 2.4 },
-    { y: 13.9, r: 6.2, n: 12, s: 2.2 },
+    { y: 13.9, r: 7.0, n: 16, s: 2.5 },
+    { y: 13.2, r: 9.8, n: 24, s: 2.6 },
     { y: 13.3, r: 2.2, n: 6, s: 2.2 },
     { y: 12.3, r: 4.6, n: 9, s: 2.1 },
-    { y: 11.9, r: 7.2, n: 16, s: 2.2 },
-    { y: 11.2, r: 9.2, n: 26, s: 2.4 },
   ];
   let ci = 0;
   rings.forEach((ring, ri) => {
     for (let i = 0; i < ring.n; i++) {
       const a = (i / ring.n) * Math.PI * 2 + ri * 0.35;
       const rr = ring.r + (i % 2) * 0.35 - 0.15;
-      const y = ring.y + (((i * 29) % 100) / 100 - 0.5) * (ri === 4 ? 0.9 : 0.35);
+      const y = ring.y - 1.0 + (((i * 29) % 100) / 100 - 0.5) * 0.35;
       blob(g,
         Math.cos(a) * rr, y, Math.sin(a) * rr,
         ring.s * (0.9 + (i % 3) * 0.09),
