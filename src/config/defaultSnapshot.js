@@ -4,7 +4,7 @@
 //
 // SNAPSHOT_VERSION 变更后，老用户本地存档会在下一次打开时被新默认覆盖一次。
 // ---------------------------------------------------------------------------
-export const SNAPSHOT_VERSION = '0.6.1-snapshot-1';
+export const SNAPSHOT_VERSION = '0.6.2-snapshot-1';
 
 export const DEFAULT_SNAPSHOT = {
   snapshotVersion: SNAPSHOT_VERSION,
