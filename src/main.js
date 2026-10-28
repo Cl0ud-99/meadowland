@@ -6,6 +6,7 @@ import { makeRng } from './util/rng.js';
 import { detectDevice, getQuality, logDeviceInfo } from './util/quality.js';
 import { createTerrainModel, buildTerrain, buildPond } from './world/terrain.js';
 import { buildPondLife } from './world/pond.js';
+import { buildPondStones } from './world/pondstones.js';
 import { buildWatermill } from './world/watermill.js';
 import { buildSeasonFX } from './world/seasonfx.js';
 import { buildCampfire } from './world/campfire.js';
@@ -144,6 +145,10 @@ function boot() {
     pond.userData.setSeason(0);
   }
   world.add(pond);
+
+  // 池边石圈：大小/高低错落，水车那侧自动留缺口
+  const stoneWaterY = pond.userData.waterY ?? 5.35;
+  world.add(buildPondStones(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r, rng, stoneWaterY));
 
 
   // 水池生态：鱼 + 荷叶 + 水藻
