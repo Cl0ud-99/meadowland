@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import { WORLD } from '../config.js';
 import { BUILDINGS } from './layout.js';
 import { toonLambert } from '../render/toon.js';
+import { makeFbm, smoothstep } from '../util/noise.js';
+
+// 和地形土斑使用同一套噪声，用来降低黄土地上的草密度。
+const dirtFbm = makeFbm(777, 3, 2.1, 0.5);
+function dirtAmountAt(x, z) {
+  return smoothstep(0.47, 0.715, dirtFbm(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
+}
 
 // 一簇草 = 4 片交叉的短锥形草叶。保持单个 InstancedMesh，
 // 用较低的叶片高度和更宽的倾角做出毛毡小簇。
