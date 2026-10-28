@@ -190,7 +190,7 @@ function boot() {
   world.add(woodpile);
 
   // 水井：木材堆另一边
-  const well = buildWell(terrainModel, rng, { x: 13.5, z: -16.5 });
+  const well = buildWell(terrainModel, rng, { x: -17.5, z: -19.5 });
   world.add(well);
 
   // 另外 3 棵不同品种的树（有大有小，丰富场景）
