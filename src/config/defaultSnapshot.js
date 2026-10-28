@@ -8,7 +8,8 @@ export const SNAPSHOT_VERSION = '0.7.0-snapshot-1';
 
 export const DEFAULT_SNAPSHOT = {
   snapshotVersion: SNAPSHOT_VERSION,
-  time: 0.84,
+  // 故意不写 time：开屏时间由 CAMERA.introTimes 随机决定，
+  // 默认快照只负责时间之外的场景状态。
   season: 3,
   buildings: { barn: 0, farmhouse: 1 },
   silos: { silo1: 'concrete', silo2: 'wood' },

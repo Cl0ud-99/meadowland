@@ -91,7 +91,7 @@
         </svg>
       </div>
       <h2 class="about-name">Cloud99</h2>
-      <p class="about-sub">Meadowland · 0.7.1 · 边界山脊 / 早中晚 / 修理棚 / 水井</p>
+      <p class="about-sub">Meadowland · 0.7.2 · 边界山脊 / 早中晚 / 修理棚 / 水井</p>
     </div>
     <button class="about-close" id="about-close" type="button" aria-label="关闭">×</button>
   </div>
@@ -60091,7 +60091,8 @@ void main() {
 
 	const DEFAULT_SNAPSHOT = {
 	  snapshotVersion: SNAPSHOT_VERSION,
-	  time: 0.84,
+	  // 故意不写 time：开屏时间由 CAMERA.introTimes 随机决定，
+	  // 默认快照只负责时间之外的场景状态。
 	  season: 3,
 	  buildings: { barn: 0, farmhouse: 1 },
 	  silos: { silo1: 'concrete', silo2: 'wood' },
@@ -61441,7 +61442,8 @@ void main() {
 	  function collectState() {
 	    const s = { snapshotVersion: SNAPSHOT_VERSION };
 	    try {
-	      s.time = app.mode.target;
+	      // time 不写入快照：开屏时间由随机时间线决定，
+	      // 快照只保存时间之外的场景状态。
 	      // 优先用 app.seasonT（applySeason 一定会设置它），
 	      // 这样即使季节是被外部代码改的，也能正确保存。
 	      s.season = (typeof app.seasonT === 'number') ? app.seasonT
@@ -61634,7 +61636,8 @@ void main() {
 	    applyState(DEFAULT_SNAPSHOT);
 	  }
 
-	  // 开屏时间线优先级高于默认快照：在早/中/晚里随机选一个，
+	  // 开屏时间线优先级高于默认快照：默认快照不含 time，
+	  // 这里在早/中/晚里随机选一个，
 	  // 先应用到背景场景；点击后进入的就是这个时间。
 	  // 注意：不调用 markDirty，用户没主动改时间时不会把它当作自定义存档。
 	  if (intro && !intro.classList.contains('hidden')) {
