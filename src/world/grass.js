@@ -178,14 +178,17 @@ export function buildGrassTufts(model, rng, count = 2600) {
       p.set(x, y, z);
       q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
       const pick = rng.next();
-      const sc = pick < 0.3 ? rng.range(0.55, 0.8)
-               : pick < 0.82 ? rng.range(0.85, 1.15)
-               : rng.range(1.2, 1.5);
-      s.set(sc, sc * rng.range(0.8, 1.5), sc);
+      const sc = pick < 0.28 ? rng.range(0.45, 0.72)
+               : pick < 0.8 ? rng.range(0.8, 1.15)
+               : rng.range(1.25, 1.75);
+      // 每簇高矮、宽窄都独立变化，避免一片草同一个尺寸
+      s.set(sc * rng.range(0.78, 1.22), sc * rng.range(0.75, 1.5), sc * rng.range(0.78, 1.22));
       m.compose(p, q, s);
       mesh.setMatrixAt(i, m);
-      const v = rng.range(0.94, 1.22);
-      tint.setRGB(v * rng.range(0.92, 1.04), v, v * rng.range(0.82, 0.94));
+      const v = rng.range(0.88, 1.24);
+      const warm = rng.range(0.92, 1.08);
+      const cool = rng.range(0.80, 0.96);
+      tint.setRGB(v * warm, v, v * cool);
       mesh.setColorAt(i, tint);
       i++;
     }

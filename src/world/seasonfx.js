@@ -125,6 +125,10 @@ function makeBugs(count, colorA, colorB, area, yBase, size) {
     wingL.position.x = -size * 0.5;
     wingR.position.x = size * 0.5;
     g.add(wingL, wingR);
+    // 每只飞虫随机一点尺寸/色相，避免整齐划一
+    g.scale.setScalar(0.72 + Math.random() * 0.55);
+    matA.color.offsetHSL((Math.random() - 0.5) * 0.05, 0, (Math.random() - 0.5) * 0.12);
+    matB.color.offsetHSL((Math.random() - 0.5) * 0.05, 0, (Math.random() - 0.5) * 0.12);
 
     g.userData = {
       matA, matB, wingL, wingR,
@@ -305,13 +309,13 @@ export function buildSeasonFX(model, rng, quality) {
 
   // ---------- 春：蝴蝶 ----------
   const butterflies = makeBugs(
-    nb(10), 0xf0d060, 0xe890b8, BUG_AREA * 0.5, baseY + 2.5, 0.32
+    nb(15), 0xf0d060, 0xe890b8, BUG_AREA * 0.5, baseY + 2.5, 0.32
   );
   group.add(butterflies.group);
 
   // ---------- 夏：蜜蜂 ----------
   const bees = makeBugs(
-    nb(12), 0xf0c020, 0x3a3a2a, BUG_AREA * 0.45, baseY + 2.0, 0.18
+    nb(18), 0xf0c020, 0x3a3a2a, BUG_AREA * 0.45, baseY + 2.0, 0.18
   );
   group.add(bees.group);
 
