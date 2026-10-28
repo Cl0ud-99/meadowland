@@ -216,7 +216,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
                : rng.range(1.25, 1.75);
       // 每簇高矮、宽窄都独立变化；黄土地上的草再压低 45%。
       const dryScale = 1 - dry * 0.45;
-      s.set(sc * rng.range(0.78, 1.22) * dryScale, sc * rng.range(0.75, 1.5) * dryScale, sc * rng.range(0.78, 1.22) * dryScale);
+      s.set(sc * rng.range(0.78, 1.22) * dryScale * 0.7, sc * rng.range(0.75, 1.5) * dryScale * 0.7, sc * rng.range(0.78, 1.22) * dryScale * 0.7);
       m.compose(p, q, s);
       mesh.setMatrixAt(i, m);
       const v = rng.range(0.88, 1.24);
@@ -254,10 +254,10 @@ export function buildGrassTufts(model, rng, count = 2600) {
       const meshCount = ti === flowerTypes.length - 1
         ? Math.max(1, total - flowerTypes.slice(0, ti).reduce((a, t) => a + Math.round(total * t.frac), 0))
         : Math.round(total * type.frac);
-      const fMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false });
+      const fMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false, transparent: true, depthWrite: false });
       fMat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = { value: 0 };
-        shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+        shader.vertexShader = 'uniform float uTime;\nvarying float vFlowerDist;\n' + shader.vertexShader.replace(
           '#include <begin_vertex>',
           `#include <begin_vertex>
           #ifdef USE_INSTANCING
@@ -269,6 +269,18 @@ export function buildGrassTufts(model, rng, count = 2600) {
             transformed.x += sin(uTime * fspd + fph + fo.x * 0.2) * sway;
             transformed.z += cos(uTime * fspd * 0.87 + fph * 1.3 + fo.z * 0.2) * sway * 0.7;
           #endif`
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <project_vertex>',
+          '#include <project_vertex>\nvFlowerDist = -mvPosition.z;'
+        );
+        shader.fragmentShader = 'varying float vFlowerDist;\n' + shader.fragmentShader.replace(
+          '#include <dithering_fragment>',
+          `#include <dithering_fragment>
+          float camDist = vFlowerDist;
+          float fade = 1.0 - smoothstep(170.0, 300.0, camDist);
+          if (fade < 0.02) discard;
+          gl_FragColor.a *= fade;`
         );
         fMat.userData.shader = shader;
       };
@@ -293,7 +305,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
         if (dirtAmountAt(x, z) > 0.22) continue;
         fp.set(x, model.heightAt(x, z) + 0.02, z);
         fq.setFromAxisAngle(up, rng.next() * Math.PI * 2);
-        const sc = rng.range(0.9, 1.3);
+        const sc = rng.range(0.9, 1.3) * 0.7;
         fs.set(sc, sc, sc);
         fm.compose(fp, fq, fs);
         flowers.setMatrixAt(fi++, fm);
