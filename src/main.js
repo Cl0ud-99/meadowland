@@ -15,6 +15,7 @@ import { buildBigTree, buildTree } from './world/bigtree.js';
 import { buildWoodpile } from './world/woodpile.js';
 import { buildWell } from './world/well.js';
 import { buildWorkshop } from './world/workshop.js';
+import { buildContactShadows } from './world/contactshadows.js';
 import { buildSky, buildStars, buildClouds } from './world/sky.js';
 import { buildBirds } from './world/birds.js';
 import { buildForest, buildScatterTrees } from './world/forest.js';
@@ -221,6 +222,35 @@ function boot() {
   extraTrees.add(scatterTrees);
 
   world.add(extraTrees);
+
+  // 接触阴影：建筑脚下、树根、围栏脚边
+  {
+    const buildings = [
+      { x: BUILDINGS.barn.x, z: BUILDINGS.barn.z, sx: 16, sz: 23, rot: BUILDINGS.barn.rot },
+      { x: BUILDINGS.farmhouse.x, z: BUILDINGS.farmhouse.z, sx: 14, sz: 16, rot: BUILDINGS.farmhouse.rot },
+      { x: BUILDINGS.silo1.x, z: BUILDINGS.silo1.z, sx: 9, sz: 9 },
+      { x: BUILDINGS.silo2.x, z: BUILDINGS.silo2.z, sx: 9, sz: 9 },
+      { x: BUILDINGS.watertower.x, z: BUILDINGS.watertower.z, sx: 11, sz: 11 },
+      { x: BUILDINGS.windmill.x, z: BUILDINGS.windmill.z, sx: 8, sz: 8 },
+      { x: workshop.position.x, z: workshop.position.z, sx: 15, sz: 10, rot: WORKSHOP.rot },
+      { x: watermill.position.x, z: watermill.position.z, sx: 10, sz: 6 },
+      { x: WELL.x, z: WELL.z, sx: 4.5, sz: 4.5 },
+      { x: BIG_TREE.x, z: BIG_TREE.z, sx: 7.5, sz: 7.5 },
+    ];
+    const trees = [];
+    extraTrees.traverse((tr) => {
+      if (!tr.userData || !tr.userData.kind || !tr.userData.scale) return;
+      if (!tr.name || !tr.name.startsWith('tree-')) return;
+      const sc = tr.userData.scale || 1;
+      trees.push({ x: tr.position.x, z: tr.position.z, sx: 1.8 * sc, sz: 1.8 * sc });
+    });
+    const contactShadows = buildContactShadows(terrainModel, {
+      buildings,
+      trees,
+      fences: farm.userData.fenceSlots || [],
+    });
+    world.add(contactShadows);
+  }
 
   const road = buildRoad(terrainModel, ROAD_POINTS, 5.5);
   world.add(road);

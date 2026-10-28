@@ -13,10 +13,25 @@ export function buildGrassTufts(model, rng, count = 2600) {
   geo.setAttribute('position', src.attributes.position);
   geo.setAttribute('normal', src.attributes.normal);
 
+  // 草簇根部压暗：从根部的 0.62 渐变到叶尖的 1.0
+  {
+    const pos = src.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const t = Math.min(1, Math.max(0, pos.getY(i) / 0.9));
+      const f = 0.62 + 0.38 * t;
+      colors[i * 3] = f;
+      colors[i * 3 + 1] = f;
+      colors[i * 3 + 2] = f;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  }
+
   // shared:false —— 下面覆盖 onBeforeCompile 挂风摆，且 main.js 每季改 color
   const mat = toonLambert({
     color: 0x8fbe5e,
     flatShading: true,
+    vertexColors: true,
     side: THREE.DoubleSide,
     transparent: true,     // 距离淡出需要
     depthWrite: true,
