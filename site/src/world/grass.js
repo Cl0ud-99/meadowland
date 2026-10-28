@@ -83,6 +83,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
   const p = new THREE.Vector3();
   const s = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
+  const tint = new THREE.Color();
 
   let i = 0, guard = 0;
   while (i < count && guard < count * 20) {
@@ -102,7 +103,12 @@ export function buildGrassTufts(model, rng, count = 2600) {
     const sc = rng.range(0.6, 1.6);
     s.set(sc, sc * rng.range(0.8, 1.5), sc);
     m.compose(p, q, s);
-    mesh.setMatrixAt(i++, m);
+    mesh.setMatrixAt(i, m);
+    // 每根草独立色差，避免整片草一个色号
+    const v = rng.range(0.80, 1.12);
+    tint.setRGB(v * rng.range(0.92, 1.04), v, v * rng.range(0.82, 0.94));
+    mesh.setColorAt(i, tint);
+    i++;
   }
   mesh.count = i;
   mesh.instanceMatrix.needsUpdate = true;

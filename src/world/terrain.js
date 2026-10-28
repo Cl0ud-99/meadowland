@@ -236,6 +236,91 @@ function injectSnow(material, useGrassWeight) {
   return snowUniform;
 }
 
+// 地面细节纹理：用可平铺的周期噪声生成
+//   map    —— 细碎草色明暗
+//   normal —— 轻微起伏，让平面也能接住高光
+// 顶点色负责中大尺度，纹理负责近景高频，两者叠加地面才有"质感"。
+function makeGroundDetailTextures(size = 256) {
+  const rand = (seed) => {
+    let s = seed >>> 0;
+    return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  };
+  const makeGrid = (cells, seed) => {
+    const r = rand(seed);
+    const g = new Float32Array(cells * cells);
+    for (let i = 0; i < g.length; i++) g[i] = r();
+    return g;
+  };
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const sample = (g, cells, x, y) => {
+    const fx = x * cells, fy = y * cells;
+    const x0 = Math.floor(fx) % cells, y0 = Math.floor(fy) % cells;
+    const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+    const tx = smooth(fx - Math.floor(fx)), ty = smooth(fy - Math.floor(fy));
+    const a = g[y0 * cells + x0], b = g[y0 * cells + x1];
+    const c = g[y1 * cells + x0], d = g[y1 * cells + x1];
+    return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+  };
+
+  const octaves = [4, 8, 16, 32, 64];
+  const grids = octaves.map((cells, i) => makeGrid(cells, 9187 + i * 131));
+  const h = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const px = x / size, py = y / size;
+      let v = 0, amp = 0.58, total = 0;
+      for (let i = 0; i < octaves.length; i++) {
+        v += sample(grids[i], octaves[i], px, py) * amp;
+        total += amp;
+        amp *= 0.55;
+      }
+      v /= total;
+      h[y * size + x] = Math.max(0, Math.min(1, v));
+    }
+  }
+
+  const mapData = new Uint8Array(size * size * 4);
+  const nrmData = new Uint8Array(size * size * 4);
+  const at = (x, y) => h[((y + size) % size) * size + ((x + size) % size)];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const v = h[y * size + x];
+      const c = Math.round((0.80 + v * 0.20) * 255);
+      mapData[i] = c; mapData[i + 1] = c; mapData[i + 2] = c; mapData[i + 3] = 255;
+
+      const dx = (at(x + 1, y) - at(x - 1, y)) * 2.2;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * 2.2;
+      let nx = -dx, ny = -dy, nz = 1;
+      const len = Math.hypot(nx, ny, nz);
+      nx /= len; ny /= len; nz /= len;
+      nrmData[i] = Math.round((nx * 0.5 + 0.5) * 255);
+      nrmData[i + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      nrmData[i + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+      nrmData[i + 3] = 255;
+    }
+  }
+
+  const map = new THREE.DataTexture(mapData, size, size, THREE.RGBAFormat);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(220, 220);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+  map.generateMipmaps = true;
+  map.minFilter = THREE.LinearMipmapLinearFilter;
+  map.needsUpdate = true;
+
+  const normalMap = new THREE.DataTexture(nrmData, size, size, THREE.RGBAFormat);
+  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(220, 220);
+  normalMap.colorSpace = THREE.NoColorSpace;
+  normalMap.anisotropy = 8;
+  normalMap.generateMipmaps = true;
+  normalMap.minFilter = THREE.LinearMipmapLinearFilter;
+  normalMap.needsUpdate = true;
+  return { map, normalMap };
+}
+
 export function buildTerrain(model, segments = WORLD.segments) {
   const geo = new THREE.PlaneGeometry(WORLD.size, WORLD.size, segments, segments);
   geo.rotateX(-Math.PI / 2);
@@ -271,6 +356,12 @@ export function buildTerrain(model, segments = WORLD.segments) {
 
   // shared:false —— main.js 每季改 app.terrain.material.color，必须独占
   const mat = toonLambert({ vertexColors: true, shared: false });
+  // 顶点色负责大尺度草色，贴图负责近景高频细节
+  const detail = makeGroundDetailTextures();
+  mat.map = detail.map;
+  mat.normalMap = detail.normalMap;
+  mat.normalScale.set(0.30, 0.30);
+  mat.needsUpdate = true;
   // 暴露给季节切换（地形是草地的主体，必须一起染色）
   mat.userData.isTerrain = true;
 
