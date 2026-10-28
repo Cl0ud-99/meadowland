@@ -266,6 +266,12 @@ export function buildNightLights(model, scene) {
     new THREE.CylinderGeometry(0.022, 0.028, cordH, 5),
     new THREE.MeshBasicMaterial({ color: 0x2f241b })
   );
+  const branch = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.075, 0.095, 1, 5),
+    new THREE.MeshBasicMaterial({ color: 0x7a4a2c })
+  );
+  treeLamp.add(branch);
+
   const socket = new THREE.Mesh(
     new THREE.CylinderGeometry(0.10, 0.12, 0.16, 8),
     new THREE.MeshBasicMaterial({ color: 0x2a2018 })
@@ -298,20 +304,32 @@ export function buildNightLights(model, scene) {
     const cz = (min.z + max.z) * 0.5;
     const rx = Math.max(0.6, (max.x - min.x) * 0.5);
     const rz = Math.max(0.6, (max.z - min.z) * 0.5);
-    const x = cx + rx * 0.72;
-    const z = cz + rz * 0.78;
+    // 灯泡挂在树冠外的枝端，再用一根小树枝连回树干，避免浮空。
+    const x = cx + rx * 0.62;
+    const z = cz + rz * 0.68;
     const gy = groundAt(x, z);
-    const bulbY = gy + h * 0.34;
-    const cordTop = gy + h * 0.58;
+    const bulbY = gy + h * 0.32;
+    // 挂枝只比灯泡高一点，保证从树冠下缘就能看到连接
+    const cordTop = gy + h * 0.32 + 0.75;
     const cordLen = Math.max(0.7, cordTop - bulbY - 0.1);
     cord.scale.y = cordLen / cordH;
     cord.position.set(x, cordTop - cordLen * 0.5, z);
+    // 从树干中心伸到吊线顶部的小树枝
+    const bx = x - cx, bz = z - cz;
+    const blen = Math.max(0.35, Math.hypot(bx, bz));
+    branch.position.set((x + cx) * 0.5, cordTop, (z + cz) * 0.5);
+    branch.scale.set(1, blen, 1);
+    branch.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(bx, 0, bz).normalize()
+    );
     socket.position.set(x, bulbY + 0.13, z);
     treeBulb.position.set(x, bulbY, z);
     shade.position.set(x, bulbY + 0.24, z);
     treeLight.position.set(x, bulbY - 0.06, z);
   }
   updateTreeLamp();
+  group.userData.updateTreeLamp = updateTreeLamp;
 
   // ---------- 农舍 ----------  // ---------- 农舍 ----------
   const house = BUILDINGS.farmhouse;
