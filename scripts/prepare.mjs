@@ -116,3 +116,20 @@ for (const f of demoPages) {
 if (demoPages.length) {
   console.log('demo pages -> site/', demoPages.join(', '));
 }
+
+
+// ---------------------------------------------------------------------------
+// 预览 demo（dev/previews/*.html + *.js）→ site/ 根目录
+//   这些页面用 importmap 指向 ./vendor/three/three.module.js，
+//   脚本里的 ./src/... 也在 site/src 下，直接复制即可。
+// ---------------------------------------------------------------------------
+const PREVIEW_SRC = 'dev/previews';
+if (existsSync(PREVIEW_SRC)) {
+  let n = 0;
+  for (const f of readdirSync(PREVIEW_SRC)) {
+    if (!/\.(html|js)$/.test(f)) continue;
+    copyFileSync(join(PREVIEW_SRC, f), join(OUT, f));
+    n++;
+  }
+  if (n) console.log('previews -> site/', n, 'files');
+}

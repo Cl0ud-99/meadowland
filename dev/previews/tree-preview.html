@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>场景树木 · 参考复刻预览</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #dfeaf5; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #hint {
+    position: fixed; left: 50%; top: 18px; transform: translateX(-50%);
+    font: 12px/1.6 ui-monospace, Consolas, monospace; color: #3a4048;
+    background: rgba(255,255,255,.85); padding: 7px 14px; border-radius: 4px;
+    border: 1px solid rgba(42,30,20,.18); pointer-events: none;
+  }
+  #ui {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    max-width: 96vw; z-index: 10;
+  }
+  #ui button {
+    font: 12px/1 ui-monospace, Consolas, monospace;
+    padding: 9px 13px; border-radius: 5px; border: 2px solid #2a1e14;
+    background: #f6f3ea; color: #2a1e14; cursor: pointer;
+    box-shadow: 0 3px 0 #2a1e14;
+  }
+  #ui button.active { background: #ffd98a; }
+  #ui button:active { transform: translateY(2px); box-shadow: 0 1px 0 #2a1e14; }
+  .tag {
+    position: fixed; transform: translate(-50%, -100%);
+    font: 700 12px/1.2 ui-monospace, Consolas, monospace;
+    color: #2a1e14; background: rgba(246,243,234,.94);
+    border: 2px solid #2a1e14; border-radius: 4px; padding: 5px 9px;
+    box-shadow: 0 3px 0 rgba(42,30,20,.32); pointer-events: none; white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint">拖动旋转 · 滚轮缩放 · 点击底部按钮聚焦单棵树</div>
+<div id="ui"></div>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js" } }
+</script>
+<script type="module" src="./tree-preview.js"></script>
+</body>
+</html>
