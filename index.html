@@ -52432,23 +52432,31 @@ void main() {
 	  const treeBox = new Box3();
 	  let leafKind = '';
 	  let leafBounds = null;
+	  let leafAnchor = null;
 
-	  // 扫描树冠顶点（叶子颜色），得到真实叶底范围。
-	  // 不靠整棵树包围盒猜，避免挂点落在树干或树冠内部。
+	  function isLeafColor(r, g, b) {
+	    return g > r * 1.05 && g > b * 1.05;
+	  }
+
+	  // 从树冠下方往上打射线，找到真实的叶片底面作为挂点。
+	  // 候选点都靠近树干，不会把灯挂到树冠最外侧。
 	  function scanLeafBounds() {
-	    if (!pastureTree || !treeMesh) { leafBounds = null; return; }
+	    if (!pastureTree || !treeMesh) { leafBounds = null; leafAnchor = null; return; }
 	    const kind = pastureTree.userData.kind || '';
 	    if (leafBounds && kind === leafKind) return;
+
 	    const geo = treeMesh.geometry;
 	    const pos = geo.attributes.position;
 	    const col = geo.attributes.color;
 	    if (!pos || !col) return;
 	    pastureTree.updateMatrixWorld(true);
+	    treeMesh.updateMatrixWorld(true);
+
 	    const tmp = treeMesh.position.clone();
 	    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, minZ = 1e9, maxZ = -1e9, n = 0;
 	    for (let i = 0; i < pos.count; i++) {
 	      const r = col.getX(i), g = col.getY(i), b = col.getZ(i);
-	      if (!(g > r * 1.05 && g > b * 1.05)) continue;
+	      if (!isLeafColor(r, g, b)) continue;
 	      tmp.set(pos.getX(i), pos.getY(i), pos.getZ(i));
 	      treeMesh.localToWorld(tmp);
 	      minX = Math.min(minX, tmp.x); maxX = Math.max(maxX, tmp.x);
@@ -52456,8 +52464,43 @@ void main() {
 	      minZ = Math.min(minZ, tmp.z); maxZ = Math.max(maxZ, tmp.z);
 	      n++;
 	    }
-	    if (n > 0) leafBounds = { minX, maxX, minY, maxY, minZ, maxZ };
+	    if (n === 0) return;
+	    leafBounds = { minX, maxX, minY, maxY, minZ, maxZ };
 	    leafKind = kind;
+
+	    // 从靠近树干的位置向外找一组候选点，射线只接受叶片命中。
+	    const cx = (minX + maxX) * 0.5;
+	    const cz = (minZ + maxZ) * 0.5;
+	    const w = maxX - minX;
+	    const d = maxZ - minZ;
+	    const localOffsets = [
+	      [0.02, 0.42], [-0.02, 0.42], [0.12, 0.38], [-0.12, 0.38],
+	      [0.18, 0.22], [-0.18, 0.22], [0.25, 0.30], [-0.25, 0.30],
+	    ];
+	    const ray = new Raycaster();
+	    const origin = new Vector3();
+	    const up = new Vector3(0, 1, 0);
+	    for (const [ox, oz] of localOffsets) {
+	      const x = cx + w * ox;
+	      const z = cz + d * oz;
+	      origin.set(x, groundAt(x, z) + 0.4, z);
+	      ray.set(origin, up);
+	      const hits = ray.intersectObject(treeMesh, false);
+	      for (const hit of hits) {
+	        const f = hit.face;
+	        if (!f) continue;
+	        const sr = (col.getX(f.a) + col.getX(f.b) + col.getX(f.c)) / 3;
+	        const sg = (col.getY(f.a) + col.getY(f.b) + col.getY(f.c)) / 3;
+	        const sb = (col.getZ(f.a) + col.getZ(f.b) + col.getZ(f.c)) / 3;
+	        if (!isLeafColor(sr, sg, sb)) continue;
+	        leafAnchor = { x, z, y: hit.point.y + 0.03 };
+	        break;
+	      }
+	      if (leafAnchor) break;
+	    }
+	    if (!leafAnchor) {
+	      leafAnchor = { x: cx, z: cz + d * 0.42, y: minY + 0.05 };
+	    }
 	  }
 
 	  function updateTreeLamp() {
@@ -52471,20 +52514,20 @@ void main() {
 	      minX: bmin.x, maxX: bmax.x, minY: bmin.y, maxY: bmax.y,
 	      minZ: bmin.z, maxZ: bmax.z,
 	    };
-	    const cx = (lb.minX + lb.maxX) * 0.5;
-	    const cz = (lb.minZ + lb.maxZ) * 0.5;
-	    const w = Math.max(1, lb.maxX - lb.minX);
-	    const d = Math.max(1, lb.maxZ - lb.minZ);
-	    const x = cx + w * 0.30;
-	    const z = cz + d * 0.34;
+	    const anchor = leafAnchor || {
+	      x: (lb.minX + lb.maxX) * 0.5,
+	      z: (lb.minZ + lb.maxZ) * 0.5,
+	      y: lb.minY + 0.05,
+	    };
+	    const x = anchor.x;
+	    const z = anchor.z;
 	    const gy = groundAt(x, z);
-	    // 灯泡在叶底下方，吊线上端进入树冠，整根吊线保持垂直。
-	    const bulbY = Math.max(gy + 1.0, lb.minY - 1.45);
-	    const cordTop = lb.minY + 0.5;
-	    const topY = bulbY + 0.16;
-	    const cordLen = Math.max(0.35, cordTop - topY);
+	    // 长吊线：灯泡从叶底再向下垂 2.5 米左右。
+	    const topY = anchor.y + 0.05;
+	    const bulbY = Math.max(gy + 0.65, topY - 2.5);
+	    const cordLen = Math.max(0.5, topY - (bulbY + 0.16));
 	    cord.scale.y = cordLen / cordH;
-	    cord.position.set(x, (cordTop + topY) * 0.5, z);
+	    cord.position.set(x, (topY + bulbY + 0.16) * 0.5, z);
 	    cord.quaternion.identity();
 	    socket.position.set(x, bulbY + 0.13, z);
 	    treeBulb.position.set(x, bulbY, z);
