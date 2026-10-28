@@ -362,6 +362,46 @@ export function buildWorkshop(model, rng) {
   lampLight.position.set(66, lampY + 2.9, -0.2);
   group.add(lampLight);
 
+  // 可换配色：只记录木质/屋顶/工具柜的材质，工具和灯不动
+  const THEMES = [
+    { name: '原木木棚', wood: 0x8a6a44, dark: 0x6f5236, roof: 0x5f6f78, edge: 0x46545c, chest: 0xa84832 },
+    { name: '森林绿棚', wood: 0x6f7a4a, dark: 0x55603a, roof: 0x4f6152, edge: 0x38483b, chest: 0x8a5a3a },
+    { name: '工业蓝棚', wood: 0x7a8088, dark: 0x5a6068, roof: 0x48627a, edge: 0x334a60, chest: 0x3f5a7a },
+    { name: '暖沙色棚', wood: 0xb08a58, dark: 0x8a6a40, roof: 0x7a5a48, edge: 0x5f4338, chest: 0xb5543c },
+  ];
+  const baseToMat = new Map();
+  group.traverse((o) => {
+    if (!o.isMesh || !o.material || !o.material.color) return;
+    if (o.material.isMeshBasicMaterial) return;
+    const hex = o.material.color.getHex();
+    if (!baseToMat.has(hex)) baseToMat.set(hex, o.material);
+  });
+  const roleByBase = new Map([
+    [0x8a6a44, 'wood'],
+    [0x6f5236, 'dark'],
+    [0x5f6f78, 'roof'],
+    [0x46545c, 'edge'],
+    [0xa84832, 'chest'],
+    [0x9a7448, 'wood'],
+    [0x55603a, 'dark'],
+  ]);
+  let styleIdx = 0;
+  group.userData.styleNames = THEMES.map((t) => t.name);
+  group.userData.getStyle = () => ({ idx: styleIdx, name: THEMES[styleIdx].name });
+  group.userData.setStyle = (idx) => {
+    const i = Math.max(0, Math.min(THEMES.length - 1, Number(idx) || 0));
+    styleIdx = i;
+    const th = THEMES[i];
+    for (const [hex, material] of baseToMat) {
+      const role = roleByBase.get(hex);
+      if (!role) continue;
+      material.color.setHex(th[role]);
+    }
+    group.userData.styleIdx = i;
+    return true;
+  };
+  group.userData.setStyle(0);
+
   group.userData.setNight = (t) => {
     const k = Math.max(0, Math.min(1, (t - 0.72) / 0.23));
     const w = k * k * (3 - 2 * k);

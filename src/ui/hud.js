@@ -354,7 +354,7 @@ export function createHud(app) {
     app.farm, app.fields, app.truck, app.car,
     app.animals, app.people, app.pets, app.logLady,
     app.pondLife, app.pond, app.watermill, app.campfire,
-    app.owl, app.bigtree, app.extraTrees, app.woodpile, app.seasonFX,
+    app.owl, app.bigtree, app.extraTrees, app.woodpile, app.workshop, app.seasonFX,
   ].filter(Boolean);
 
   // ---------- 树冠障碍（供相机落点避障）----------
@@ -484,6 +484,13 @@ export function createHud(app) {
       root = root.parent;
     }
 
+    // 工作区是两层组（pivot → inner），点击零件后统一归到 workshop 根
+    if (app.workshop) {
+      let wp = root;
+      while (wp && wp !== app.workshop) wp = wp.parent;
+      if (wp === app.workshop) root = app.workshop;
+    }
+
     if (!root || !root.parent) return;
 
     // 点击音效（气泡波声）
@@ -539,6 +546,7 @@ export function createHud(app) {
       owl:        { label: 'Owl',      distMul: 6.5 },
       bigtree:    { label: '参天大树',  distMul: 2.4 },
       woodpile:   { label: '木材堆',    distMul: 4.0 },
+      workshop:   { label: '修理棚',    distMul: 2.5 },
       snowman:    { label: '雪人',      distMul: 2.8 },
       wheel:      { label: '水车',     distMul: 3.0 },
       mill:       { label: '小磨坊',   distMul: 3.0 },
@@ -804,6 +812,21 @@ export function createHud(app) {
         app.farm.userData.setWindmillStyle(pickStyle);
 
         if (app.markDirty) app.markDirty();
+      });
+      return;
+    }
+
+    // ---------- 修理棚：换配色 ----------
+    if (root.name === 'workshop' && app.workshop?.userData?.setStyle) {
+      const info = app.workshop.userData.getStyle();
+      const names = app.workshop.userData.styleNames || [];
+      const icons = ['🪵', '🌿', '🏭', '🏜️'];
+      app.focusedBuilding = { kind: 'workshop' };
+      const items = names.map((name, i) => ({ id: String(i), name, icon: icons[i] || '🎨' }));
+      app.showOptionPanel('修理棚 配色', items, info.idx, (pick) => {
+        if (app.workshop.userData.setStyle(Number(pick))) {
+          if (app.markDirty) app.markDirty();
+        }
       });
       return;
     }
@@ -1353,6 +1376,9 @@ export function createHud(app) {
       if (app.watermill && app.watermill.userData.getStyle) {
         s.watermillStyle = app.watermill.userData.getStyle().idx;
       }
+      if (app.workshop && app.workshop.userData.getStyle) {
+        s.workshopStyle = app.workshop.userData.getStyle().idx;
+      }
 
       // 雪人风格（每个雪人独立）
       if (app.seasonFX && Array.isArray(app.seasonFX.userData.snowmen)) {
@@ -1432,6 +1458,9 @@ export function createHud(app) {
       }
       if (typeof d.watermillStyle === 'number' && app.watermill && app.watermill.userData.setStyle) {
         try { app.watermill.userData.setStyle(d.watermillStyle); } catch (e) {}
+      }
+      if (typeof d.workshopStyle === 'number' && app.workshop && app.workshop.userData.setStyle) {
+        try { app.workshop.userData.setStyle(d.workshopStyle); } catch (e) {}
       }
       if (Array.isArray(d.snowmenStyles) && app.seasonFX && Array.isArray(app.seasonFX.userData.snowmen)) {
         d.snowmenStyles.forEach((style, i) => {

@@ -203,6 +203,9 @@ function boot() {
   workshop.rotation.y = WORKSHOP.rot;
   workshop.add(workshopInner);
   workshop.userData.setNight = (t) => workshopInner.userData.setNight(t);
+  workshop.userData.getStyle = () => workshopInner.userData.getStyle();
+  workshop.userData.setStyle = (idx) => workshopInner.userData.setStyle(idx);
+  workshop.userData.styleNames = workshopInner.userData.styleNames;
   world.add(workshop);
 
   // 另外 3 棵不同品种的树（有大有小，丰富场景）
