@@ -1,6 +1,7 @@
 import * as THREE from '../../vendor/three/three.module.js';
 import { toonLambert } from '../render/toon.js';
 import { box, cyl, tint } from '../util/geo.js';
+import { STONE_COLLIDERS } from './groundstones.js';
 import { BUILDINGS, FIELD_RECTS, PASTURE, COOP, HORSE_PASTURE, HAY_BALES } from './layout.js';
 import { pointInPolygon, distToPolygonEdge } from '../util/poly.js';
 
@@ -552,6 +553,9 @@ function makeWalkable(pad) {
     for (const b of Object.values(BUILDINGS)) {
       const r = b.r ?? Math.max(b.w ?? 0, b.d ?? 0) * 0.5;
       if (Math.hypot(x - b.x, z - b.z) < r + pad) return false;
+    }
+    for (const st of STONE_COLLIDERS) {
+      if (Math.hypot(x - st.x, z - st.z) < st.r + pad) return false;
     }
     for (const f of FIELD_RECTS) {
       const cos = Math.cos(-f.rot), sin = Math.sin(-f.rot);

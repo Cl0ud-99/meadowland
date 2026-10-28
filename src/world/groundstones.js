@@ -27,7 +27,10 @@ function inBuilding(x, z, pad = 2) {
 }
 
 // 散落在地面的低多边形石头：单块、成对、3~6 块成群。
+export const STONE_COLLIDERS = [];
+
 export function buildGroundStones(model, rng, groupCount = 95) {
+  STONE_COLLIDERS.length = 0;
   const geo = new THREE.DodecahedronGeometry(1, 0);
   const mat = toonLambert({ color: 0xffffff, flatShading: true, shared: false });
   const stones = [];
@@ -54,6 +57,8 @@ export function buildGroundStones(model, rng, groupCount = 95) {
     q.setFromEuler(e);
     s.set(sx, sy, sz);
     m.compose(p, q, s);
+    const colliderR = Math.max(sx, sz) * 0.85;
+    if (colliderR > 0.28) STONE_COLLIDERS.push({ x, z, r: colliderR });
     stones.push({ matrix: m.clone(), color: colors[Math.floor(rng.next() * colors.length)] });
     return true;
   };

@@ -3,6 +3,7 @@ import { box, tint, meshFrom } from '../util/geo.js';
 import { makeQuadruped, makeSheepRig, makeHuman, makeSittingHuman, randomLook } from './character.js';
 import { PASTURE, COOP, BUILDINGS, HAY_BALES, PEOPLE_PATHS, FIELD_RECTS, HORSE_PASTURE, TREE_SPECS, BIG_TREE, WELL } from './layout.js';
 import { SCATTER_SPOTS } from './forest.js';
+import { STONE_COLLIDERS } from './groundstones.js';
 import { pointInPolygon, circleInsidePolygon, distToPolygonEdge } from '../util/poly.js';
 
 // 人物需要避让的树（树干体积）：固定品种树 + 5 棵点缀树 + 参天大树
@@ -447,6 +448,7 @@ export function buildAnimals(model, rng, counts = null) {
   //   这里用碰撞半径 2.6（树冠 + 一点余量），动物 bodyR 会在排斥时叠加。
   const staticObstacles = [
     { x: -38, z: 50, r: 2.6 },
+    ...STONE_COLLIDERS,
   ];
 
   const spawnIn = (factory, kind, count, poly, opts) => {
@@ -509,7 +511,7 @@ export function buildAnimals(model, rng, counts = null) {
   // ★ 原来这里分两批：4 只马 + 5 只羊驼。现在统一成羊驼，
   //   总数保持 9 只（马的 4 只并入羊驼），每只现场随机配色。
   //   breeds 传空数组只是占位，makeAlpaca 内部会用 randomAlpacaBreed 生成。
-  const alpacaCount = spawnIn(makeAlpaca, 'alpaca', (C.alpaca || 5) + (C.horse || 4), HORSE_PASTURE, {
+  const alpacaCount = spawnIn(makeAlpaca, 'alpaca', Math.max(0, (C.alpaca || 5) + (C.horse || 4) - 2), HORSE_PASTURE, {
     radius: 4.5, speed: 0.95, scale: [0.9, 1.12], margin: 1.6, breeds: [{}],
   });
   const horseCount = 0;
@@ -809,6 +811,10 @@ export function buildPeople(model, rng) {
     for (const tr of TREE_OBSTACLES) {
       if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
     }
+    // 散石体积碰撞
+    for (const st of STONE_COLLIDERS) {
+      if (Math.hypot(x - st.x, z - st.z) < st.r + pad) return false;
+    }
     return true;
   };
 
@@ -852,6 +858,10 @@ export function buildPeople(model, rng) {
     // ★ 树的体积碰撞：不能穿过树干
     for (const tr of TREE_OBSTACLES) {
       if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
+    }
+    // 散石体积碰撞
+    for (const st of STONE_COLLIDERS) {
+      if (Math.hypot(x - st.x, z - st.z) < st.r + pad) return false;
     }
     return true;
   };

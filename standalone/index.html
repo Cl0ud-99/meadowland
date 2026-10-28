@@ -44783,7 +44783,10 @@ void main() {
 	}
 
 	// 散落在地面的低多边形石头：单块、成对、3~6 块成群。
+	const STONE_COLLIDERS = [];
+
 	function buildGroundStones(model, rng, groupCount = 95) {
+	  STONE_COLLIDERS.length = 0;
 	  const geo = new DodecahedronGeometry(1, 0);
 	  const mat = toonLambert({ color: 0xffffff, flatShading: true, shared: false });
 	  const stones = [];
@@ -44810,6 +44813,8 @@ void main() {
 	    q.setFromEuler(e);
 	    s.set(sx, sy, sz);
 	    m.compose(p, q, s);
+	    const colliderR = Math.max(sx, sz) * 0.85;
+	    if (colliderR > 0.28) STONE_COLLIDERS.push({ x, z, r: colliderR });
 	    stones.push({ matrix: m.clone(), color: colors[Math.floor(rng.next() * colors.length)] });
 	    return true;
 	  };
@@ -53967,6 +53972,7 @@ void main() {
 	  //   这里用碰撞半径 2.6（树冠 + 一点余量），动物 bodyR 会在排斥时叠加。
 	  const staticObstacles = [
 	    { x: -38, z: 50, r: 2.6 },
+	    ...STONE_COLLIDERS,
 	  ];
 
 	  const spawnIn = (factory, kind, count, poly, opts) => {
@@ -54029,7 +54035,7 @@ void main() {
 	  // ★ 原来这里分两批：4 只马 + 5 只羊驼。现在统一成羊驼，
 	  //   总数保持 9 只（马的 4 只并入羊驼），每只现场随机配色。
 	  //   breeds 传空数组只是占位，makeAlpaca 内部会用 randomAlpacaBreed 生成。
-	  const alpacaCount = spawnIn(makeAlpaca, 'alpaca', (C.alpaca || 5) + (C.horse || 4), HORSE_PASTURE, {
+	  const alpacaCount = spawnIn(makeAlpaca, 'alpaca', Math.max(0, (C.alpaca || 5) + (C.horse || 4) - 2), HORSE_PASTURE, {
 	    radius: 4.5, speed: 0.95, scale: [0.9, 1.12], margin: 1.6, breeds: [{}],
 	  });
 	  const horseCount = 0;
@@ -54343,6 +54349,10 @@ void main() {
 	    // ★ 树的体积碰撞：不能穿过树干
 	    for (const tr of TREE_OBSTACLES) {
 	      if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
+	    }
+	    // 散石体积碰撞
+	    for (const st of STONE_COLLIDERS) {
+	      if (Math.hypot(x - st.x, z - st.z) < st.r + pad) return false;
 	    }
 	    return true;
 	  };
@@ -55137,6 +55147,9 @@ void main() {
 	    for (const b of Object.values(BUILDINGS)) {
 	      const r = b.r ?? Math.max(b.w ?? 0, b.d ?? 0) * 0.5;
 	      if (Math.hypot(x - b.x, z - b.z) < r + pad) return false;
+	    }
+	    for (const st of STONE_COLLIDERS) {
+	      if (Math.hypot(x - st.x, z - st.z) < st.r + pad) return false;
 	    }
 	    for (const f of FIELD_RECTS) {
 	      const cos = Math.cos(-f.rot), sin = Math.sin(-f.rot);
