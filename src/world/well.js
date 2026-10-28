@@ -103,6 +103,41 @@ export function buildWell(model, rng, opts = {}) {
   finial.position.y = 4.72;
   group.add(finial);
 
+  // 屋顶下挂一盏小灯
+  const lampGlowMat = new THREE.MeshBasicMaterial({
+    color: 0xffd39a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
+  });
+  const lampFrameMat = toonLambert({ color: 0x3a3a38, flatShading: true, shared: false });
+  const lampGroup = new THREE.Group();
+  lampGroup.position.set(0, 3.02, 0);
+  const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.42, 4), lampFrameMat);
+  chain.position.y = 0.24;
+  lampGroup.add(chain);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 0.34), lampFrameMat);
+  cap.position.y = 0.03;
+  lampGroup.add(cap);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 0.22), lampGlowMat);
+  glass.position.y = -0.14;
+  lampGroup.add(glass);
+  const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.3), lampFrameMat);
+  bottom.position.y = -0.31;
+  lampGroup.add(bottom);
+  group.add(lampGroup);
+
+  const lampLight = new THREE.PointLight(0xffc080, 0, 9, 2);
+  lampLight.position.set(0, 3.0, 0);
+  group.add(lampLight);
+
+  group.userData.setNight = (t) => {
+    const k = Math.max(0, Math.min(1, (t - 0.72) / 0.23));
+    const w = k * k * (3 - 2 * k);
+    lampGlowMat.opacity = w * 0.95;
+    lampGroup.visible = w > 0.04;
+    lampLight.intensity = w * 12;
+    lampLight.visible = w > 0.04;
+  };
+  group.userData.setNight(0);
+
   // 吊绳 + 木桶
   const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.45, 4), ropeMat);
   rope.position.set(0.35, 1.82, 0);

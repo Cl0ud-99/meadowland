@@ -60,6 +60,14 @@ const TRUCK_BUILDERS = {
   orange: makeOrangeHauler,
 };
 
+// 每种车的驾驶室尺寸/位置（和 truckDemo.addCab 的参数保持一致）
+const CAB_INFO = {
+  pickup: { z: 5.0 - 1.05 - 1.75 / 2, w: 1.95, h: 1.35, hy: 0.58 + 1.15, d: 1.75 },
+  grain:  { z: 5.4 - 1.10 - 1.80 / 2, w: 2.00, h: 1.40, hy: 0.58 + 1.18, d: 1.80 },
+  blue:   { z: 5.7 - 1.12 - 1.85 / 2, w: 2.02, h: 1.38, hy: 0.58 + 1.20, d: 1.85 },
+  orange: { z: 5.4 - 1.08 - 1.82 / 2, w: 2.00, h: 1.38, hy: 0.58 + 1.18, d: 1.82 },
+};
+
 export function buildTruck(style = 'pickup') {
   const group = new THREE.Group();
   group.name = 'truck';
@@ -81,5 +89,42 @@ export function buildTruck(style = 'pickup') {
   };
 
   group.userData.truckStyle = style;
+
+  // 驾驶室夜灯：暖色车窗贴片 + 车内点光，t=0.72 之后渐亮
+  const cab = CAB_INFO[style] || CAB_INFO.pickup;
+  const cabGlowMat = new THREE.MeshBasicMaterial({
+    color: 0xffb765, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
+  });
+  const glowPanels = [];
+  {
+    const gw = cab.w * 0.80;
+    const gh = cab.h * 0.44;
+    const front = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, 0.025), cabGlowMat);
+    front.position.set(0, cab.hy + cab.h * 0.56, cab.z + cab.d / 2 + 0.035);
+    group.add(front);
+    glowPanels.push(front);
+
+    const sh = cab.h * 0.34;
+    for (const sx of [-1, 1]) {
+      const side = new THREE.Mesh(new THREE.BoxGeometry(0.025, sh, cab.d * 0.52), cabGlowMat);
+      side.position.set(sx * (cab.w / 2 + 0.035), cab.hy + cab.h * 0.58, cab.z + cab.d * 0.02);
+      group.add(side);
+      glowPanels.push(side);
+    }
+  }
+  const cabLight = new THREE.PointLight(0xffc98a, 0, 7, 2);
+  cabLight.position.set(0, cab.hy + cab.h * 0.55, cab.z);
+  group.add(cabLight);
+
+  group.userData.setNight = (t) => {
+    const k = Math.max(0, Math.min(1, (t - 0.72) / 0.23));
+    const w = k * k * (3 - 2 * k);
+    cabGlowMat.opacity = w * 0.78;
+    for (const p of glowPanels) p.visible = w > 0.04;
+    cabLight.intensity = w * 13;
+    cabLight.visible = w > 0.04;
+  };
+  group.userData.setNight(0);
+
   return group;
 }
