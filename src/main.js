@@ -235,14 +235,14 @@ function boot() {
       { x: workshop.position.x, z: workshop.position.z, sx: 15, sz: 10, rot: WORKSHOP.rot },
       { x: watermill.position.x, z: watermill.position.z, sx: 10, sz: 6 },
       { x: WELL.x, z: WELL.z, sx: 4.5, sz: 4.5 },
-      { x: BIG_TREE.x, z: BIG_TREE.z, sx: 7.5, sz: 7.5 },
+      { x: BIG_TREE.x, z: BIG_TREE.z, sx: 8.5, sz: 8.5 },
     ];
     const trees = [];
     extraTrees.traverse((tr) => {
       if (!tr.userData || !tr.userData.kind || !tr.userData.scale) return;
       if (!tr.name || !tr.name.startsWith('tree-')) return;
       const sc = tr.userData.scale || 1;
-      trees.push({ x: tr.position.x, z: tr.position.z, sx: 1.8 * sc, sz: 1.8 * sc });
+      trees.push({ x: tr.position.x, z: tr.position.z, sx: 2.05 * sc, sz: 2.05 * sc });
     });
     const contactShadows = buildContactShadows(terrainModel, {
       buildings,

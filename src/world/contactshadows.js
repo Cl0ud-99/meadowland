@@ -8,9 +8,9 @@ function radialTexture() {
   cv.width = cv.height = 128;
   const ctx = cv.getContext('2d');
   const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(0,0,0,0.52)');
-  g.addColorStop(0.45, 'rgba(0,0,0,0.28)');
-  g.addColorStop(0.78, 'rgba(0,0,0,0.09)');
+  g.addColorStop(0, 'rgba(0,0,0,0.64)');
+  g.addColorStop(0.45, 'rgba(0,0,0,0.36)');
+  g.addColorStop(0.78, 'rgba(0,0,0,0.13)');
   g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 128, 128);
@@ -45,7 +45,7 @@ export function buildContactShadows(model, opts = {}) {
   const discMat = new THREE.MeshBasicMaterial({
     map: radialTexture(),
     transparent: true,
-    opacity: 0.40,
+    opacity: 0.54,
     depthWrite: false,
     color: 0x1c2a16,
     polygonOffset: true,
@@ -86,8 +86,8 @@ export function buildContactShadows(model, opts = {}) {
         discs.push({
           x: ax + dx * t,
           z: az + dz * t,
-          sx: 1.0,
-          sz: 0.85,
+          sx: 1.15,
+          sz: 1.0,
           rot: Math.atan2(dx, dz),
         });
       }
@@ -105,13 +105,31 @@ export function buildContactShadows(model, opts = {}) {
     discs.forEach((d, i) => {
       p.set(d.x, model.heightAt(d.x, d.z) + 0.035, d.z);
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), d.rot);
-      s.set(d.sx * 0.82, 1, d.sz * 0.82);
+      s.set(d.sx * 0.90, 1, d.sz * 0.90);
       m.compose(p, q, s);
       im.setMatrixAt(i, m);
     });
     im.instanceMatrix.needsUpdate = true;
     im.renderOrder = 1;
     group.add(im);
+  }
+
+  // 核心接触斑：在同样位置再压一层更小的暗斑，强化"根部接触"
+  if (discs.length) {
+    const coreMat = discMat.clone();
+    coreMat.opacity = 0.42;
+    const core = new THREE.InstancedMesh(planeGeo, coreMat, discs.length);
+    core.name = 'contactCores';
+    discs.forEach((d, i) => {
+      p.set(d.x, model.heightAt(d.x, d.z) + 0.04, d.z);
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), d.rot);
+      s.set(d.sx * 0.50, 1, d.sz * 0.50);
+      m.compose(p, q, s);
+      core.setMatrixAt(i, m);
+    });
+    core.instanceMatrix.needsUpdate = true;
+    core.renderOrder = 2;
+    group.add(core);
   }
 
   return group;
