@@ -474,7 +474,7 @@ export function buildAnimals(model, rng, counts = null) {
         speed: opts.speed,
         radius,
         graze: opts.graze !== false,
-        poly, bodyR,
+        poly, basePoly: poly, bodyR,
         clearance: spot.clearance,
         breed: breed.name,
         kind,
@@ -744,6 +744,32 @@ export function buildAnimals(model, rng, counts = null) {
       }
     }
   };
+
+  // 围栏隐藏后，牛羊/羊驼的活动范围整体放大（scale=1.6 表示线性扩大 60%）
+  group.userData.setRoamScale = (scale) => {
+    const k = Number.isFinite(scale) ? Math.max(1, scale) : 1;
+    const cache = new Map();
+    for (const a of list) {
+      const u = a.userData;
+      if (!u) continue;
+      if (u.kind !== 'cow' && u.kind !== 'sheep' && u.kind !== 'alpaca') continue;
+      const base = u.basePoly || u.poly;
+      if (!base) continue;
+      u.basePoly = base;
+      if (k === 1) { u.poly = base; continue; }
+      let out = cache.get(base);
+      if (!out) {
+        let cx = 0, cz = 0;
+        for (const [px, pz] of base) { cx += px; cz += pz; }
+        cx /= base.length; cz /= base.length;
+        out = base.map(([px, pz]) => [cx + (px - cx) * k, cz + (pz - cz) * k]);
+        cache.set(base, out);
+      }
+      u.poly = out;
+    }
+    group.userData.roamScale = k;
+  };
+  group.userData.setRoamScale(1);
 
   return group;
 }

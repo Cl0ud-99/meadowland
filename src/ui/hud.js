@@ -30,6 +30,7 @@ export function createHud(app) {
   const btnRotate = $('btn-rotate');
   const btnReset = $('btn-reset');
   const btnRandom = $('btn-random');
+  const btnFences = $('btn-fences');
 
   let hintTimer = 0;
   function showHint(text, ms = 3000) {
@@ -40,7 +41,7 @@ export function createHud(app) {
     hintTimer = setTimeout(() => hint.classList.remove('show'), ms);
   }
 
-  const state = { audioOn: false, seasonIdx: 1, autoRotate: true };
+  const state = { audioOn: false, seasonIdx: 1, autoRotate: true, fencesHidden: false };
 
   // ★ 隐藏加载动画时【必须】同时取消 index.html 里的兜底超时 ——
   //   那个 guard 在 8 秒后检查 loader 是否还有 hidden 类，
@@ -274,6 +275,30 @@ export function createHud(app) {
       updateFollowCamera();
     });
   }
+
+  // ---------- 隐藏 / 显示牧场围栏 ----------
+  function applyFencesHidden(hidden) {
+    state.fencesHidden = !!hidden;
+    const h = state.fencesHidden;
+    if (app.farm && app.farm.userData.setLivestockFencesHidden) {
+      app.farm.userData.setLivestockFencesHidden(h);
+    }
+    if (app.animals && app.animals.userData.setRoamScale) {
+      app.animals.userData.setRoamScale(h ? 1.6 : 1);
+    }
+    if (btnFences) {
+      btnFences.classList.toggle('off', h);
+      btnFences.title = h ? '显示牧场围栏' : '隐藏牧场围栏';
+      btnFences.setAttribute('aria-label', btnFences.title);
+    }
+  }
+  if (btnFences) {
+    btnFences.addEventListener('click', () => {
+      wakeBar();
+      applyFencesHidden(!state.fencesHidden);
+    });
+  }
+  applyFencesHidden(false);
 
   // 使用底部 UI 时保持常驻，移出后 2 秒收起
   if (timeBar) {

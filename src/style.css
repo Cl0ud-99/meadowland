@@ -456,6 +456,8 @@ canvas#scene.hoverable { cursor: var(--cursor-pointer, pointer) 8 6, pointer; }
 }
 #time-bar .tool:active { transform: scale(0.92); }
 #time-bar .tool.off { opacity: 0.38; }
+#btn-fences .fence-slash { display: none; }
+#btn-fences.off .fence-slash { display: block; }
 #time-bar.night .tool { color: #dbe6ff; }
 
 /* ---------- 矮屏（横屏但窗口很矮）---------- */
