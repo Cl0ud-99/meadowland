@@ -51,7 +51,6 @@ Meadowland 想做的不是“又一个农场模拟器”，而是一块可以随
 | --- | --- |
 | ![黄昏](screenshots/sunset.png) | ![水车](screenshots/watermill.png) |
 
-![接触阴影](screenshots/contact-shadows.png)
 
 ---
 
