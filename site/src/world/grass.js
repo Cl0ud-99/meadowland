@@ -51,27 +51,39 @@ function makeTuftGeometry() {
 // 小花：5 片白色花瓣 + 黄色花心；实例色可把整朵染成黄色。
 function makeFlowerGeometry() {
   const pos = [], col = [];
-  const pushTri = (ax, az, bx, bz, cx, cz, color) => {
-    pos.push(ax, 0.012, az, bx, 0.012, bz, cx, 0.012, cz);
+  const pushTri = (ax, ay, az, bx, by, bz, cx, cy, cz, color) => {
+    pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
     for (let k = 0; k < 3; k++) col.push(color[0], color[1], color[2]);
   };
+  // 短茎：让花头离开地面，避免贴地看不见
+  const stem = new THREE.CylinderGeometry(0.008, 0.012, 0.16, 3);
+  stem.translate(0, 0.08, 0);
+  const sn = stem.toNonIndexed();
+  const sa = sn.attributes.position.array;
+  for (let i = 0; i < sn.attributes.position.count; i++) {
+    pos.push(sa[i * 3], sa[i * 3 + 1], sa[i * 3 + 2]);
+    col.push(0.34, 0.54, 0.22);
+  }
+  stem.dispose(); sn.dispose();
+
+  const y = 0.16;
   const petals = 5;
   for (let i = 0; i < petals; i++) {
     const a = (i / petals) * Math.PI * 2;
     const inner = 0.024, outer = 0.112, half = 0.046;
     pushTri(
-      Math.cos(a) * inner, Math.sin(a) * inner,
-      Math.cos(a - half) * outer, Math.sin(a - half) * outer,
-      Math.cos(a + half) * outer, Math.sin(a + half) * outer,
-      [1.0, 0.98, 0.86]
+      Math.cos(a) * inner, y, Math.sin(a) * inner,
+      Math.cos(a - half) * outer, y, Math.sin(a - half) * outer,
+      Math.cos(a + half) * outer, y, Math.sin(a + half) * outer,
+      [1, 1, 1]
     );
   }
   // 中心黄色小花心
   const segs = 6;
   for (let i = 0; i < segs; i++) {
     const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
-    pushTri(0, 0, Math.cos(a0) * 0.024, Math.sin(a0) * 0.024,
-      Math.cos(a1) * 0.032, Math.sin(a1) * 0.032, [0.98, 0.72, 0.16]);
+    pushTri(0, y + 0.002, 0, Math.cos(a0) * 0.032, y + 0.002, Math.sin(a0) * 0.032,
+      Math.cos(a1) * 0.032, y + 0.002, Math.sin(a1) * 0.032, [0.98, 0.72, 0.16]);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -205,7 +217,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
 
   // 草地里稀疏点缀白/黄小花
   {
-    const flowerCount = Math.max(120, Math.round(count * 0.06));
+    const flowerCount = Math.max(180, Math.round(count * 0.11));
     const flowers = new THREE.InstancedMesh(
       makeFlowerGeometry(),
       new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false }),
@@ -221,15 +233,17 @@ export function buildGrassTufts(model, rng, count = 2600) {
     let fi = 0;
     for (let k = 0; k < flowerCount; k++) {
       const ang = rng.next() * Math.PI * 2;
-      const rad = 12 + Math.sqrt(rng.next()) * 168;
+      const rad = 12 + Math.sqrt(rng.next()) * 138;
       const x = Math.cos(ang) * rad;
       const z = Math.sin(ang) * rad;
       if (Math.abs(x) > WORLD.size * 0.48 || Math.abs(z) > WORLD.size * 0.48) continue;
       const pond = BUILDINGS.pond;
       if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
-      fp.set(x, model.heightAt(x, z) + 0.035, z);
+      // 主要长在绿色草皮上，不落在黄土地上
+      if (dirtAmountAt(x, z) > 0.22) continue;
+      fp.set(x, model.heightAt(x, z) + 0.02, z);
       fq.setFromAxisAngle(up, rng.next() * Math.PI * 2);
-      const sc = rng.range(0.9, 1.7);
+      const sc = rng.range(1.0, 1.8);
       fs.set(sc, sc, sc);
       fm.compose(fp, fq, fs);
       flowers.setMatrixAt(fi, fm);
