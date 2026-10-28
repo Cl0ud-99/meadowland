@@ -51,6 +51,45 @@ function mat(color) {
   return _mats.get(color);
 }
 
+const _dsMats = new Map();
+function matDS(color) {
+  if (!_dsMats.has(color)) {
+    _dsMats.set(color, toonLambert({ color, flatShading: true, shared: false, side: THREE.DoubleSide }));
+  }
+  return _dsMats.get(color);
+}
+
+function ginkgoShape() {
+  const s = new THREE.Shape();
+  s.moveTo(0, -0.10);
+  s.quadraticCurveTo(-0.58, 0.22, -0.54, 0.56);
+  s.quadraticCurveTo(-0.28, 0.66, 0, 0.52);
+  s.quadraticCurveTo(0.28, 0.66, 0.54, 0.56);
+  s.quadraticCurveTo(0.58, 0.22, 0, -0.10);
+  return s;
+}
+const GINKGO_SHAPE = ginkgoShape();
+
+function fanLeaf(group, x, y, z, size, color, rx, ry, rz) {
+  const geo = new THREE.ShapeGeometry(GINKGO_SHAPE, 2);
+  geo.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx, ry, rz)));
+  geo.scale(size, size, size);
+  geo.translate(x, y, z);
+  const m = new THREE.Mesh(geo, matDS(color));
+  m.castShadow = true;
+  m.receiveShadow = true;
+  group.add(m);
+  return m;
+}
+
+function makeRng(seed) {
+  let st = seed >>> 0;
+  return () => {
+    st = (st * 1664525 + 1013904223) >>> 0;
+    return st / 4294967296;
+  };
+}
+
 function addMesh(group, geo, material, x, y, z, rx = 0, ry = 0, rz = 0) {
   const m = new THREE.Mesh(geo, material);
   m.position.set(x, y, z);
@@ -447,7 +486,121 @@ function makeAcacia() {
 }
 
 // ---------------------------------------------------------------------------
-// 摆放：2 行 x 3 列
+// 7. 银杏树（参考图 7）—— 金色扇形叶 + 深色分叉树干 + 飘叶
+// ---------------------------------------------------------------------------
+function makeGinkgo() {
+  const g = new THREE.Group();
+  g.name = 'ginkgo';
+  const bark = 0x3c2f28;
+  const barkDark = 0x2c221d;
+  trunkBase(g, 8.4, 1.55, 0.8, bark, 8);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.3;
+    branch(g, 0, 2.4, 0, Math.cos(a) * 2.5, 0.1, Math.sin(a) * 2.5, 0.75, 0.2, barkDark, 5);
+  }
+
+  const mains = [
+    [-4.9, 13.0, 1.2], [5.0, 12.8, -1.1], [-2.6, 14.2, 3.4],
+    [2.7, 14.0, -3.4], [0.2, 14.8, 0.3],
+  ];
+  for (const [x, y, z] of mains) {
+    branch(g, 0, 6.4, 0, x * 0.55, y - 2.3, z * 0.55, 0.62, 0.34, bark, 6);
+    branch(g, x * 0.55, y - 2.3, z * 0.55, x, y, z, 0.34, 0.16, bark, 5);
+    // 末端细枝
+    branch(g, x, y, z, x * 1.18, y + 1.2, z * 1.18, 0.14, 0.05, barkDark, 4);
+    branch(g, x * 0.8, y - 1.4, z * 0.8, x * 1.35, y - 0.2, z * 1.35, 0.11, 0.04, barkDark, 4);
+  }
+
+  const golds = [0xd9a91f, 0xe8c33a, 0xc9971c, 0xf0d45a, 0xb8860b];
+  const rnd = makeRng(20260);
+  const count = 300;
+  for (let i = 0; i < count; i++) {
+    const u = rnd() * 2 - 1;
+    const phi = rnd() * Math.PI * 2;
+    const rr = Math.sqrt(Math.max(0, 1 - u * u));
+    const dx = Math.cos(phi) * rr;
+    const dy = u;
+    const dz = Math.sin(phi) * rr;
+    const shell = 0.55 + rnd() * 0.45;
+    const x = dx * 7.6 * shell;
+    const y = 15.0 + dy * 4.6 * shell;
+    const z = dz * 6.8 * shell;
+    const size = 1.15 + rnd() * 0.65;
+    fanLeaf(g, x, y, z, size, golds[i % golds.length], rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
+  }
+  // 树冠外飘叶
+  for (let i = 0; i < 26; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = 7.5 + rnd() * 4.5;
+    const y = 5.0 + rnd() * 14.0;
+    fanLeaf(g, Math.cos(a) * r, y, Math.sin(a) * r, 0.9 + rnd() * 0.6, golds[i % golds.length], rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
+  }
+
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// 8. 紫晶树（参考图 8）—— 紫色三角碎片冠 + 扭曲树干 + 光环
+// ---------------------------------------------------------------------------
+function makeAmethyst() {
+  const g = new THREE.Group();
+  g.name = 'amethyst';
+  const bark = 0x4a3a4c;
+  const barkDark = 0x332838;
+  const barkLight = 0x5c4a60;
+
+  // 扭曲主干：两段错位
+  addMesh(g, new THREE.CylinderGeometry(1.45, 1.85, 7.2, 9), mat(bark), 0, 3.6, 0);
+  addMesh(g, new THREE.CylinderGeometry(0.95, 1.45, 4.6, 9), mat(barkLight), 0.28, 8.9, 0.18);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.4;
+    branch(g, 0, 2.6, 0, Math.cos(a) * 2.3, 0.1, Math.sin(a) * 2.3, 0.8, 0.2, barkDark, 5);
+  }
+
+  const mains = [
+    [-5.0, 13.2, 1.6], [5.1, 13.0, -1.5], [-2.7, 14.4, -3.5],
+    [2.8, 14.2, 3.5], [0.1, 15.0, 0.2], [-3.4, 12.4, 2.8], [3.5, 12.2, -2.9],
+  ];
+  for (const [x, y, z] of mains) {
+    branch(g, 0.15, 8.4, 0.1, x * 0.55, y - 2.2, z * 0.55, 0.72, 0.38, bark, 6);
+    branch(g, x * 0.55, y - 2.2, z * 0.55, x, y, z, 0.38, 0.16, barkDark, 5);
+    branch(g, x, y, z, x * 1.16, y + 1.0, z * 1.16, 0.14, 0.05, barkDark, 4);
+  }
+
+  const purples = [0x9a8ac9, 0xb4a6dc, 0x8272b3, 0xc7bce8, 0x6f5fa0];
+  const rnd = makeRng(8844);
+  const shard = (x, y, z, s) => {
+    const geo = new THREE.TetrahedronGeometry(1, 0);
+    const m = addMesh(g, geo, mat(purples[Math.floor(rnd() * purples.length)]),
+      x, y, z, rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
+    m.scale.set(s * (0.9 + rnd() * 0.5), s * (0.9 + rnd() * 0.5), s * (0.3 + rnd() * 0.25));
+  };
+  for (let i = 0; i < 280; i++) {
+    const u = rnd() * 2 - 1;
+    const phi = rnd() * Math.PI * 2;
+    const rr = Math.sqrt(Math.max(0, 1 - u * u));
+    const shell = 0.55 + rnd() * 0.5;
+    shard(Math.cos(phi) * rr * 7.3 * shell, 15.0 + u * 4.5 * shell, Math.sin(phi) * rr * 6.4 * shell, 0.55 + rnd() * 0.65);
+  }
+  // 飘散碎片
+  for (let i = 0; i < 34; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = 7.0 + rnd() * 5.5;
+    shard(Math.cos(a) * r, 4.0 + rnd() * 15.0, Math.sin(a) * r, 0.3 + rnd() * 0.35);
+  }
+  // 细白线光环
+  for (let i = 0; i < 3; i++) {
+    const ring = addMesh(g, new THREE.TorusGeometry(7.6 + i * 1.6, 0.05, 5, 40), mat(0xece7f2), 0, 9.5 + i * 2.2, 0);
+    ring.rotation.x = Math.PI / 2 + 0.10 * (i - 1);
+    ring.rotation.z = 0.12 * i;
+    ring.castShadow = false;
+  }
+
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// 摆放：2 行 x 4 列
 // ---------------------------------------------------------------------------
 const makers = [
   { name: '阔叶树', make: makeBroadleaf },
@@ -456,10 +609,12 @@ const makers = [
   { name: '猴面包树', make: makeBaobab },
   { name: '分层冷杉', make: makeFir },
   { name: '伞形金合欢', make: makeAcacia },
+  { name: '银杏树', make: makeGinkgo, top: 20.4 },
+  { name: '紫晶树', make: makeAmethyst, top: 19.8 },
 ];
 
-const XS = [-30, 0, 30];
-const ZS = [-14, 20];
+const XS = [-33, -11, 11, 33];
+const ZS = [-20, 26];
 const trees = [];
 const ui = document.getElementById('ui');
 
@@ -470,12 +625,12 @@ ui.appendChild(allBtn);
 
 makers.forEach((m, i) => {
   const g = m.make();
-  const col = i % 3;
-  const row = Math.floor(i / 3);
+  const col = i % 4;
+  const row = Math.floor(i / 4);
   g.position.set(XS[col], 0, ZS[row]);
   scene.add(g);
   addOutlineDeep(g, 0.030, undefined, { minRadius: 0.55 });
-  trees.push({ group: g, name: m.name, x: XS[col], z: ZS[row] });
+  trees.push({ group: g, name: m.name, x: XS[col], z: ZS[row], top: m.top === undefined ? 21.5 : m.top });
 
   const btn = document.createElement('button');
   btn.textContent = m.name;
@@ -499,12 +654,15 @@ const tags = trees.map((t) => {
 // ---------------------------------------------------------------------------
 // 相机
 // ---------------------------------------------------------------------------
-let yaw = 0.12, pitch = 0.34, dist = 96;
+let yaw = 0.10, pitch = 0.38, dist = 122;
 let dragging = false, lastX = 0, lastY = 0;
 const target = new THREE.Vector3(0, 9, 3);
 
+let showTags = false;
+
 function focus(i) {
   const t = trees[i];
+  showTags = true;
   trees.forEach((tr, j) => { tr.group.visible = j === i; });
   target.set(t.x, 11.0, t.z);
   yaw = 0.12;
@@ -513,10 +671,12 @@ function focus(i) {
 }
 allBtn.addEventListener('click', () => {
   trees.forEach((tr) => { tr.group.visible = true; });
-  target.set(0, 9, 3);
-  yaw = 0.12;
-  pitch = 0.34;
-  dist = 96;
+  showTags = false;
+  tags.forEach((el) => { el.style.display = 'none'; });
+  target.set(0, 9.5, 3);
+  yaw = 0.10;
+  pitch = 0.38;
+  dist = 122;
   [allBtn, ...ui.querySelectorAll('button')].forEach((b) => b.classList.remove('active'));
   allBtn.classList.add('active');
 });
@@ -572,8 +732,8 @@ function tick() {
 
   trees.forEach((t, i) => {
     const el = tags[i];
-    if (!t.group.visible) { el.style.display = 'none'; return; }
-    placeTag(el, t.x, 21.5, t.z);
+    if (!showTags || !t.group.visible) { el.style.display = 'none'; return; }
+    placeTag(el, t.x, t.top + 0.8, t.z);
   });
 
   renderer.render(scene, camera);
