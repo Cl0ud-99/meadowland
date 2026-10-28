@@ -6,6 +6,7 @@ import { SNOWMAN_STYLES } from '../world/snowmanDemo.js';
 import { TREE_SPECIES, BIG_TREE_SPECIES } from '../world/bigtree.js';
 import { loadState, saveState, STORAGE_OK } from '../util/save.js';
 import { DEFAULT_SNAPSHOT, SNAPSHOT_VERSION } from '../config/defaultSnapshot.js';
+import { CAMERA } from '../config.js';
 
 
 // ---------------------------------------------------------------------------
@@ -1551,6 +1552,19 @@ export function createHud(app) {
     if (initial) applyState(initial);
   } else {
     applyState(DEFAULT_SNAPSHOT);
+  }
+
+  // 开屏时间线优先级高于默认快照：在早/中/晚里随机选一个，
+  // 先应用到背景场景；点击后进入的就是这个时间。
+  // 注意：不调用 markDirty，用户没主动改时间时不会把它当作自定义存档。
+  if (intro && !intro.classList.contains('hidden')) {
+    const times = Array.isArray(CAMERA.introTimes) && CAMERA.introTimes.length
+      ? CAMERA.introTimes
+      : [0.22, 0.5, 0.84];
+    const introTime = times[Math.floor(Math.random() * times.length)];
+    setTime(introTime, false);
+    app.mode.t = introTime;
+    if (app.applyMode) app.applyMode(introTime);
   }
 
   // 关闭前保存
