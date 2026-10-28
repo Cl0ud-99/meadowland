@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Meadowland — 治愈系低多边形农场</title>
-  <meta name="description" content="治愈系低多边形农场 · 三处山脊随机开屏 · 早中晚时间线 · 修理棚/水井特写与配色" />
+  <meta name="description" content="治愈系低多边形农场 · 三处山脊随机开屏 · 早中晚与四季随机 · 修理棚/水井特写与配色" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#9fd0ea" />
@@ -91,7 +91,7 @@
         </svg>
       </div>
       <h2 class="about-name">Cloud99</h2>
-      <p class="about-sub">Meadowland · 0.7.3 · 边界山脊 / 早中晚 / 修理棚 / 水井</p>
+      <p class="about-sub">Meadowland · 0.7.4 · 边界山脊 / 四季 / 修理棚 / 水井</p>
     </div>
     <button class="about-close" id="about-close" type="button" aria-label="关闭">×</button>
   </div>
@@ -38112,6 +38112,7 @@ void main() {
 	  // 开场：从山脊背后升起
 	  // 开屏随机时间线：早 / 中 / 晚（优先级高于默认快照时间）
 	  introTimes: [0.22, 0.5, 0.84],
+	  introSeasons: [0, 1, 2, 3],
 	  // 开屏随机机位：都在地形边界之外，前景有山坡/松林遮挡
 	  introSpots: [
 	    { x: -330, y: 120, z: 250, look: { x: 0, y: 22, z: 0 } },
@@ -61667,9 +61668,19 @@ void main() {
 	      ? CAMERA.introTimes
 	      : [0.22, 0.5, 0.84];
 	    const introTime = times[Math.floor(Math.random() * times.length)];
+	    const seasons = Array.isArray(CAMERA.introSeasons) && CAMERA.introSeasons.length
+	      ? CAMERA.introSeasons
+	      : [0, 1, 2, 3];
+	    const introSeason = seasons[Math.floor(Math.random() * seasons.length)];
+
+	    // 时间/季节都是开屏背景，不写 markDirty；用户主动改滑杆才会保存。
 	    setTime(introTime, false);
 	    app.mode.t = introTime;
 	    if (app.applyMode) app.applyMode(introTime);
+
+	    state.seasonT = introSeason;
+	    if (app.setSeason) app.setSeason(introSeason);
+	    if (seasonSlider) seasonSlider.value = String(Math.round(introSeason * 100));
 	  }
 
 	  // 关闭前保存

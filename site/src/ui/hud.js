@@ -1564,9 +1564,19 @@ export function createHud(app) {
       ? CAMERA.introTimes
       : [0.22, 0.5, 0.84];
     const introTime = times[Math.floor(Math.random() * times.length)];
+    const seasons = Array.isArray(CAMERA.introSeasons) && CAMERA.introSeasons.length
+      ? CAMERA.introSeasons
+      : [0, 1, 2, 3];
+    const introSeason = seasons[Math.floor(Math.random() * seasons.length)];
+
+    // 时间/季节都是开屏背景，不写 markDirty；用户主动改滑杆才会保存。
     setTime(introTime, false);
     app.mode.t = introTime;
     if (app.applyMode) app.applyMode(introTime);
+
+    state.seasonT = introSeason;
+    if (app.setSeason) app.setSeason(introSeason);
+    if (seasonSlider) seasonSlider.value = String(Math.round(introSeason * 100));
   }
 
   // 关闭前保存
