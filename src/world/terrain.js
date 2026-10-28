@@ -52,25 +52,6 @@ export function waterSinkFor(seasonT) {
 }
 
 export function createTerrainModel(seed = 20240521) {
-  // ★ 0.6.1-flat：整张地图压平，只保留坐着的人前面的一个池塘坑。
-  //   坑壁用"大平底 + 陡岸"，水面可以铺满，岸上直接是平地。
-  const NEW_POND = { x: -78, z: 2, r: 16 };
-  const DEPTH = 2.0;
-  const INNER = NEW_POND.r * 0.84;
-  const flatHeightAt = (x, z) => {
-    const pd = Math.hypot(x - NEW_POND.x, z - NEW_POND.z);
-    if (pd >= NEW_POND.r) return PLATEAU_Y;
-    if (pd <= INNER) return PLATEAU_Y - DEPTH;
-    const k = 1 - smoothstep(INNER, NEW_POND.r, pd);
-    return PLATEAU_Y - DEPTH * k;
-  };
-  return {
-    heightAt: flatHeightAt,
-    groundAt: flatHeightAt,
-    slopeAt: () => 0,
-    raw: flatHeightAt,
-  };
-
   const fbm = makeFbm(seed, 5, 2.05, 0.5);
   const fbmDetail = makeFbm(seed + 91, 3, 2.4, 0.45);
 
@@ -98,6 +79,12 @@ export function createTerrainModel(seed = 20240521) {
     const rim = smoothstep(RIM_START, HALF * 0.98, dist);
     h += rim * rim * 74;
 
+    // 池塘周围局部做平：保留外围山峰，但池边必须是平地，
+    // 否则地形噪声会顶穿水面，水线出现锯齿。
+    const pd = Math.hypot(x - POND.x, z - POND.z);
+    const pondFlat = 1 - smoothstep(POND.r * 1.0, POND.r * 2.2, pd);
+    h = lerpN(h, PLATEAU_Y, pondFlat);
+
     // 先记下"挖坑前"的地面高度（水面高度要用它）
     lastGroundY = h;
 
@@ -111,31 +98,15 @@ export function createTerrainModel(seed = 20240521) {
     //
     // 实测：R*0.95 处地形高度差 0.54（4.27~4.81），
     // 所以坑要挖到 R*1.15 以外，且在水面半径处保持足够深度。
-    const pd = Math.hypot(x - POND.x, z - POND.z);
-    if (pd < POND.r * 1.5) {
-      // 内圈（0 ~ 1.05R）保持满深度，外圈（1.05R ~ 1.5R）平滑升到地面
-      const k = 1 - smoothstep(POND.r * 1.05, POND.r * 1.5, pd);
+    if (pd < POND.r) {
+      // 大平底 + 陡岸：水面可以铺满坑，岸上马上回到平地
+      const inner = POND.r * 0.84;
+      let k = 1;
+      if (pd > inner) k = 1 - smoothstep(inner, POND.r, pd);
       const bowl = k * k * (3 - 2 * k);
-      h -= bowl * 2.2;
+      h -= bowl * 2.8;
     }
 
-    // ---------- 池内兜底：保证地形永远不会顶穿池底 ----------
-    // ★ 这是"俯瞰水池时水底凸起一块地"的真正原因：
-    //   上面只挖 2.2，但台地原始高度带噪声（5.5±0.7），
-    //   挖完仍有 3.32~4.70 的起伏；而岸坡平底是固定值
-    //   outsideAvg-2.2 ≈ 3.63。地形比池底高 1 米的地方就直接
-    //   从半透明水面下顶出来，看起来像水底鼓起一块地。
-    //
-    //   这里在池内（pd < 1.2R）把地形硬压到"池底以下 0.35"，
-    //   用 smoothstep 过渡到 1.5R 之外的自然地形，不留硬边。
-    if (pd < POND.r * 1.5) {
-      const inner = 1 - smoothstep(POND.r * 1.15, POND.r * 1.5, pd);
-      if (inner > 0.001) {
-        const floorY = PLATEAU_Y - 2.55;    // 比岸坡平底再低 0.35
-        const clamped = Math.min(h, floorY);
-        h = lerpN(h, clamped, inner);
-      }
-    }
 
     return h;
   }
