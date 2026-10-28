@@ -38424,7 +38424,7 @@ void main() {
 	    animalCount: { cow: 8, sheep: 11, chicken: 8 },
 	    // 森林扩大 + 加密 30%：900 -> 1170
 	    treeCount: 1170,
-	    grassCount: 4800,
+	    grassCount: 26000,
 	    terrainSegments: 190,
 	    bloomResolution: 512,
 	    tiltBlurTaps: 13,      // 13-tap
@@ -38440,7 +38440,7 @@ void main() {
 	    animalCount: { cow: 5, sheep: 7, chicken: 5 },
 	    // 同比例 +30%：520 -> 676
 	    treeCount: 676,
-	    grassCount: 2100,
+	    grassCount: 11000,
 	    terrainSegments: 120,
 	    bloomResolution: 192,
 	    tiltBlurTaps: 8,
@@ -38457,7 +38457,7 @@ void main() {
 	    animalCount: { cow: 3, sheep: 5, chicken: 4 },
 	    // 低端只 +10%（260 -> 286），避免软渲染/老手机掉帧
 	    treeCount: 286,
-	    grassCount: 850,
+	    grassCount: 4800,
 	    terrainSegments: 88,
 	    // 低端也保留 Bloom（夜晚的灯光全靠它），但分辨率降到 96，
 	    // 相当于只在 1/8 分辨率上做辉光，开销很小
@@ -46341,62 +46341,60 @@ void main() {
 	  const up = new Vector3(0, 1, 0);
 	  const tint = new Color();
 
-	  let i = 0, guard = 0;
-	  let clusterX = 0, clusterZ = 0, clusterLeft = 0, clusterRadius = 1.5;
-	  // 黄金角螺旋：簇心均匀铺满整个圆环，再加一点抖动避免机械感。
-	  const clusterCount = Math.max(1, Math.ceil(count / 4));
-	  let clusterIndex = 0;
-	  const GOLDEN = 2.399963229728653;
-	  while (i < count && guard < count * 20) {
-	    guard++;
-	    if (clusterLeft <= 0) {
-	      // 一半簇心落在近圈，一半铺到外圈，避免全场都稀。
-	      const half = Math.floor(clusterCount * 0.5);
-	      let t, rad, ang;
-	      if (clusterIndex < half) {
-	        t = (clusterIndex + 0.5) / Math.max(1, half);
-	        rad = 20 + Math.sqrt(t) * (62 - 20);
-	        ang = clusterIndex * GOLDEN;
-	      } else {
-	        const j = clusterIndex - half;
-	        const n = Math.max(1, clusterCount - half);
-	        t = (j + 0.5) / n;
-	        rad = 62 + Math.sqrt(t) * (190 - 62);
-	        ang = j * GOLDEN + 2.1;
-	      }
-	      ang += rng.range(-0.18, 0.18);
-	      clusterX = Math.cos(ang) * rad + rng.range(-0.7, 0.7);
-	      clusterZ = Math.sin(ang) * rad + rng.range(-0.7, 0.7);
-	      clusterLeft = 4;
-	      clusterRadius = rng.range(0.8, 2.2);
-	      clusterIndex++;
+	  // 以场景半径为 290 的圆盘做抖动网格，覆盖整块可见地形。
+	  // 不再做坡度/体积筛选，只避开池塘水面和地形边界。
+	  const R = 290;
+	  const gridN = Math.ceil(Math.sqrt((count / 4) * 4 / Math.PI)) + 1;
+	  const cell = (2 * R) / gridN;
+	  const centers = [];
+	  for (let gz = 0; gz < gridN; gz++) {
+	    for (let gx = 0; gx < gridN; gx++) {
+	      const x = -R + (gx + 0.5) * cell + rng.range(-0.45, 0.45) * cell;
+	      const z = -R + (gz + 0.5) * cell + rng.range(-0.45, 0.45) * cell;
+	      if (Math.hypot(x, z) > R) continue;
+	      const pond = BUILDINGS.pond;
+	      if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
+	      centers.push({ x, z });
 	    }
-	    clusterLeft--;
-	    const ca = rng.next() * Math.PI * 2;
-	    const cr = Math.sqrt(rng.next()) * clusterRadius;
-	    const x = clusterX + Math.cos(ca) * cr;
-	    const z = clusterZ + Math.sin(ca) * cr;
-	    if (Math.abs(x) > WORLD.size * 0.45 || Math.abs(z) > WORLD.size * 0.45) continue;
-	    // 水里不长草：池塘范围直接跳过
-	    const pond = BUILDINGS.pond;
-	    if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
-	    const y = model.heightAt(x, z);
-	    if (model.slopeAt(x, z) > 0.7) continue;
-	    p.set(x, y, z);
-	    q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
-	    // 混入一部分短草，让贴地草和长草有层次
-	    const pick = rng.next();
-	    const sc = pick < 0.3 ? rng.range(0.55, 0.8)
-	             : pick < 0.82 ? rng.range(0.85, 1.15)
-	             : rng.range(1.2, 1.5);
-	    s.set(sc, sc * rng.range(0.8, 1.5), sc);
-	    m.compose(p, q, s);
-	    mesh.setMatrixAt(i, m);
-	    // 每根草独立色差，避免整片草一个色号
-	    const v = rng.range(0.94, 1.22);
-	    tint.setRGB(v * rng.range(0.92, 1.04), v, v * rng.range(0.82, 0.94));
-	    mesh.setColorAt(i, tint);
-	    i++;
+	  }
+
+	  let i = 0, guard = 0, ci = 0;
+	  while (i < count && guard < count * 40) {
+	    guard++;
+	    let cx, cz;
+	    if (ci < centers.length) {
+	      const c = centers[ci++];
+	      cx = c.x; cz = c.z;
+	    } else {
+	      const ang = rng.next() * Math.PI * 2;
+	      const rad = Math.sqrt(rng.next()) * R;
+	      cx = Math.cos(ang) * rad; cz = Math.sin(ang) * rad;
+	    }
+	    const clusterRadius = rng.range(0.8, 2.0);
+	    for (let b = 0; b < 4 && i < count; b++) {
+	      const ca = rng.next() * Math.PI * 2;
+	      const cr = Math.sqrt(rng.next()) * clusterRadius;
+	      const x = cx + Math.cos(ca) * cr;
+	      const z = cz + Math.sin(ca) * cr;
+	      if (Math.abs(x) > WORLD.size * 0.48 || Math.abs(z) > WORLD.size * 0.48) continue;
+	      const pond = BUILDINGS.pond;
+	      if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
+	      const y = model.heightAt(x, z);
+
+	      p.set(x, y, z);
+	      q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
+	      const pick = rng.next();
+	      const sc = pick < 0.3 ? rng.range(0.55, 0.8)
+	               : pick < 0.82 ? rng.range(0.85, 1.15)
+	               : rng.range(1.2, 1.5);
+	      s.set(sc, sc * rng.range(0.8, 1.5), sc);
+	      m.compose(p, q, s);
+	      mesh.setMatrixAt(i, m);
+	      const v = rng.range(0.94, 1.22);
+	      tint.setRGB(v * rng.range(0.92, 1.04), v, v * rng.range(0.82, 0.94));
+	      mesh.setColorAt(i, tint);
+	      i++;
+	    }
 	  }
 	  mesh.count = i;
 	  mesh.instanceMatrix.needsUpdate = true;

@@ -74,7 +74,7 @@ const PRESETS = {
     animalCount: { cow: 8, sheep: 11, chicken: 8 },
     // 森林扩大 + 加密 30%：900 -> 1170
     treeCount: 1170,
-    grassCount: 4800,
+    grassCount: 26000,
     terrainSegments: 190,
     bloomResolution: 512,
     tiltBlurTaps: 13,      // 13-tap
@@ -90,7 +90,7 @@ const PRESETS = {
     animalCount: { cow: 5, sheep: 7, chicken: 5 },
     // 同比例 +30%：520 -> 676
     treeCount: 676,
-    grassCount: 2100,
+    grassCount: 11000,
     terrainSegments: 120,
     bloomResolution: 192,
     tiltBlurTaps: 8,
@@ -107,7 +107,7 @@ const PRESETS = {
     animalCount: { cow: 3, sheep: 5, chicken: 4 },
     // 低端只 +10%（260 -> 286），避免软渲染/老手机掉帧
     treeCount: 286,
-    grassCount: 850,
+    grassCount: 4800,
     terrainSegments: 88,
     // 低端也保留 Bloom（夜晚的灯光全靠它），但分辨率降到 96，
     // 相当于只在 1/8 分辨率上做辉光，开销很小
