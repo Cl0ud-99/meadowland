@@ -33272,6 +33272,172 @@ void main() {
 
 	}
 
+	class EllipseCurve extends Curve {
+
+		constructor( aX = 0, aY = 0, xRadius = 1, yRadius = 1, aStartAngle = 0, aEndAngle = Math.PI * 2, aClockwise = false, aRotation = 0 ) {
+
+			super();
+
+			this.isEllipseCurve = true;
+
+			this.type = 'EllipseCurve';
+
+			this.aX = aX;
+			this.aY = aY;
+
+			this.xRadius = xRadius;
+			this.yRadius = yRadius;
+
+			this.aStartAngle = aStartAngle;
+			this.aEndAngle = aEndAngle;
+
+			this.aClockwise = aClockwise;
+
+			this.aRotation = aRotation;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector2() ) {
+
+			const point = optionalTarget;
+
+			const twoPi = Math.PI * 2;
+			let deltaAngle = this.aEndAngle - this.aStartAngle;
+			const samePoints = Math.abs( deltaAngle ) < Number.EPSILON;
+
+			// ensures that deltaAngle is 0 .. 2 PI
+			while ( deltaAngle < 0 ) deltaAngle += twoPi;
+			while ( deltaAngle > twoPi ) deltaAngle -= twoPi;
+
+			if ( deltaAngle < Number.EPSILON ) {
+
+				if ( samePoints ) {
+
+					deltaAngle = 0;
+
+				} else {
+
+					deltaAngle = twoPi;
+
+				}
+
+			}
+
+			if ( this.aClockwise === true && ! samePoints ) {
+
+				if ( deltaAngle === twoPi ) {
+
+					deltaAngle = - twoPi;
+
+				} else {
+
+					deltaAngle = deltaAngle - twoPi;
+
+				}
+
+			}
+
+			const angle = this.aStartAngle + t * deltaAngle;
+			let x = this.aX + this.xRadius * Math.cos( angle );
+			let y = this.aY + this.yRadius * Math.sin( angle );
+
+			if ( this.aRotation !== 0 ) {
+
+				const cos = Math.cos( this.aRotation );
+				const sin = Math.sin( this.aRotation );
+
+				const tx = x - this.aX;
+				const ty = y - this.aY;
+
+				// Rotate the point about the center of the ellipse.
+				x = tx * cos - ty * sin + this.aX;
+				y = tx * sin + ty * cos + this.aY;
+
+			}
+
+			return point.set( x, y );
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.aX = source.aX;
+			this.aY = source.aY;
+
+			this.xRadius = source.xRadius;
+			this.yRadius = source.yRadius;
+
+			this.aStartAngle = source.aStartAngle;
+			this.aEndAngle = source.aEndAngle;
+
+			this.aClockwise = source.aClockwise;
+
+			this.aRotation = source.aRotation;
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.aX = this.aX;
+			data.aY = this.aY;
+
+			data.xRadius = this.xRadius;
+			data.yRadius = this.yRadius;
+
+			data.aStartAngle = this.aStartAngle;
+			data.aEndAngle = this.aEndAngle;
+
+			data.aClockwise = this.aClockwise;
+
+			data.aRotation = this.aRotation;
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.aX = json.aX;
+			this.aY = json.aY;
+
+			this.xRadius = json.xRadius;
+			this.yRadius = json.yRadius;
+
+			this.aStartAngle = json.aStartAngle;
+			this.aEndAngle = json.aEndAngle;
+
+			this.aClockwise = json.aClockwise;
+
+			this.aRotation = json.aRotation;
+
+			return this;
+
+		}
+
+	}
+
+	class ArcCurve extends EllipseCurve {
+
+		constructor( aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise ) {
+
+			super( aX, aY, aRadius, aRadius, aStartAngle, aEndAngle, aClockwise );
+
+			this.isArcCurve = true;
+
+			this.type = 'ArcCurve';
+
+		}
+
+	}
+
 	/**
 	 * Centripetal CatmullRom Curve - which is useful for avoiding
 	 * cusps and self-intersections in non-uniform catmull rom curves.
@@ -33516,6 +33682,1088 @@ void main() {
 			this.closed = json.closed;
 			this.curveType = json.curveType;
 			this.tension = json.tension;
+
+			return this;
+
+		}
+
+	}
+
+	/**
+	 * Bezier Curves formulas obtained from
+	 * https://en.wikipedia.org/wiki/B%C3%A9zier_curve
+	 */
+
+	function CatmullRom( t, p0, p1, p2, p3 ) {
+
+		const v0 = ( p2 - p0 ) * 0.5;
+		const v1 = ( p3 - p1 ) * 0.5;
+		const t2 = t * t;
+		const t3 = t * t2;
+		return ( 2 * p1 - 2 * p2 + v0 + v1 ) * t3 + ( -3 * p1 + 3 * p2 - 2 * v0 - v1 ) * t2 + v0 * t + p1;
+
+	}
+
+	//
+
+	function QuadraticBezierP0( t, p ) {
+
+		const k = 1 - t;
+		return k * k * p;
+
+	}
+
+	function QuadraticBezierP1( t, p ) {
+
+		return 2 * ( 1 - t ) * t * p;
+
+	}
+
+	function QuadraticBezierP2( t, p ) {
+
+		return t * t * p;
+
+	}
+
+	function QuadraticBezier( t, p0, p1, p2 ) {
+
+		return QuadraticBezierP0( t, p0 ) + QuadraticBezierP1( t, p1 ) +
+			QuadraticBezierP2( t, p2 );
+
+	}
+
+	//
+
+	function CubicBezierP0( t, p ) {
+
+		const k = 1 - t;
+		return k * k * k * p;
+
+	}
+
+	function CubicBezierP1( t, p ) {
+
+		const k = 1 - t;
+		return 3 * k * k * t * p;
+
+	}
+
+	function CubicBezierP2( t, p ) {
+
+		return 3 * ( 1 - t ) * t * t * p;
+
+	}
+
+	function CubicBezierP3( t, p ) {
+
+		return t * t * t * p;
+
+	}
+
+	function CubicBezier( t, p0, p1, p2, p3 ) {
+
+		return CubicBezierP0( t, p0 ) + CubicBezierP1( t, p1 ) + CubicBezierP2( t, p2 ) +
+			CubicBezierP3( t, p3 );
+
+	}
+
+	class CubicBezierCurve extends Curve {
+
+		constructor( v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2(), v3 = new Vector2() ) {
+
+			super();
+
+			this.isCubicBezierCurve = true;
+
+			this.type = 'CubicBezierCurve';
+
+			this.v0 = v0;
+			this.v1 = v1;
+			this.v2 = v2;
+			this.v3 = v3;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector2() ) {
+
+			const point = optionalTarget;
+
+			const v0 = this.v0, v1 = this.v1, v2 = this.v2, v3 = this.v3;
+
+			point.set(
+				CubicBezier( t, v0.x, v1.x, v2.x, v3.x ),
+				CubicBezier( t, v0.y, v1.y, v2.y, v3.y )
+			);
+
+			return point;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.v0.copy( source.v0 );
+			this.v1.copy( source.v1 );
+			this.v2.copy( source.v2 );
+			this.v3.copy( source.v3 );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.v0 = this.v0.toArray();
+			data.v1 = this.v1.toArray();
+			data.v2 = this.v2.toArray();
+			data.v3 = this.v3.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.v0.fromArray( json.v0 );
+			this.v1.fromArray( json.v1 );
+			this.v2.fromArray( json.v2 );
+			this.v3.fromArray( json.v3 );
+
+			return this;
+
+		}
+
+	}
+
+	class CubicBezierCurve3 extends Curve {
+
+		constructor( v0 = new Vector3(), v1 = new Vector3(), v2 = new Vector3(), v3 = new Vector3() ) {
+
+			super();
+
+			this.isCubicBezierCurve3 = true;
+
+			this.type = 'CubicBezierCurve3';
+
+			this.v0 = v0;
+			this.v1 = v1;
+			this.v2 = v2;
+			this.v3 = v3;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector3() ) {
+
+			const point = optionalTarget;
+
+			const v0 = this.v0, v1 = this.v1, v2 = this.v2, v3 = this.v3;
+
+			point.set(
+				CubicBezier( t, v0.x, v1.x, v2.x, v3.x ),
+				CubicBezier( t, v0.y, v1.y, v2.y, v3.y ),
+				CubicBezier( t, v0.z, v1.z, v2.z, v3.z )
+			);
+
+			return point;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.v0.copy( source.v0 );
+			this.v1.copy( source.v1 );
+			this.v2.copy( source.v2 );
+			this.v3.copy( source.v3 );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.v0 = this.v0.toArray();
+			data.v1 = this.v1.toArray();
+			data.v2 = this.v2.toArray();
+			data.v3 = this.v3.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.v0.fromArray( json.v0 );
+			this.v1.fromArray( json.v1 );
+			this.v2.fromArray( json.v2 );
+			this.v3.fromArray( json.v3 );
+
+			return this;
+
+		}
+
+	}
+
+	class LineCurve extends Curve {
+
+		constructor( v1 = new Vector2(), v2 = new Vector2() ) {
+
+			super();
+
+			this.isLineCurve = true;
+
+			this.type = 'LineCurve';
+
+			this.v1 = v1;
+			this.v2 = v2;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector2() ) {
+
+			const point = optionalTarget;
+
+			if ( t === 1 ) {
+
+				point.copy( this.v2 );
+
+			} else {
+
+				point.copy( this.v2 ).sub( this.v1 );
+				point.multiplyScalar( t ).add( this.v1 );
+
+			}
+
+			return point;
+
+		}
+
+		// Line curve is linear, so we can overwrite default getPointAt
+		getPointAt( u, optionalTarget ) {
+
+			return this.getPoint( u, optionalTarget );
+
+		}
+
+		getTangent( t, optionalTarget = new Vector2() ) {
+
+			return optionalTarget.subVectors( this.v2, this.v1 ).normalize();
+
+		}
+
+		getTangentAt( u, optionalTarget ) {
+
+			return this.getTangent( u, optionalTarget );
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.v1.copy( source.v1 );
+			this.v2.copy( source.v2 );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.v1 = this.v1.toArray();
+			data.v2 = this.v2.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.v1.fromArray( json.v1 );
+			this.v2.fromArray( json.v2 );
+
+			return this;
+
+		}
+
+	}
+
+	class LineCurve3 extends Curve {
+
+		constructor( v1 = new Vector3(), v2 = new Vector3() ) {
+
+			super();
+
+			this.isLineCurve3 = true;
+
+			this.type = 'LineCurve3';
+
+			this.v1 = v1;
+			this.v2 = v2;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector3() ) {
+
+			const point = optionalTarget;
+
+			if ( t === 1 ) {
+
+				point.copy( this.v2 );
+
+			} else {
+
+				point.copy( this.v2 ).sub( this.v1 );
+				point.multiplyScalar( t ).add( this.v1 );
+
+			}
+
+			return point;
+
+		}
+
+		// Line curve is linear, so we can overwrite default getPointAt
+		getPointAt( u, optionalTarget ) {
+
+			return this.getPoint( u, optionalTarget );
+
+		}
+
+		getTangent( t, optionalTarget = new Vector3() ) {
+
+			return optionalTarget.subVectors( this.v2, this.v1 ).normalize();
+
+		}
+
+		getTangentAt( u, optionalTarget ) {
+
+			return this.getTangent( u, optionalTarget );
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.v1.copy( source.v1 );
+			this.v2.copy( source.v2 );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.v1 = this.v1.toArray();
+			data.v2 = this.v2.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.v1.fromArray( json.v1 );
+			this.v2.fromArray( json.v2 );
+
+			return this;
+
+		}
+
+	}
+
+	class QuadraticBezierCurve extends Curve {
+
+		constructor( v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2() ) {
+
+			super();
+
+			this.isQuadraticBezierCurve = true;
+
+			this.type = 'QuadraticBezierCurve';
+
+			this.v0 = v0;
+			this.v1 = v1;
+			this.v2 = v2;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector2() ) {
+
+			const point = optionalTarget;
+
+			const v0 = this.v0, v1 = this.v1, v2 = this.v2;
+
+			point.set(
+				QuadraticBezier( t, v0.x, v1.x, v2.x ),
+				QuadraticBezier( t, v0.y, v1.y, v2.y )
+			);
+
+			return point;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.v0.copy( source.v0 );
+			this.v1.copy( source.v1 );
+			this.v2.copy( source.v2 );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.v0 = this.v0.toArray();
+			data.v1 = this.v1.toArray();
+			data.v2 = this.v2.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.v0.fromArray( json.v0 );
+			this.v1.fromArray( json.v1 );
+			this.v2.fromArray( json.v2 );
+
+			return this;
+
+		}
+
+	}
+
+	class QuadraticBezierCurve3 extends Curve {
+
+		constructor( v0 = new Vector3(), v1 = new Vector3(), v2 = new Vector3() ) {
+
+			super();
+
+			this.isQuadraticBezierCurve3 = true;
+
+			this.type = 'QuadraticBezierCurve3';
+
+			this.v0 = v0;
+			this.v1 = v1;
+			this.v2 = v2;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector3() ) {
+
+			const point = optionalTarget;
+
+			const v0 = this.v0, v1 = this.v1, v2 = this.v2;
+
+			point.set(
+				QuadraticBezier( t, v0.x, v1.x, v2.x ),
+				QuadraticBezier( t, v0.y, v1.y, v2.y ),
+				QuadraticBezier( t, v0.z, v1.z, v2.z )
+			);
+
+			return point;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.v0.copy( source.v0 );
+			this.v1.copy( source.v1 );
+			this.v2.copy( source.v2 );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.v0 = this.v0.toArray();
+			data.v1 = this.v1.toArray();
+			data.v2 = this.v2.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.v0.fromArray( json.v0 );
+			this.v1.fromArray( json.v1 );
+			this.v2.fromArray( json.v2 );
+
+			return this;
+
+		}
+
+	}
+
+	class SplineCurve extends Curve {
+
+		constructor( points = [] ) {
+
+			super();
+
+			this.isSplineCurve = true;
+
+			this.type = 'SplineCurve';
+
+			this.points = points;
+
+		}
+
+		getPoint( t, optionalTarget = new Vector2() ) {
+
+			const point = optionalTarget;
+
+			const points = this.points;
+			const p = ( points.length - 1 ) * t;
+
+			const intPoint = Math.floor( p );
+			const weight = p - intPoint;
+
+			const p0 = points[ intPoint === 0 ? intPoint : intPoint - 1 ];
+			const p1 = points[ intPoint ];
+			const p2 = points[ intPoint > points.length - 2 ? points.length - 1 : intPoint + 1 ];
+			const p3 = points[ intPoint > points.length - 3 ? points.length - 1 : intPoint + 2 ];
+
+			point.set(
+				CatmullRom( weight, p0.x, p1.x, p2.x, p3.x ),
+				CatmullRom( weight, p0.y, p1.y, p2.y, p3.y )
+			);
+
+			return point;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.points = [];
+
+			for ( let i = 0, l = source.points.length; i < l; i ++ ) {
+
+				const point = source.points[ i ];
+
+				this.points.push( point.clone() );
+
+			}
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.points = [];
+
+			for ( let i = 0, l = this.points.length; i < l; i ++ ) {
+
+				const point = this.points[ i ];
+				data.points.push( point.toArray() );
+
+			}
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.points = [];
+
+			for ( let i = 0, l = json.points.length; i < l; i ++ ) {
+
+				const point = json.points[ i ];
+				this.points.push( new Vector2().fromArray( point ) );
+
+			}
+
+			return this;
+
+		}
+
+	}
+
+	var Curves = /*#__PURE__*/Object.freeze({
+		__proto__: null,
+		ArcCurve: ArcCurve,
+		CatmullRomCurve3: CatmullRomCurve3,
+		CubicBezierCurve: CubicBezierCurve,
+		CubicBezierCurve3: CubicBezierCurve3,
+		EllipseCurve: EllipseCurve,
+		LineCurve: LineCurve,
+		LineCurve3: LineCurve3,
+		QuadraticBezierCurve: QuadraticBezierCurve,
+		QuadraticBezierCurve3: QuadraticBezierCurve3,
+		SplineCurve: SplineCurve
+	});
+
+	/**************************************************************
+	 *	Curved Path - a curve path is simply a array of connected
+	 *  curves, but retains the api of a curve
+	 **************************************************************/
+
+	class CurvePath extends Curve {
+
+		constructor() {
+
+			super();
+
+			this.type = 'CurvePath';
+
+			this.curves = [];
+			this.autoClose = false; // Automatically closes the path
+
+		}
+
+		add( curve ) {
+
+			this.curves.push( curve );
+
+		}
+
+		closePath() {
+
+			// Add a line curve if start and end of lines are not connected
+			const startPoint = this.curves[ 0 ].getPoint( 0 );
+			const endPoint = this.curves[ this.curves.length - 1 ].getPoint( 1 );
+
+			if ( ! startPoint.equals( endPoint ) ) {
+
+				const lineType = ( startPoint.isVector2 === true ) ? 'LineCurve' : 'LineCurve3';
+				this.curves.push( new Curves[ lineType ]( endPoint, startPoint ) );
+
+			}
+
+			return this;
+
+		}
+
+		// To get accurate point with reference to
+		// entire path distance at time t,
+		// following has to be done:
+
+		// 1. Length of each sub path have to be known
+		// 2. Locate and identify type of curve
+		// 3. Get t for the curve
+		// 4. Return curve.getPointAt(t')
+
+		getPoint( t, optionalTarget ) {
+
+			const d = t * this.getLength();
+			const curveLengths = this.getCurveLengths();
+			let i = 0;
+
+			// To think about boundaries points.
+
+			while ( i < curveLengths.length ) {
+
+				if ( curveLengths[ i ] >= d ) {
+
+					const diff = curveLengths[ i ] - d;
+					const curve = this.curves[ i ];
+
+					const segmentLength = curve.getLength();
+					const u = segmentLength === 0 ? 0 : 1 - diff / segmentLength;
+
+					return curve.getPointAt( u, optionalTarget );
+
+				}
+
+				i ++;
+
+			}
+
+			return null;
+
+			// loop where sum != 0, sum > d , sum+1 <d
+
+		}
+
+		// We cannot use the default THREE.Curve getPoint() with getLength() because in
+		// THREE.Curve, getLength() depends on getPoint() but in THREE.CurvePath
+		// getPoint() depends on getLength
+
+		getLength() {
+
+			const lens = this.getCurveLengths();
+			return lens[ lens.length - 1 ];
+
+		}
+
+		// cacheLengths must be recalculated.
+		updateArcLengths() {
+
+			this.needsUpdate = true;
+			this.cacheLengths = null;
+			this.getCurveLengths();
+
+		}
+
+		// Compute lengths and cache them
+		// We cannot overwrite getLengths() because UtoT mapping uses it.
+
+		getCurveLengths() {
+
+			// We use cache values if curves and cache array are same length
+
+			if ( this.cacheLengths && this.cacheLengths.length === this.curves.length ) {
+
+				return this.cacheLengths;
+
+			}
+
+			// Get length of sub-curve
+			// Push sums into cached array
+
+			const lengths = [];
+			let sums = 0;
+
+			for ( let i = 0, l = this.curves.length; i < l; i ++ ) {
+
+				sums += this.curves[ i ].getLength();
+				lengths.push( sums );
+
+			}
+
+			this.cacheLengths = lengths;
+
+			return lengths;
+
+		}
+
+		getSpacedPoints( divisions = 40 ) {
+
+			const points = [];
+
+			for ( let i = 0; i <= divisions; i ++ ) {
+
+				points.push( this.getPoint( i / divisions ) );
+
+			}
+
+			if ( this.autoClose ) {
+
+				points.push( points[ 0 ] );
+
+			}
+
+			return points;
+
+		}
+
+		getPoints( divisions = 12 ) {
+
+			const points = [];
+			let last;
+
+			for ( let i = 0, curves = this.curves; i < curves.length; i ++ ) {
+
+				const curve = curves[ i ];
+				const resolution = curve.isEllipseCurve ? divisions * 2
+					: ( curve.isLineCurve || curve.isLineCurve3 ) ? 1
+						: curve.isSplineCurve ? divisions * curve.points.length
+							: divisions;
+
+				const pts = curve.getPoints( resolution );
+
+				for ( let j = 0; j < pts.length; j ++ ) {
+
+					const point = pts[ j ];
+
+					if ( last && last.equals( point ) ) continue; // ensures no consecutive points are duplicates
+
+					points.push( point );
+					last = point;
+
+				}
+
+			}
+
+			if ( this.autoClose && points.length > 1 && ! points[ points.length - 1 ].equals( points[ 0 ] ) ) {
+
+				points.push( points[ 0 ] );
+
+			}
+
+			return points;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.curves = [];
+
+			for ( let i = 0, l = source.curves.length; i < l; i ++ ) {
+
+				const curve = source.curves[ i ];
+
+				this.curves.push( curve.clone() );
+
+			}
+
+			this.autoClose = source.autoClose;
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.autoClose = this.autoClose;
+			data.curves = [];
+
+			for ( let i = 0, l = this.curves.length; i < l; i ++ ) {
+
+				const curve = this.curves[ i ];
+				data.curves.push( curve.toJSON() );
+
+			}
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.autoClose = json.autoClose;
+			this.curves = [];
+
+			for ( let i = 0, l = json.curves.length; i < l; i ++ ) {
+
+				const curve = json.curves[ i ];
+				this.curves.push( new Curves[ curve.type ]().fromJSON( curve ) );
+
+			}
+
+			return this;
+
+		}
+
+	}
+
+	class Path extends CurvePath {
+
+		constructor( points ) {
+
+			super();
+
+			this.type = 'Path';
+
+			this.currentPoint = new Vector2();
+
+			if ( points ) {
+
+				this.setFromPoints( points );
+
+			}
+
+		}
+
+		setFromPoints( points ) {
+
+			this.moveTo( points[ 0 ].x, points[ 0 ].y );
+
+			for ( let i = 1, l = points.length; i < l; i ++ ) {
+
+				this.lineTo( points[ i ].x, points[ i ].y );
+
+			}
+
+			return this;
+
+		}
+
+		moveTo( x, y ) {
+
+			this.currentPoint.set( x, y ); // TODO consider referencing vectors instead of copying?
+
+			return this;
+
+		}
+
+		lineTo( x, y ) {
+
+			const curve = new LineCurve( this.currentPoint.clone(), new Vector2( x, y ) );
+			this.curves.push( curve );
+
+			this.currentPoint.set( x, y );
+
+			return this;
+
+		}
+
+		quadraticCurveTo( aCPx, aCPy, aX, aY ) {
+
+			const curve = new QuadraticBezierCurve(
+				this.currentPoint.clone(),
+				new Vector2( aCPx, aCPy ),
+				new Vector2( aX, aY )
+			);
+
+			this.curves.push( curve );
+
+			this.currentPoint.set( aX, aY );
+
+			return this;
+
+		}
+
+		bezierCurveTo( aCP1x, aCP1y, aCP2x, aCP2y, aX, aY ) {
+
+			const curve = new CubicBezierCurve(
+				this.currentPoint.clone(),
+				new Vector2( aCP1x, aCP1y ),
+				new Vector2( aCP2x, aCP2y ),
+				new Vector2( aX, aY )
+			);
+
+			this.curves.push( curve );
+
+			this.currentPoint.set( aX, aY );
+
+			return this;
+
+		}
+
+		splineThru( pts /*Array of Vector*/ ) {
+
+			const npts = [ this.currentPoint.clone() ].concat( pts );
+
+			const curve = new SplineCurve( npts );
+			this.curves.push( curve );
+
+			this.currentPoint.copy( pts[ pts.length - 1 ] );
+
+			return this;
+
+		}
+
+		arc( aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise ) {
+
+			const x0 = this.currentPoint.x;
+			const y0 = this.currentPoint.y;
+
+			this.absarc( aX + x0, aY + y0, aRadius,
+				aStartAngle, aEndAngle, aClockwise );
+
+			return this;
+
+		}
+
+		absarc( aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise ) {
+
+			this.absellipse( aX, aY, aRadius, aRadius, aStartAngle, aEndAngle, aClockwise );
+
+			return this;
+
+		}
+
+		ellipse( aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation ) {
+
+			const x0 = this.currentPoint.x;
+			const y0 = this.currentPoint.y;
+
+			this.absellipse( aX + x0, aY + y0, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation );
+
+			return this;
+
+		}
+
+		absellipse( aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation ) {
+
+			const curve = new EllipseCurve( aX, aY, xRadius, yRadius, aStartAngle, aEndAngle, aClockwise, aRotation );
+
+			if ( this.curves.length > 0 ) {
+
+				// if a previous curve is present, attempt to join
+				const firstPoint = curve.getPoint( 0 );
+
+				if ( ! firstPoint.equals( this.currentPoint ) ) {
+
+					this.lineTo( firstPoint.x, firstPoint.y );
+
+				}
+
+			}
+
+			this.curves.push( curve );
+
+			const lastPoint = curve.getPoint( 1 );
+			this.currentPoint.copy( lastPoint );
+
+			return this;
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.currentPoint.copy( source.currentPoint );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.currentPoint = this.currentPoint.toArray();
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.currentPoint.fromArray( json.currentPoint );
 
 			return this;
 
@@ -34244,6 +35492,980 @@ void main() {
 
 	}
 
+	class Shape extends Path {
+
+		constructor( points ) {
+
+			super( points );
+
+			this.uuid = generateUUID();
+
+			this.type = 'Shape';
+
+			this.holes = [];
+
+		}
+
+		getPointsHoles( divisions ) {
+
+			const holesPts = [];
+
+			for ( let i = 0, l = this.holes.length; i < l; i ++ ) {
+
+				holesPts[ i ] = this.holes[ i ].getPoints( divisions );
+
+			}
+
+			return holesPts;
+
+		}
+
+		// get points of shape and holes (keypoints based on segments parameter)
+
+		extractPoints( divisions ) {
+
+			return {
+
+				shape: this.getPoints( divisions ),
+				holes: this.getPointsHoles( divisions )
+
+			};
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.holes = [];
+
+			for ( let i = 0, l = source.holes.length; i < l; i ++ ) {
+
+				const hole = source.holes[ i ];
+
+				this.holes.push( hole.clone() );
+
+			}
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			data.uuid = this.uuid;
+			data.holes = [];
+
+			for ( let i = 0, l = this.holes.length; i < l; i ++ ) {
+
+				const hole = this.holes[ i ];
+				data.holes.push( hole.toJSON() );
+
+			}
+
+			return data;
+
+		}
+
+		fromJSON( json ) {
+
+			super.fromJSON( json );
+
+			this.uuid = json.uuid;
+			this.holes = [];
+
+			for ( let i = 0, l = json.holes.length; i < l; i ++ ) {
+
+				const hole = json.holes[ i ];
+				this.holes.push( new Path().fromJSON( hole ) );
+
+			}
+
+			return this;
+
+		}
+
+	}
+
+	/**
+	 * Port from https://github.com/mapbox/earcut (v2.2.4)
+	 */
+
+	const Earcut = {
+
+		triangulate: function ( data, holeIndices, dim = 2 ) {
+
+			const hasHoles = holeIndices && holeIndices.length;
+			const outerLen = hasHoles ? holeIndices[ 0 ] * dim : data.length;
+			let outerNode = linkedList( data, 0, outerLen, dim, true );
+			const triangles = [];
+
+			if ( ! outerNode || outerNode.next === outerNode.prev ) return triangles;
+
+			let minX, minY, maxX, maxY, x, y, invSize;
+
+			if ( hasHoles ) outerNode = eliminateHoles( data, holeIndices, outerNode, dim );
+
+			// if the shape is not too simple, we'll use z-order curve hash later; calculate polygon bbox
+			if ( data.length > 80 * dim ) {
+
+				minX = maxX = data[ 0 ];
+				minY = maxY = data[ 1 ];
+
+				for ( let i = dim; i < outerLen; i += dim ) {
+
+					x = data[ i ];
+					y = data[ i + 1 ];
+					if ( x < minX ) minX = x;
+					if ( y < minY ) minY = y;
+					if ( x > maxX ) maxX = x;
+					if ( y > maxY ) maxY = y;
+
+				}
+
+				// minX, minY and invSize are later used to transform coords into integers for z-order calculation
+				invSize = Math.max( maxX - minX, maxY - minY );
+				invSize = invSize !== 0 ? 32767 / invSize : 0;
+
+			}
+
+			earcutLinked( outerNode, triangles, dim, minX, minY, invSize, 0 );
+
+			return triangles;
+
+		}
+
+	};
+
+	// create a circular doubly linked list from polygon points in the specified winding order
+	function linkedList( data, start, end, dim, clockwise ) {
+
+		let i, last;
+
+		if ( clockwise === ( signedArea( data, start, end, dim ) > 0 ) ) {
+
+			for ( i = start; i < end; i += dim ) last = insertNode( i, data[ i ], data[ i + 1 ], last );
+
+		} else {
+
+			for ( i = end - dim; i >= start; i -= dim ) last = insertNode( i, data[ i ], data[ i + 1 ], last );
+
+		}
+
+		if ( last && equals( last, last.next ) ) {
+
+			removeNode( last );
+			last = last.next;
+
+		}
+
+		return last;
+
+	}
+
+	// eliminate colinear or duplicate points
+	function filterPoints( start, end ) {
+
+		if ( ! start ) return start;
+		if ( ! end ) end = start;
+
+		let p = start,
+			again;
+		do {
+
+			again = false;
+
+			if ( ! p.steiner && ( equals( p, p.next ) || area( p.prev, p, p.next ) === 0 ) ) {
+
+				removeNode( p );
+				p = end = p.prev;
+				if ( p === p.next ) break;
+				again = true;
+
+			} else {
+
+				p = p.next;
+
+			}
+
+		} while ( again || p !== end );
+
+		return end;
+
+	}
+
+	// main ear slicing loop which triangulates a polygon (given as a linked list)
+	function earcutLinked( ear, triangles, dim, minX, minY, invSize, pass ) {
+
+		if ( ! ear ) return;
+
+		// interlink polygon nodes in z-order
+		if ( ! pass && invSize ) indexCurve( ear, minX, minY, invSize );
+
+		let stop = ear,
+			prev, next;
+
+		// iterate through ears, slicing them one by one
+		while ( ear.prev !== ear.next ) {
+
+			prev = ear.prev;
+			next = ear.next;
+
+			if ( invSize ? isEarHashed( ear, minX, minY, invSize ) : isEar( ear ) ) {
+
+				// cut off the triangle
+				triangles.push( prev.i / dim | 0 );
+				triangles.push( ear.i / dim | 0 );
+				triangles.push( next.i / dim | 0 );
+
+				removeNode( ear );
+
+				// skipping the next vertex leads to less sliver triangles
+				ear = next.next;
+				stop = next.next;
+
+				continue;
+
+			}
+
+			ear = next;
+
+			// if we looped through the whole remaining polygon and can't find any more ears
+			if ( ear === stop ) {
+
+				// try filtering points and slicing again
+				if ( ! pass ) {
+
+					earcutLinked( filterPoints( ear ), triangles, dim, minX, minY, invSize, 1 );
+
+					// if this didn't work, try curing all small self-intersections locally
+
+				} else if ( pass === 1 ) {
+
+					ear = cureLocalIntersections( filterPoints( ear ), triangles, dim );
+					earcutLinked( ear, triangles, dim, minX, minY, invSize, 2 );
+
+					// as a last resort, try splitting the remaining polygon into two
+
+				} else if ( pass === 2 ) {
+
+					splitEarcut( ear, triangles, dim, minX, minY, invSize );
+
+				}
+
+				break;
+
+			}
+
+		}
+
+	}
+
+	// check whether a polygon node forms a valid ear with adjacent nodes
+	function isEar( ear ) {
+
+		const a = ear.prev,
+			b = ear,
+			c = ear.next;
+
+		if ( area( a, b, c ) >= 0 ) return false; // reflex, can't be an ear
+
+		// now make sure we don't have other points inside the potential ear
+		const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+
+		// triangle bbox; min & max are calculated like this for speed
+		const x0 = ax < bx ? ( ax < cx ? ax : cx ) : ( bx < cx ? bx : cx ),
+			y0 = ay < by ? ( ay < cy ? ay : cy ) : ( by < cy ? by : cy ),
+			x1 = ax > bx ? ( ax > cx ? ax : cx ) : ( bx > cx ? bx : cx ),
+			y1 = ay > by ? ( ay > cy ? ay : cy ) : ( by > cy ? by : cy );
+
+		let p = c.next;
+		while ( p !== a ) {
+
+			if ( p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 &&
+				pointInTriangle( ax, ay, bx, by, cx, cy, p.x, p.y ) &&
+				area( p.prev, p, p.next ) >= 0 ) return false;
+			p = p.next;
+
+		}
+
+		return true;
+
+	}
+
+	function isEarHashed( ear, minX, minY, invSize ) {
+
+		const a = ear.prev,
+			b = ear,
+			c = ear.next;
+
+		if ( area( a, b, c ) >= 0 ) return false; // reflex, can't be an ear
+
+		const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+
+		// triangle bbox; min & max are calculated like this for speed
+		const x0 = ax < bx ? ( ax < cx ? ax : cx ) : ( bx < cx ? bx : cx ),
+			y0 = ay < by ? ( ay < cy ? ay : cy ) : ( by < cy ? by : cy ),
+			x1 = ax > bx ? ( ax > cx ? ax : cx ) : ( bx > cx ? bx : cx ),
+			y1 = ay > by ? ( ay > cy ? ay : cy ) : ( by > cy ? by : cy );
+
+		// z-order range for the current triangle bbox;
+		const minZ = zOrder( x0, y0, minX, minY, invSize ),
+			maxZ = zOrder( x1, y1, minX, minY, invSize );
+
+		let p = ear.prevZ,
+			n = ear.nextZ;
+
+		// look for points inside the triangle in both directions
+		while ( p && p.z >= minZ && n && n.z <= maxZ ) {
+
+			if ( p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c &&
+				pointInTriangle( ax, ay, bx, by, cx, cy, p.x, p.y ) && area( p.prev, p, p.next ) >= 0 ) return false;
+			p = p.prevZ;
+
+			if ( n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c &&
+				pointInTriangle( ax, ay, bx, by, cx, cy, n.x, n.y ) && area( n.prev, n, n.next ) >= 0 ) return false;
+			n = n.nextZ;
+
+		}
+
+		// look for remaining points in decreasing z-order
+		while ( p && p.z >= minZ ) {
+
+			if ( p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c &&
+				pointInTriangle( ax, ay, bx, by, cx, cy, p.x, p.y ) && area( p.prev, p, p.next ) >= 0 ) return false;
+			p = p.prevZ;
+
+		}
+
+		// look for remaining points in increasing z-order
+		while ( n && n.z <= maxZ ) {
+
+			if ( n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c &&
+				pointInTriangle( ax, ay, bx, by, cx, cy, n.x, n.y ) && area( n.prev, n, n.next ) >= 0 ) return false;
+			n = n.nextZ;
+
+		}
+
+		return true;
+
+	}
+
+	// go through all polygon nodes and cure small local self-intersections
+	function cureLocalIntersections( start, triangles, dim ) {
+
+		let p = start;
+		do {
+
+			const a = p.prev,
+				b = p.next.next;
+
+			if ( ! equals( a, b ) && intersects( a, p, p.next, b ) && locallyInside( a, b ) && locallyInside( b, a ) ) {
+
+				triangles.push( a.i / dim | 0 );
+				triangles.push( p.i / dim | 0 );
+				triangles.push( b.i / dim | 0 );
+
+				// remove two nodes involved
+				removeNode( p );
+				removeNode( p.next );
+
+				p = start = b;
+
+			}
+
+			p = p.next;
+
+		} while ( p !== start );
+
+		return filterPoints( p );
+
+	}
+
+	// try splitting polygon into two and triangulate them independently
+	function splitEarcut( start, triangles, dim, minX, minY, invSize ) {
+
+		// look for a valid diagonal that divides the polygon into two
+		let a = start;
+		do {
+
+			let b = a.next.next;
+			while ( b !== a.prev ) {
+
+				if ( a.i !== b.i && isValidDiagonal( a, b ) ) {
+
+					// split the polygon in two by the diagonal
+					let c = splitPolygon( a, b );
+
+					// filter colinear points around the cuts
+					a = filterPoints( a, a.next );
+					c = filterPoints( c, c.next );
+
+					// run earcut on each half
+					earcutLinked( a, triangles, dim, minX, minY, invSize, 0 );
+					earcutLinked( c, triangles, dim, minX, minY, invSize, 0 );
+					return;
+
+				}
+
+				b = b.next;
+
+			}
+
+			a = a.next;
+
+		} while ( a !== start );
+
+	}
+
+	// link every hole into the outer loop, producing a single-ring polygon without holes
+	function eliminateHoles( data, holeIndices, outerNode, dim ) {
+
+		const queue = [];
+		let i, len, start, end, list;
+
+		for ( i = 0, len = holeIndices.length; i < len; i ++ ) {
+
+			start = holeIndices[ i ] * dim;
+			end = i < len - 1 ? holeIndices[ i + 1 ] * dim : data.length;
+			list = linkedList( data, start, end, dim, false );
+			if ( list === list.next ) list.steiner = true;
+			queue.push( getLeftmost( list ) );
+
+		}
+
+		queue.sort( compareX );
+
+		// process holes from left to right
+		for ( i = 0; i < queue.length; i ++ ) {
+
+			outerNode = eliminateHole( queue[ i ], outerNode );
+
+		}
+
+		return outerNode;
+
+	}
+
+	function compareX( a, b ) {
+
+		return a.x - b.x;
+
+	}
+
+	// find a bridge between vertices that connects hole with an outer ring and link it
+	function eliminateHole( hole, outerNode ) {
+
+		const bridge = findHoleBridge( hole, outerNode );
+		if ( ! bridge ) {
+
+			return outerNode;
+
+		}
+
+		const bridgeReverse = splitPolygon( bridge, hole );
+
+		// filter collinear points around the cuts
+		filterPoints( bridgeReverse, bridgeReverse.next );
+		return filterPoints( bridge, bridge.next );
+
+	}
+
+	// David Eberly's algorithm for finding a bridge between hole and outer polygon
+	function findHoleBridge( hole, outerNode ) {
+
+		let p = outerNode,
+			qx = - Infinity,
+			m;
+
+		const hx = hole.x, hy = hole.y;
+
+		// find a segment intersected by a ray from the hole's leftmost point to the left;
+		// segment's endpoint with lesser x will be potential connection point
+		do {
+
+			if ( hy <= p.y && hy >= p.next.y && p.next.y !== p.y ) {
+
+				const x = p.x + ( hy - p.y ) * ( p.next.x - p.x ) / ( p.next.y - p.y );
+				if ( x <= hx && x > qx ) {
+
+					qx = x;
+					m = p.x < p.next.x ? p : p.next;
+					if ( x === hx ) return m; // hole touches outer segment; pick leftmost endpoint
+
+				}
+
+			}
+
+			p = p.next;
+
+		} while ( p !== outerNode );
+
+		if ( ! m ) return null;
+
+		// look for points inside the triangle of hole point, segment intersection and endpoint;
+		// if there are no points found, we have a valid connection;
+		// otherwise choose the point of the minimum angle with the ray as connection point
+
+		const stop = m,
+			mx = m.x,
+			my = m.y;
+		let tanMin = Infinity, tan;
+
+		p = m;
+
+		do {
+
+			if ( hx >= p.x && p.x >= mx && hx !== p.x &&
+					pointInTriangle( hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y ) ) {
+
+				tan = Math.abs( hy - p.y ) / ( hx - p.x ); // tangential
+
+				if ( locallyInside( p, hole ) && ( tan < tanMin || ( tan === tanMin && ( p.x > m.x || ( p.x === m.x && sectorContainsSector( m, p ) ) ) ) ) ) {
+
+					m = p;
+					tanMin = tan;
+
+				}
+
+			}
+
+			p = p.next;
+
+		} while ( p !== stop );
+
+		return m;
+
+	}
+
+	// whether sector in vertex m contains sector in vertex p in the same coordinates
+	function sectorContainsSector( m, p ) {
+
+		return area( m.prev, m, p.prev ) < 0 && area( p.next, m, m.next ) < 0;
+
+	}
+
+	// interlink polygon nodes in z-order
+	function indexCurve( start, minX, minY, invSize ) {
+
+		let p = start;
+		do {
+
+			if ( p.z === 0 ) p.z = zOrder( p.x, p.y, minX, minY, invSize );
+			p.prevZ = p.prev;
+			p.nextZ = p.next;
+			p = p.next;
+
+		} while ( p !== start );
+
+		p.prevZ.nextZ = null;
+		p.prevZ = null;
+
+		sortLinked( p );
+
+	}
+
+	// Simon Tatham's linked list merge sort algorithm
+	// http://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
+	function sortLinked( list ) {
+
+		let i, p, q, e, tail, numMerges, pSize, qSize,
+			inSize = 1;
+
+		do {
+
+			p = list;
+			list = null;
+			tail = null;
+			numMerges = 0;
+
+			while ( p ) {
+
+				numMerges ++;
+				q = p;
+				pSize = 0;
+				for ( i = 0; i < inSize; i ++ ) {
+
+					pSize ++;
+					q = q.nextZ;
+					if ( ! q ) break;
+
+				}
+
+				qSize = inSize;
+
+				while ( pSize > 0 || ( qSize > 0 && q ) ) {
+
+					if ( pSize !== 0 && ( qSize === 0 || ! q || p.z <= q.z ) ) {
+
+						e = p;
+						p = p.nextZ;
+						pSize --;
+
+					} else {
+
+						e = q;
+						q = q.nextZ;
+						qSize --;
+
+					}
+
+					if ( tail ) tail.nextZ = e;
+					else list = e;
+
+					e.prevZ = tail;
+					tail = e;
+
+				}
+
+				p = q;
+
+			}
+
+			tail.nextZ = null;
+			inSize *= 2;
+
+		} while ( numMerges > 1 );
+
+		return list;
+
+	}
+
+	// z-order of a point given coords and inverse of the longer side of data bbox
+	function zOrder( x, y, minX, minY, invSize ) {
+
+		// coords are transformed into non-negative 15-bit integer range
+		x = ( x - minX ) * invSize | 0;
+		y = ( y - minY ) * invSize | 0;
+
+		x = ( x | ( x << 8 ) ) & 0x00FF00FF;
+		x = ( x | ( x << 4 ) ) & 0x0F0F0F0F;
+		x = ( x | ( x << 2 ) ) & 0x33333333;
+		x = ( x | ( x << 1 ) ) & 0x55555555;
+
+		y = ( y | ( y << 8 ) ) & 0x00FF00FF;
+		y = ( y | ( y << 4 ) ) & 0x0F0F0F0F;
+		y = ( y | ( y << 2 ) ) & 0x33333333;
+		y = ( y | ( y << 1 ) ) & 0x55555555;
+
+		return x | ( y << 1 );
+
+	}
+
+	// find the leftmost node of a polygon ring
+	function getLeftmost( start ) {
+
+		let p = start,
+			leftmost = start;
+		do {
+
+			if ( p.x < leftmost.x || ( p.x === leftmost.x && p.y < leftmost.y ) ) leftmost = p;
+			p = p.next;
+
+		} while ( p !== start );
+
+		return leftmost;
+
+	}
+
+	// check if a point lies within a convex triangle
+	function pointInTriangle( ax, ay, bx, by, cx, cy, px, py ) {
+
+		return ( cx - px ) * ( ay - py ) >= ( ax - px ) * ( cy - py ) &&
+	           ( ax - px ) * ( by - py ) >= ( bx - px ) * ( ay - py ) &&
+	           ( bx - px ) * ( cy - py ) >= ( cx - px ) * ( by - py );
+
+	}
+
+	// check if a diagonal between two polygon nodes is valid (lies in polygon interior)
+	function isValidDiagonal( a, b ) {
+
+		return a.next.i !== b.i && a.prev.i !== b.i && ! intersectsPolygon( a, b ) && // dones't intersect other edges
+	           ( locallyInside( a, b ) && locallyInside( b, a ) && middleInside( a, b ) && // locally visible
+	            ( area( a.prev, a, b.prev ) || area( a, b.prev, b ) ) || // does not create opposite-facing sectors
+	            equals( a, b ) && area( a.prev, a, a.next ) > 0 && area( b.prev, b, b.next ) > 0 ); // special zero-length case
+
+	}
+
+	// signed area of a triangle
+	function area( p, q, r ) {
+
+		return ( q.y - p.y ) * ( r.x - q.x ) - ( q.x - p.x ) * ( r.y - q.y );
+
+	}
+
+	// check if two points are equal
+	function equals( p1, p2 ) {
+
+		return p1.x === p2.x && p1.y === p2.y;
+
+	}
+
+	// check if two segments intersect
+	function intersects( p1, q1, p2, q2 ) {
+
+		const o1 = sign( area( p1, q1, p2 ) );
+		const o2 = sign( area( p1, q1, q2 ) );
+		const o3 = sign( area( p2, q2, p1 ) );
+		const o4 = sign( area( p2, q2, q1 ) );
+
+		if ( o1 !== o2 && o3 !== o4 ) return true; // general case
+
+		if ( o1 === 0 && onSegment( p1, p2, q1 ) ) return true; // p1, q1 and p2 are collinear and p2 lies on p1q1
+		if ( o2 === 0 && onSegment( p1, q2, q1 ) ) return true; // p1, q1 and q2 are collinear and q2 lies on p1q1
+		if ( o3 === 0 && onSegment( p2, p1, q2 ) ) return true; // p2, q2 and p1 are collinear and p1 lies on p2q2
+		if ( o4 === 0 && onSegment( p2, q1, q2 ) ) return true; // p2, q2 and q1 are collinear and q1 lies on p2q2
+
+		return false;
+
+	}
+
+	// for collinear points p, q, r, check if point q lies on segment pr
+	function onSegment( p, q, r ) {
+
+		return q.x <= Math.max( p.x, r.x ) && q.x >= Math.min( p.x, r.x ) && q.y <= Math.max( p.y, r.y ) && q.y >= Math.min( p.y, r.y );
+
+	}
+
+	function sign( num ) {
+
+		return num > 0 ? 1 : num < 0 ? -1 : 0;
+
+	}
+
+	// check if a polygon diagonal intersects any polygon segments
+	function intersectsPolygon( a, b ) {
+
+		let p = a;
+		do {
+
+			if ( p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i &&
+				intersects( p, p.next, a, b ) ) return true;
+			p = p.next;
+
+		} while ( p !== a );
+
+		return false;
+
+	}
+
+	// check if a polygon diagonal is locally inside the polygon
+	function locallyInside( a, b ) {
+
+		return area( a.prev, a, a.next ) < 0 ?
+			area( a, b, a.next ) >= 0 && area( a, a.prev, b ) >= 0 :
+			area( a, b, a.prev ) < 0 || area( a, a.next, b ) < 0;
+
+	}
+
+	// check if the middle point of a polygon diagonal is inside the polygon
+	function middleInside( a, b ) {
+
+		let p = a,
+			inside = false;
+		const px = ( a.x + b.x ) / 2,
+			py = ( a.y + b.y ) / 2;
+		do {
+
+			if ( ( ( p.y > py ) !== ( p.next.y > py ) ) && p.next.y !== p.y &&
+				( px < ( p.next.x - p.x ) * ( py - p.y ) / ( p.next.y - p.y ) + p.x ) )
+				inside = ! inside;
+			p = p.next;
+
+		} while ( p !== a );
+
+		return inside;
+
+	}
+
+	// link two polygon vertices with a bridge; if the vertices belong to the same ring, it splits polygon into two;
+	// if one belongs to the outer ring and another to a hole, it merges it into a single ring
+	function splitPolygon( a, b ) {
+
+		const a2 = new Node( a.i, a.x, a.y ),
+			b2 = new Node( b.i, b.x, b.y ),
+			an = a.next,
+			bp = b.prev;
+
+		a.next = b;
+		b.prev = a;
+
+		a2.next = an;
+		an.prev = a2;
+
+		b2.next = a2;
+		a2.prev = b2;
+
+		bp.next = b2;
+		b2.prev = bp;
+
+		return b2;
+
+	}
+
+	// create a node and optionally link it with previous one (in a circular doubly linked list)
+	function insertNode( i, x, y, last ) {
+
+		const p = new Node( i, x, y );
+
+		if ( ! last ) {
+
+			p.prev = p;
+			p.next = p;
+
+		} else {
+
+			p.next = last.next;
+			p.prev = last;
+			last.next.prev = p;
+			last.next = p;
+
+		}
+
+		return p;
+
+	}
+
+	function removeNode( p ) {
+
+		p.next.prev = p.prev;
+		p.prev.next = p.next;
+
+		if ( p.prevZ ) p.prevZ.nextZ = p.nextZ;
+		if ( p.nextZ ) p.nextZ.prevZ = p.prevZ;
+
+	}
+
+	function Node( i, x, y ) {
+
+		// vertex index in coordinates array
+		this.i = i;
+
+		// vertex coordinates
+		this.x = x;
+		this.y = y;
+
+		// previous and next vertex nodes in a polygon ring
+		this.prev = null;
+		this.next = null;
+
+		// z-order curve value
+		this.z = 0;
+
+		// previous and next nodes in z-order
+		this.prevZ = null;
+		this.nextZ = null;
+
+		// indicates whether this is a steiner point
+		this.steiner = false;
+
+	}
+
+	function signedArea( data, start, end, dim ) {
+
+		let sum = 0;
+		for ( let i = start, j = end - dim; i < end; i += dim ) {
+
+			sum += ( data[ j ] - data[ i ] ) * ( data[ i + 1 ] + data[ j + 1 ] );
+			j = i;
+
+		}
+
+		return sum;
+
+	}
+
+	class ShapeUtils {
+
+		// calculate area of the contour polygon
+
+		static area( contour ) {
+
+			const n = contour.length;
+			let a = 0.0;
+
+			for ( let p = n - 1, q = 0; q < n; p = q ++ ) {
+
+				a += contour[ p ].x * contour[ q ].y - contour[ q ].x * contour[ p ].y;
+
+			}
+
+			return a * 0.5;
+
+		}
+
+		static isClockWise( pts ) {
+
+			return ShapeUtils.area( pts ) < 0;
+
+		}
+
+		static triangulateShape( contour, holes ) {
+
+			const vertices = []; // flat array of vertices like [ x0,y0, x1,y1, x2,y2, ... ]
+			const holeIndices = []; // array of hole indices
+			const faces = []; // final array of vertex indices like [ [ a,b,d ], [ b,c,d ] ]
+
+			removeDupEndPts( contour );
+			addContour( vertices, contour );
+
+			//
+
+			let holeIndex = contour.length;
+
+			holes.forEach( removeDupEndPts );
+
+			for ( let i = 0; i < holes.length; i ++ ) {
+
+				holeIndices.push( holeIndex );
+				holeIndex += holes[ i ].length;
+				addContour( vertices, holes[ i ] );
+
+			}
+
+			//
+
+			const triangles = Earcut.triangulate( vertices, holeIndices );
+
+			//
+
+			for ( let i = 0; i < triangles.length; i += 3 ) {
+
+				faces.push( triangles.slice( i, i + 3 ) );
+
+			}
+
+			return faces;
+
+		}
+
+	}
+
+	function removeDupEndPts( points ) {
+
+		const l = points.length;
+
+		if ( l > 2 && points[ l - 1 ].equals( points[ 0 ] ) ) {
+
+			points.pop();
+
+		}
+
+	}
+
+	function addContour( vertices, contour ) {
+
+		for ( let i = 0; i < contour.length; i ++ ) {
+
+			vertices.push( contour[ i ].x );
+			vertices.push( contour[ i ].y );
+
+		}
+
+	}
+
 	class IcosahedronGeometry extends PolyhedronGeometry {
 
 		constructor( radius = 1, detail = 0 ) {
@@ -34437,6 +36659,194 @@ void main() {
 
 	}
 
+	class ShapeGeometry extends BufferGeometry {
+
+		constructor( shapes = new Shape( [ new Vector2( 0, 0.5 ), new Vector2( -0.5, -0.5 ), new Vector2( 0.5, -0.5 ) ] ), curveSegments = 12 ) {
+
+			super();
+
+			this.type = 'ShapeGeometry';
+
+			this.parameters = {
+				shapes: shapes,
+				curveSegments: curveSegments
+			};
+
+			// buffers
+
+			const indices = [];
+			const vertices = [];
+			const normals = [];
+			const uvs = [];
+
+			// helper variables
+
+			let groupStart = 0;
+			let groupCount = 0;
+
+			// allow single and array values for "shapes" parameter
+
+			if ( Array.isArray( shapes ) === false ) {
+
+				addShape( shapes );
+
+			} else {
+
+				for ( let i = 0; i < shapes.length; i ++ ) {
+
+					addShape( shapes[ i ] );
+
+					this.addGroup( groupStart, groupCount, i ); // enables MultiMaterial support
+
+					groupStart += groupCount;
+					groupCount = 0;
+
+				}
+
+			}
+
+			// build geometry
+
+			this.setIndex( indices );
+			this.setAttribute( 'position', new Float32BufferAttribute( vertices, 3 ) );
+			this.setAttribute( 'normal', new Float32BufferAttribute( normals, 3 ) );
+			this.setAttribute( 'uv', new Float32BufferAttribute( uvs, 2 ) );
+
+
+			// helper functions
+
+			function addShape( shape ) {
+
+				const indexOffset = vertices.length / 3;
+				const points = shape.extractPoints( curveSegments );
+
+				let shapeVertices = points.shape;
+				const shapeHoles = points.holes;
+
+				// check direction of vertices
+
+				if ( ShapeUtils.isClockWise( shapeVertices ) === false ) {
+
+					shapeVertices = shapeVertices.reverse();
+
+				}
+
+				for ( let i = 0, l = shapeHoles.length; i < l; i ++ ) {
+
+					const shapeHole = shapeHoles[ i ];
+
+					if ( ShapeUtils.isClockWise( shapeHole ) === true ) {
+
+						shapeHoles[ i ] = shapeHole.reverse();
+
+					}
+
+				}
+
+				const faces = ShapeUtils.triangulateShape( shapeVertices, shapeHoles );
+
+				// join vertices of inner and outer paths to a single array
+
+				for ( let i = 0, l = shapeHoles.length; i < l; i ++ ) {
+
+					const shapeHole = shapeHoles[ i ];
+					shapeVertices = shapeVertices.concat( shapeHole );
+
+				}
+
+				// vertices, normals, uvs
+
+				for ( let i = 0, l = shapeVertices.length; i < l; i ++ ) {
+
+					const vertex = shapeVertices[ i ];
+
+					vertices.push( vertex.x, vertex.y, 0 );
+					normals.push( 0, 0, 1 );
+					uvs.push( vertex.x, vertex.y ); // world uvs
+
+				}
+
+				// indices
+
+				for ( let i = 0, l = faces.length; i < l; i ++ ) {
+
+					const face = faces[ i ];
+
+					const a = face[ 0 ] + indexOffset;
+					const b = face[ 1 ] + indexOffset;
+					const c = face[ 2 ] + indexOffset;
+
+					indices.push( a, b, c );
+					groupCount += 3;
+
+				}
+
+			}
+
+		}
+
+		copy( source ) {
+
+			super.copy( source );
+
+			this.parameters = Object.assign( {}, source.parameters );
+
+			return this;
+
+		}
+
+		toJSON() {
+
+			const data = super.toJSON();
+
+			const shapes = this.parameters.shapes;
+
+			return toJSON( shapes, data );
+
+		}
+
+		static fromJSON( data, shapes ) {
+
+			const geometryShapes = [];
+
+			for ( let j = 0, jl = data.shapes.length; j < jl; j ++ ) {
+
+				const shape = shapes[ data.shapes[ j ] ];
+
+				geometryShapes.push( shape );
+
+			}
+
+			return new ShapeGeometry( geometryShapes, data.curveSegments );
+
+		}
+
+	}
+
+	function toJSON( shapes, data ) {
+
+		data.shapes = [];
+
+		if ( Array.isArray( shapes ) ) {
+
+			for ( let i = 0, l = shapes.length; i < l; i ++ ) {
+
+				const shape = shapes[ i ];
+
+				data.shapes.push( shape.uuid );
+
+			}
+
+		} else {
+
+			data.shapes.push( shapes.uuid );
+
+		}
+
+		return data;
+
+	}
+
 	class SphereGeometry extends BufferGeometry {
 
 		constructor( radius = 1, widthSegments = 32, heightSegments = 16, phiStart = 0, phiLength = Math.PI * 2, thetaStart = 0, thetaLength = Math.PI ) {
@@ -34564,6 +36974,37 @@ void main() {
 		static fromJSON( data ) {
 
 			return new SphereGeometry( data.radius, data.widthSegments, data.heightSegments, data.phiStart, data.phiLength, data.thetaStart, data.thetaLength );
+
+		}
+
+	}
+
+	class TetrahedronGeometry extends PolyhedronGeometry {
+
+		constructor( radius = 1, detail = 0 ) {
+
+			const vertices = [
+				1, 1, 1, 	-1, -1, 1, 	-1, 1, -1, 	1, -1, -1
+			];
+
+			const indices = [
+				2, 1, 0, 	0, 3, 2,	1, 3, 0,	2, 3, 1
+			];
+
+			super( vertices, indices, radius, detail );
+
+			this.type = 'TetrahedronGeometry';
+
+			this.parameters = {
+				radius: radius,
+				detail: detail
+			};
+
+		}
+
+		static fromJSON( data ) {
+
+			return new TetrahedronGeometry( data.radius, data.detail );
 
 		}
 
@@ -35815,7 +38256,7 @@ void main() {
 	  };
 	}
 
-	function makeRng(seed) {
+	function makeRng$1(seed) {
 	  const r = mulberry32(seed);
 	  return {
 	    next: r,
@@ -39595,774 +42036,954 @@ void main() {
 	}
 
 	// ---------------------------------------------------------------------------
-	// 树木 demo —— 四种（按用户提供的参考图，体素方块风）
-	//
-	// A  白桦：白色树干带黑斑 + 稀疏散布的绿叶
-	// B  橡树：粗壮分叉树干 + 团簇状圆球树冠
-	// C  云杉：分层塔状 + 逐层收窄
-	// D  秋树：粗短树干 + 橙红黄混合叶团
-	//
-	// ★ 设计原则（用户要求「干净、不要小杂点、体块干净」）：
-	//   · 树叶全部用【整数格方块】堆叠，格距统一，不做随机碎裂；
-	//   · 每个方块都是完整的长方体，不加噪点、不加贴片；
-	//   · 树冠轮廓用数学函数（球形/锥形）判定格子是否填充，
-	//     所以边缘规整、不会出现零散小块。
+	// 场景普通树木模型（低多边形 · 参考图复刻）
+	//   apple 苹果树 / blossom 樱花树 / maple 枫树 / birch 白桦 / camellia 山茶树
+	//   make() 返回一个合并好的 Mesh（顶点色 + 描边在外部添加）
 	// ---------------------------------------------------------------------------
 
-	const part$7 = (arr, geo) => { arr.push(geo); return geo; };
+	// ---------------------------------------------------------------------------
+	// 工具
+	// ---------------------------------------------------------------------------
+	const TREE_MAT = toonLambert({
+	  vertexColors: true,
+	  flatShading: true,
+	  shared: false,
+	  side: DoubleSide,
+	});
 
-	function build$6(parts, name) {
-	  const m = meshFrom(parts);
+	function tube(parts, ax, ay, az, bx, by, bz, rBottom, rTop, color, seg = 6) {
+	  const a = new Vector3(ax, ay, az);
+	  const b = new Vector3(bx, by, bz);
+	  const d = b.clone().sub(a);
+	  const len = d.length();
+	  if (len < 1e-4) return;
+	  const g = new CylinderGeometry(rTop, rBottom, len, seg, 1, false);
+	  const q = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), d.clone().normalize());
+	  g.applyQuaternion(q);
+	  g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+	  parts.push(tint(g, color));
+	}
+
+	function blob$1(parts, x, y, z, sx, sy, sz, color, detail = 1, ry = 0) {
+	  const g = new IcosahedronGeometry(1, detail);
+	  g.scale(sx, sy, sz);
+	  if (ry) g.rotateY(ry);
+	  g.translate(x, y, z);
+	  parts.push(tint(g, color));
+	}
+
+	function rng(seed) {
+	  let s = seed >>> 0;
+	  return () => {
+	    s = (s * 1664525 + 1013904223) >>> 0;
+	    return s / 4294967296;
+	  };
+	}
+
+	// 叶片形状
+	function leafShape() {
+	  const s = new Shape();
+	  s.moveTo(0, 0.5);
+	  s.quadraticCurveTo(0.22, 0.32, 0.28, 0.02);
+	  s.quadraticCurveTo(0.14, -0.04, 0, -0.32);
+	  s.quadraticCurveTo(-0.14, -0.04, -0.28, 0.02);
+	  s.quadraticCurveTo(-0.22, 0.32, 0, 0.5);
+	  return s;
+	}
+	const LEAF_SHAPE = leafShape();
+
+	function mapleShape() {
+	  const pts = [
+	    [0, 1], [0.16, 0.58], [0.5, 0.72], [0.34, 0.34], [0.74, 0.30],
+	    [0.4, 0.06], [0.52, -0.22], [0.18, -0.16], [0.06, -0.55], [0, -0.42],
+	    [-0.06, -0.55], [-0.18, -0.16], [-0.52, -0.22], [-0.4, 0.06],
+	    [-0.74, 0.30], [-0.34, 0.34], [-0.5, 0.72], [-0.16, 0.58],
+	  ];
+	  const s = new Shape();
+	  s.moveTo(pts[0][0], pts[0][1]);
+	  for (let i = 1; i < pts.length; i++) s.lineTo(pts[i][0], pts[i][1]);
+	  s.closePath();
+	  return s;
+	}
+	const MAPLE_SHAPE = mapleShape();
+
+	function broadLeafShape() {
+	  const s = new Shape();
+	  s.moveTo(0, 0.56);
+	  s.quadraticCurveTo(0.27, 0.30, 0.25, 0.04);
+	  s.quadraticCurveTo(0.21, -0.28, 0, -0.52);
+	  s.quadraticCurveTo(-0.21, -0.28, -0.25, 0.04);
+	  s.quadraticCurveTo(-0.27, 0.30, 0, 0.56);
+	  return s;
+	}
+	const BROAD_SHAPE = broadLeafShape();
+
+	const _euler = new Euler();
+	const _mat4 = new Matrix4();
+
+	function leafCard(parts, x, y, z, size, color, rx, ry, rz, shape = LEAF_SHAPE) {
+	  const g = new ShapeGeometry(shape, 2);
+	  _euler.set(rx, ry, rz);
+	  _mat4.makeRotationFromEuler(_euler);
+	  g.applyMatrix4(_mat4);
+	  g.scale(size, size, size);
+	  g.translate(x, y, z);
+	  parts.push(tint(g, color));
+	}
+
+	function leafCluster(parts, cx, cy, cz, rx, ry, rz, count, colors, sizeMin, sizeMax, seed, shape = LEAF_SHAPE) {
+	  const rnd = rng(seed);
+	  for (let i = 0; i < count; i++) {
+	    let dx, dy, dz, d2;
+	    do {
+	      dx = rnd() * 2 - 1; dy = rnd() * 2 - 1; dz = rnd() * 2 - 1;
+	      d2 = dx * dx + dy * dy + dz * dz;
+	    } while (d2 > 1);
+	    const x = cx + dx * rx;
+	    const y = cy + dy * ry;
+	    const z = cz + dz * rz;
+	    const size = sizeMin + (sizeMax - sizeMin) * rnd();
+	    const rx2 = (rnd() * 2 - 1) * 0.85;
+	    const ry2 = rnd() * Math.PI * 2;
+	    const rz2 = (rnd() * 2 - 1) * 1.35;
+	    leafCard(parts, x, y, z, size, colors[i % colors.length], rx2, ry2, rz2, shape);
+	  }
+	}
+
+	function leafPatch(parts, x, y, z, nx, ny, nz, size, color, spin, shape = LEAF_SHAPE) {
+	  const g = new ShapeGeometry(shape, 2);
+	  const n = new Vector3(nx, ny, nz).normalize();
+	  const q = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n);
+	  const qs = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), spin);
+	  q.multiply(qs);
+	  g.applyQuaternion(q);
+	  g.scale(size, size, size);
+	  g.translate(x, y, z);
+	  parts.push(tint(g, color));
+	}
+
+	function ellipsoidLeaves(parts, cx, cy, cz, rx, ry, rz, count, colors, sizeMin, sizeMax, seed, shell = 1, shape = LEAF_SHAPE) {
+	  const rnd = rng(seed);
+	  for (let i = 0; i < count; i++) {
+	    const u = rnd() * 2 - 1;
+	    const phi = rnd() * Math.PI * 2;
+	    const r = Math.sqrt(Math.max(0, 1 - u * u));
+	    const dx = Math.cos(phi) * r;
+	    const dy = u;
+	    const dz = Math.sin(phi) * r;
+	    const k = shell * (0.92 + rnd() * 0.1);
+	    const size = sizeMin + (sizeMax - sizeMin) * rnd();
+	    leafPatch(
+	      parts,
+	      cx + dx * rx * k, cy + dy * ry * k, cz + dz * rz * k,
+	      dx / rx, dy / ry, dz / rz,
+	      size, colors[i % colors.length], rnd() * Math.PI * 2, shape
+	    );
+	  }
+	}
+
+	function flower(parts, x, y, z, nx, ny, nz, size, petalColor, centerColor, spin) {
+	  const n = new Vector3(nx, ny, nz).normalize();
+	  const q = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n);
+	  const qs = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), spin);
+	  q.multiply(qs);
+
+	  const put = (geo, color, zOff) => {
+	    geo.scale(size, size, size);
+	    geo.applyQuaternion(q);
+	    geo.translate(x, y, z + zOff * size);
+	    parts.push(tint(geo, color));
+	  };
+
+	  for (let i = 0; i < 5; i++) {
+	    const a = (i / 5) * Math.PI * 2;
+	    const petal = new CircleGeometry(0.34, 7);
+	    petal.scale(1, 0.62, 1);
+	    petal.rotateZ(a - Math.PI / 2);
+	    petal.translate(Math.cos(a) * 0.28, Math.sin(a) * 0.28, 0);
+	    put(petal, petalColor, 0);
+	  }
+	  const disc = new CircleGeometry(0.17, 9);
+	  put(disc, centerColor, 0.012);
+	  const dot = new CircleGeometry(0.075, 7);
+	  put(dot, 0xf0c04a, 0.018);
+	}
+
+	function build$5(name, parts) {
+	  const geo = merge(parts);
+	  const m = new Mesh(geo, TREE_MAT);
 	  m.name = name;
+	  m.castShadow = true;
+	  m.receiveShadow = true;
 	  return m;
 	}
 
-	// ---------------------------------------------------------------------------
-	// 通用：按球形判定填充方块（用于树冠）
-	//   cx/cy/cz 球心，r 半径，cell 格边长，skip(x,y,z) 可排除某些格子
-	// ---------------------------------------------------------------------------
-	function fillSphere(parts, cx, cy, cz, r, cell, color, jitter, skip) {
-	  const n = Math.ceil(r / cell);
-	  for (let ix = -n; ix <= n; ix++) {
-	    for (let iy = -n; iy <= n; iy++) {
-	      for (let iz = -n; iz <= n; iz++) {
-	        const px = ix * cell, py = iy * cell, pz = iz * cell;
-	        const d = Math.sqrt(px * px + py * py + pz * pz);
-	        // ★ 判定用「格子中心到球心」，比用格角更均匀，边缘不会出现锯齿缺口
-	        if (d > r) continue;
-	        if (skip && skip(px, py, pz, d)) continue;
-	        // 用 d/r 做轻微明暗（同一色系，不是随机杂点）
-	        const t = jitter ? (d / r) * jitter : 0;
-	        part$7(parts, box(cell, cell, cell,
-	          shiftColor(color, -t), cx + px, cy + py - cell / 2, cz + pz));
-	      }
-	    }
-	  }
+	// ===========================================================================
+	// 1. 苹果树（参考图 1：团簇圆冠 + 红苹果 + 分叉树干）
+	// ===========================================================================
+	function makeAppleTree() {
+	  const parts = [];
+	  const bark = 0x6b4a32;
+	  const barkDark = 0x533925;
+
+	  tube(parts, 0, 0, 0, 0, 0.9, 0, 1.0, 0.72, barkDark, 7);
+	  tube(parts, 0, 0.85, 0, 0, 3.4, 0, 0.72, 0.44, bark, 7);
+	  tube(parts, 0, 3.0, 0, -1.9, 5.8, 0.5, 0.40, 0.22, bark, 6);
+	  tube(parts, 0, 3.1, 0, 2.0, 5.9, -0.4, 0.40, 0.22, bark, 6);
+	  tube(parts, 0, 3.32, 0, 0.2, 6.2, 0.2, 0.34, 0.20, bark, 6);
+	  tube(parts, -1.9, 5.8, 0.5, -3.5, 6.9, 0.2, 0.18, 0.10, bark, 5);
+	  tube(parts, 2.0, 5.9, -0.4, 3.6, 7.0, -0.6, 0.18, 0.10, bark, 5);
+
+	  const greens = [0x5aa044, 0x66ad4c, 0x4f9139, 0x74bb56];
+	  const blobs = [
+	    [0.0, 8.0, 0.0, 3.0, 2.6, 2.95],
+	    [-2.85, 7.4, 0.6, 2.25, 1.95, 2.15],
+	    [2.85, 7.5, -0.5, 2.25, 1.95, 2.15],
+	    [-1.3, 8.9, -1.75, 2.0, 1.75, 1.95],
+	    [1.5, 8.9, 1.65, 2.0, 1.75, 1.95],
+	    [0.25, 7.0, 2.45, 1.95, 1.65, 1.9],
+	    [-0.3, 7.1, -2.55, 1.95, 1.65, 1.9],
+	    [0.1, 9.45, 0.0, 1.6, 1.4, 1.6],
+	  ];
+	  blobs.forEach((b, i) => blob$1(parts, b[0], b[1], b[2], b[3], b[4], b[5], greens[i % greens.length], 1, i * 0.7));
+
+	  const apples = [
+	    [0.1, 7.6, 4.05], [-5.15, 7.5, 0.8], [4.9, 7.55, -0.4], [0.1, 10.6, 0.2],
+	    [1.9, 6.5, 3.45], [-3.2, 8.7, -1.3], [3.2, 9.0, 1.9],
+	  ];
+	  apples.forEach((p, i) => {
+	    blob$1(parts, p[0], p[1], p[2], 0.36, 0.38, 0.36, i % 3 === 0 ? 0xa82c22 : 0xc0392b, 0, i);
+	  });
+
+	  return build$5('apple', parts);
 	}
 
-	// ---------------------------------------------------------------------------
-	// 落叶：在树根周围撒一圈小方块（用户要求「每棵树都设计一些落叶」）
-	//
-	// ★ 数量固定、位置用极坐标均匀分布 + 轻微的半径/角度扰动，
-	//   看起来自然但不会变成杂乱噪点；
-	//   每片落叶都是扁平方块，符合体素风。
-	// ---------------------------------------------------------------------------
-	// ★ 全局开关：场景里使用时跳过落叶
-	//   demo 页：树站在自己的草地上，周围散落落叶是加分细节
-	//   场景里：4 棵树各自散 14~22 片叶子 → 草地上 64 片碎叶，
-	//           和"干净、无杂点"的要求冲突，看起来像脏点。
-	let SKIP_LEAVES = false;
-	function setSkipFallenLeaves(v) { SKIP_LEAVES = !!v; }
+	// ===========================================================================
+	// 2. 樱花树（参考图 2：粉色团冠 + 深色树干）
+	// ===========================================================================
+	function makeBlossomTree() {
+	  const parts = [];
+	  const bark = 0x403036;
+	  const barkDark = 0x2e2429;
 
-	function addFallenLeaves(parts, count, radius, colors, seed) {
-	  if (SKIP_LEAVES) return;
-	  // 简单的确定性伪随机（同一棵树每次结果一致，不会闪）
-	  let s = seed || 1;
-	  const rnd = () => {
-	    s = (s * 1103515245 + 12345) & 0x7fffffff;
-	    return s / 0x7fffffff;
+	  tube(parts, 0, 0, 0, 0, 0.85, 0, 0.95, 0.66, barkDark, 7);
+	  tube(parts, 0, 0.8, 0, 0, 4.1, 0, 0.62, 0.36, bark, 7);
+	  tube(parts, 0, 3.5, 0, -1.7, 6.0, 0.5, 0.36, 0.20, bark, 6);
+	  tube(parts, 0, 3.7, 0, 1.8, 6.1, -0.4, 0.36, 0.20, bark, 6);
+	  tube(parts, 0, 3.9, 0, 0.1, 6.3, 0.1, 0.30, 0.18, bark, 6);
+
+	  const pinks = [0xe89abb, 0xdd84ab, 0xf0aec9, 0xd4749f];
+	  const blobs = [
+	    [0.0, 7.9, 0.0, 2.5, 2.35, 2.45],
+	    [-2.3, 7.3, 0.5, 1.85, 1.7, 1.75],
+	    [2.3, 7.4, -0.4, 1.85, 1.7, 1.75],
+	    [-1, 8.9, -1.4, 1.7, 1.55, 1.65],
+	    [1.2, 8.9, 1.4, 1.7, 1.55, 1.65],
+	    [0.2, 6.8, 2.1, 1.7, 1.5, 1.6],
+	    [-0.2, 6.9, -2.2, 1.7, 1.5, 1.6],
+	    [0.1, 9.8, 0.0, 1.45, 1.3, 1.45],
+	    [-2.9, 8.0, -1.3, 1.3, 1.2, 1.25],
+	    [2.9, 8.1, 1.2, 1.3, 1.2, 1.25],
+	    [-2.3, 8.5, 1.8, 1.2, 1.1, 1.15],
+	    [2.4, 8.5, -1.7, 1.2, 1.1, 1.15],
+	  ];
+	  blobs.forEach((b, i) => blob$1(parts, b[0], b[1], b[2], b[3], b[4], b[5], pinks[i % pinks.length], 1, i * 0.8));
+
+	  return build$5('blossom', parts);
+	}
+
+	// ===========================================================================
+	// 3. 枫树（参考图 3：橙红星形枫叶 + 少量多边形叶团 + 细树干）
+	// ===========================================================================
+	function makeMapleTree() {
+	  const parts = [];
+	  const bark = 0x5c4030;
+	  const barkDark = 0x46301f;
+
+	  tube(parts, 0, 0, 0, 0, 0.8, 0, 0.62, 0.44, barkDark, 7);
+	  tube(parts, 0, 0.75, 0, 0, 3.8, 0, 0.38, 0.22, bark, 7);
+
+	  const tips = [
+	    [-2.6, 7.0, 1.3], [2.7, 7.1, -1.1], [-1.3, 8.0, -1.7],
+	    [1.6, 7.9, 1.8], [0.2, 6.4, 2.7], [-0.3, 6.5, -2.8],
+	  ];
+	  for (const [x, y, z] of tips) {
+	    tube(parts, 0, 3.5, 0, x * 0.55, y - 1.7, z * 0.55, 0.22, 0.12, bark, 5);
+	    tube(parts, x * 0.55, y - 1.7, z * 0.55, x, y, z, 0.12, 0.06, bark, 5);
+	  }
+	  tube(parts, 0, 3.6, 0, 0.1, 6.3, 0.1, 0.20, 0.11, bark, 5);
+
+	  const oranger = [0xe86a20, 0xd44a1c, 0xf29a2c, 0xe8b83c, 0xc2361a];
+	  const balls = [
+	    [0.0, 7.9, 0.0, 1.2, 1.0, 1.1, 0xe8912a],
+	    [-2.5, 7.0, 1.3, 0.9, 0.8, 0.85, 0xf0a332],
+	    [2.6, 7.1, -1.1, 0.9, 0.8, 0.85, 0xd8641e],
+	    [-1.3, 8.2, -1.7, 0.75, 0.7, 0.72, 0xe8b030],
+	    [1.6, 8.1, 1.8, 0.75, 0.7, 0.72, 0xe26a22],
+	    [0.2, 6.7, 2.7, 0.7, 0.65, 0.68, 0xf09a2c],
+	    [-0.3, 6.8, -2.8, 0.7, 0.65, 0.68, 0xcf4a18],
+	  ];
+	  balls.forEach((b, i) => blob$1(parts, b[0], b[1], b[2], b[3], b[4], b[5], b[6], 1, i * 0.9));
+
+	  tips.forEach(([x, y, z], i) => {
+	    leafCluster(parts, x, y + 0.15, z, 2.25, 1.6, 2.05, 28, oranger, 0.62, 0.95, 300 + i, MAPLE_SHAPE);
+	  });
+	  leafCluster(parts, 0.0, 8.2, 0.0, 2.25, 1.65, 2.1, 26, oranger, 0.66, 0.98, 999, MAPLE_SHAPE);
+
+	  return build$5('maple', parts);
+	}
+
+	// ===========================================================================
+	// 4. 白桦（参考图 4：白色树干带黑斑 + 稀疏轻盈的绿叶）
+	// ===========================================================================
+	function makeBirchTree() {
+	  const parts = [];
+	  const white = 0xece6d6;
+	  const white2 = 0xdfd8c4;
+	  const black = 0x2c2a26;
+
+	  tube(parts, 0, 0, 0, 0, 0.7, 0, 0.38, 0.27, white2, 6);
+	  tube(parts, 0, 0.68, 0, 0, 7.8, 0, 0.26, 0.13, white, 6);
+
+	  const marks = [0.55, 1.35, 2.2, 3.0, 3.8, 4.6, 5.4, 6.2, 6.9];
+	  marks.forEach((y, i) => {
+	    const r = 0.26 + (0.13 - 0.26) * (y / 7.8);
+	    for (let k = 0; k < 2; k++) {
+	      const a = i * 1.7 + k * Math.PI;
+	      const w = 0.24 + (i % 3) * 0.05;
+	      const g = new BoxGeometry(w, 0.085, 0.06);
+	      g.rotateY(a);
+	      g.translate(Math.cos(a) * r * 0.98, y, Math.sin(a) * r * 0.98);
+	      parts.push(tint(g, black));
+	    }
+	  });
+	  const baseMark = new BoxGeometry(0.3, 0.58, 0.05);
+	  baseMark.translate(0, 0.42, 0.27);
+	  parts.push(tint(baseMark, black));
+
+	  const tips = [
+	    [-2, 7.4, 0.7], [2.1, 7.6, -0.5], [-1, 9.4, 0.6],
+	    [1.2, 9.3, -1], [-2.7, 8.4, -0.8], [2.7, 8.6, 0.9],
+	    [0.3, 6.8, 2.0], [-0.5, 7.0, -2.1], [-1.6, 8.6, 1.9], [1.8, 8.7, -1.9],
+	  ];
+	  for (const [x, y, z] of tips) {
+	    tube(parts, 0, 4.2, 0, x * 0.5, y - 1.3, z * 0.5, 0.09, 0.05, white2, 4);
+	    tube(parts, x * 0.5, y - 1.3, z * 0.5, x, y, z, 0.05, 0.025, white2, 4);
+	  }
+
+	  const greens = [0xa8d46a, 0x96c65a, 0xb9e07c, 0x86b64c];
+	  tips.forEach(([x, y, z], i) => {
+	    leafCluster(parts, x, y + 0.1, z, 1.05, 0.9, 1.0, 62, greens, 0.30, 0.46, 500 + i);
+	    leafCluster(parts, x * 0.32, y - 2.05, z * 0.32, 0.85, 0.75, 0.82, 26, greens, 0.28, 0.42, 600 + i);
+	  });
+	  leafCluster(parts, 0.0, 9.6, 0.0, 1.15, 0.95, 1.1, 70, greens, 0.30, 0.46, 777);
+
+	  return build$5('birch', parts);
+	}
+
+	// ===========================================================================
+	// 5. 山茶树（参考图：深绿阔叶 + 白色五瓣花）
+	// ===========================================================================
+	function makeCamelliaTree() {
+	  const parts = [];
+	  const bark = 0x6f5f57;
+	  const barkDark = 0x554741;
+
+	  tube(parts, 0, 0, 0, 0, 0.9, 0, 0.88, 0.62, barkDark, 7);
+	  tube(parts, 0, 0.85, 0, 0, 4.1, 0, 0.60, 0.40, bark, 7);
+	  tube(parts, 0, 3.5, 0, -1.8, 5.9, 1.0, 0.34, 0.18, bark, 6);
+	  tube(parts, 0, 3.7, 0, 1.9, 6.0, -0.8, 0.34, 0.18, bark, 6);
+	  tube(parts, 0, 3.8, 0, 0.1, 6.2, 0.2, 0.30, 0.16, bark, 6);
+
+	  // 冠内暗色体块，防止透光
+	  const deep = [0x3a7041, 0x427a49, 0x356b3c];
+	  blob$1(parts, 0, 7.6, 0, 3.7, 2.45, 3.55, deep[0], 1, 0.2);
+	  blob$1(parts, -2, 6.9, 1.5, 2.0, 1.55, 1.9, deep[1], 1, 1.0);
+	  blob$1(parts, 1.9, 7.0, -1.3, 2.0, 1.55, 1.9, deep[2], 1, 2.0);
+	  blob$1(parts, 0.4, 8.7, 0.9, 1.8, 1.45, 1.7, deep[1], 1, 3.0);
+
+	  const greens = [0x3f7a46, 0x4a8a52, 0x356b3c, 0x55985d, 0x427f49];
+	  ellipsoidLeaves(parts, 0, 7.6, 0, 4.15, 2.75, 3.95, 700, greens, 0.46, 0.68, 7001, 1.0, BROAD_SHAPE);
+	  ellipsoidLeaves(parts, 0, 7.6, 0, 3.2, 2.2, 3.05, 180, [0x2e5f34, 0x356b3c, 0x3a7041], 0.44, 0.64, 7100, 0.8, BROAD_SHAPE);
+
+	  // 白色山茶花：贴在冠面外侧
+	  const flowerDirs = [
+	    [0.15, 0.35, 1.0], [-0.72, 0.22, 0.78], [0.86, 0.12, 0.52],
+	    [-0.45, -0.05, 0.92], [0.05, 0.82, 0.58], [-0.92, 0.42, 0.18],
+	    [0.78, 0.55, -0.32], [-0.28, 0.30, -0.95], [0.42, -0.18, 0.90],
+	    [-0.15, 0.55, -0.85],
+	  ];
+	  flowerDirs.forEach((d, i) => {
+	    const v = new Vector3(d[0], d[1], d[2]).normalize();
+	    const rx = 4.15, ry = 2.75, rz = 3.95;
+	    const px = v.x * rx * 1.01;
+	    const py = 7.6 + v.y * ry * 1.01;
+	    const pz = v.z * rz * 1.01;
+	    const nx = v.x / rx, ny = v.y / ry, nz = v.z / rz;
+	    const size = 0.72 + (i % 3) * 0.08;
+	    flower(parts, px, py, pz, nx, ny, nz, size,
+	      i % 4 === 0 ? 0xf3dfe7 : 0xf8f3e8, 0xe8a4bc, i * 0.9);
+	  });
+
+	  return build$5('camellia', parts);
+	}
+
+	const SMALL_TREE_MAKERS = [
+	  { kind: 'apple', name: '苹果树', make: makeAppleTree, top: 11.0 },
+	  { kind: 'blossom', name: '樱花树', make: makeBlossomTree, top: 11.2 },
+	  { kind: 'maple', name: '枫树', make: makeMapleTree, top: 10.4 },
+	  { kind: 'birch', name: '白桦', make: makeBirchTree, top: 10.9 },
+	  { kind: 'camellia', name: '山茶树', make: makeCamelliaTree, top: 10.7, outline: 0 },
+	];
+
+	// ---------------------------------------------------------------------------
+	// 参天大树 · 低多边形模型（场景用）
+	//   8 种：阔叶树 / 凤凰木 / 仙人掌 / 紫晶树 / 猴面包树 / 分层冷杉 / 伞形金合欢 / 银杏树
+	//   make() 返回 Group；bigtree.js 会合并成单几何体并保留材质颜色。
+	// ---------------------------------------------------------------------------
+
+	// ---------------------------------------------------------------------------
+	// 通用材质 / 几何辅助
+	// ---------------------------------------------------------------------------
+	const _mats = new Map();
+	function mat(color) {
+	  if (!_mats.has(color)) {
+	    _mats.set(color, toonLambert({ color, flatShading: true, shared: false }));
+	  }
+	  return _mats.get(color);
+	}
+
+	const _dsMats = new Map();
+	function matDS(color) {
+	  if (!_dsMats.has(color)) {
+	    _dsMats.set(color, toonLambert({ color, flatShading: true, shared: false, side: DoubleSide }));
+	  }
+	  return _dsMats.get(color);
+	}
+
+	function ginkgoShape() {
+	  const s = new Shape();
+	  s.moveTo(0, -0.1);
+	  s.quadraticCurveTo(-0.58, 0.22, -0.54, 0.56);
+	  s.quadraticCurveTo(-0.28, 0.66, 0, 0.52);
+	  s.quadraticCurveTo(0.28, 0.66, 0.54, 0.56);
+	  s.quadraticCurveTo(0.58, 0.22, 0, -0.1);
+	  return s;
+	}
+	const GINKGO_SHAPE = ginkgoShape();
+
+	function fanLeaf(group, x, y, z, size, color, rx, ry, rz) {
+	  const geo = new ShapeGeometry(GINKGO_SHAPE, 2);
+	  geo.applyMatrix4(new Matrix4().makeRotationFromEuler(new Euler(rx, ry, rz)));
+	  geo.scale(size, size, size);
+	  geo.translate(x, y, z);
+	  const m = new Mesh(geo, matDS(color));
+	  m.castShadow = true;
+	  m.receiveShadow = true;
+	  group.add(m);
+	  return m;
+	}
+
+	function makeRng(seed) {
+	  let st = seed >>> 0;
+	  return () => {
+	    st = (st * 1664525 + 1013904223) >>> 0;
+	    return st / 4294967296;
 	  };
-	  for (let i = 0; i < count; i++) {
-	    const ang = (i / count) * Math.PI * 2 + rnd() * 0.35;
-	    const r = radius * (0.42 + rnd() * 0.58);
-	    const x = Math.cos(ang) * r;
-	    const z = Math.sin(ang) * r;
-	    const col = colors[i % colors.length];
-	    // 扁平方块（厚度 0.06，贴地）
-	    part$7(parts, box(0.20, 0.06, 0.20, col, x, 0.03, z));
-	    // 部分落叶旋转 45°（用更窄的块近似）
-	    if (i % 3 === 0) {
-	      part$7(parts, box(0.14, 0.05, 0.14, col, x + 0.16, 0.025, z - 0.10));
-	    }
-	  }
 	}
 
-	// 颜色明暗偏移（同一色相，只改明度，避免出现杂色）
-	function shiftColor(hex, t) {
-	  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
-	  const k = 1 + t;
-	  const cl = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
-	  return (cl(r) << 16) | (cl(g) << 8) | cl(b);
+	function addMesh(group, geo, material, x, y, z, rx = 0, ry = 0, rz = 0) {
+	  const m = new Mesh(geo, material);
+	  m.position.set(x, y, z);
+	  m.rotation.set(rx, ry, rz);
+	  m.castShadow = true;
+	  m.receiveShadow = true;
+	  group.add(m);
+	  return m;
 	}
 
-	// ===========================================================================
-	// A：白桦（白色树干带黑斑 + 稀疏散布的绿叶）
-	// ===========================================================================
-	function makeBirch() {
-	  const parts = [];
-	  const barkWhite = 0xe8e4d8;
-	  const barkDark = 0x3a3630;
-	  const leafA = 0x8ab84a;
-	  const leafB = 0x76a83e;
-
-
-	  // ---- 树干：白色方柱，带黑色横斑 ----
-	  const trunkW = 0.46, trunkH = 5.0;
-	  const cell = 0.46;
-	  const nSeg = Math.round(trunkH / cell);
-	  for (let i = 0; i < nSeg; i++) {
-	    const y = i * cell;
-	    // 树干每段都是一个方块（竖直堆叠，干净）
-	    part$7(parts, box(trunkW, cell, trunkW, barkWhite, 0, y, 0));
-	  }
-	  // 黑色横斑：每隔几段在正面/侧面贴一块【同尺寸的薄片】
-	  //   ★ 只贴在方块表面，厚度固定、位置对齐格线，不会形成杂点
-	  const marks = [1, 2, 4, 6, 8, 10, 12, 13];
-	  for (const i of marks) {
-	    const y = i * cell + cell * 0.30;
-	    const face = i % 2 === 0 ? 1 : -1;
-	    // 前面
-	    part$7(parts, box(trunkW * 0.72, cell * 0.34, 0.03, barkDark,
-	      cell * 0.08 * face, y, trunkW / 2));
-	    // 侧面（错开，形成斑驳感）
-	    part$7(parts, box(0.03, cell * 0.30, trunkW * 0.66, barkDark,
-	      face * trunkW / 2, y + cell * 0.4, -cell * 0.06));
-	  }
-
-	  // ---- 树枝（4 根，斜向上，用短方块串）----
-	  const branches = [
-	    { a: 0.4, y: 3.4, len: 1.5 },
-	    { a: 2.1, y: 3.9, len: 1.3 },
-	    { a: 3.9, y: 4.3, len: 1.2 },
-	    { a: 5.3, y: 4.7, len: 1.0 },
-	  ];
-	  for (const b of branches) {
-	    const steps = 4;
-	    for (let k = 0; k < steps; k++) {
-	      const t = (k + 1) / steps;
-	      const r = b.len * t;
-	      const y = b.y + r * 0.55;
-	      part$7(parts, box(0.20, 0.20, 0.20, barkWhite,
-	        Math.cos(b.a) * r, y, Math.sin(b.a) * r));
-	    }
-	  }
-
-	  // ---- 树冠：稀疏的圆形叶簇（4 团，用球形填充）----
-	  // ★ 白桦树冠要【更大更密】（参考图里树冠占整体 2/3）
-	  const clusters = [
-	    { x: 0.0, y: 5.2, z: 0.0, r: 2.10 },
-	    { x: 1.60, y: 4.6, z: 0.50, r: 1.55 },
-	    { x: -1.5, y: 4.7, z: -0.6, r: 1.50 },
-	    { x: 0.35, y: 6.6, z: 0.60, r: 1.35 },
-	    { x: -0.4, y: 5.4, z: 1.55, r: 1.30 },
-	    { x: 0.45, y: 5.3, z: -1.5, r: 1.28 },
-	  ];
-	  const lc = 0.34;   // 叶块边长
-	  for (const cl of clusters) {
-	    fillSphere(parts, cl.x, cl.y, cl.z, cl.r, lc, leafA, 0.22,
-	      // ★ 挖掉内部格子（距离球心 < 0.55r 的不画），
-	      //   减少面数、也让树冠看起来是「壳」而不是实心块
-	      (px, py, pz, d) => d < cl.r * 0.55);
-	  }
-	  // 补充一层深色叶（只在上半部分，形成体积感）
-	  for (const cl of clusters) {
-	    fillSphere(parts, cl.x, cl.y + 0.15, cl.z, cl.r * 0.92, lc * 1.15, leafB, 0.18,
-	      (px, py, pz, d) => d < cl.r * 0.70 || py < -0.15);
-	  }
-
-	  // 落叶（白桦的黄绿小叶，撒在根部）
-	  addFallenLeaves(parts, 14, 2.2, [0xa8c85a, 0x8ab84a, 0xc8d878], 11);
-
-	  return build$6(parts, 'treeBirch');
+	// 两点之间的锥形圆柱（树枝）
+	function branch(group, ax, ay, az, bx, by, bz, r1, r2, color, radial = 6) {
+	  const a = new Vector3(ax, ay, az);
+	  const b = new Vector3(bx, by, bz);
+	  const dir = b.clone().sub(a);
+	  const len = dir.length();
+	  if (len < 1e-4) return null;
+	  const geo = new CylinderGeometry(r2, r1, len, radial, 1, false);
+	  const mesh = new Mesh(geo, mat(color));
+	  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+	  mesh.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize());
+	  mesh.castShadow = true;
+	  mesh.receiveShadow = true;
+	  group.add(mesh);
+	  return mesh;
 	}
 
-	// ===========================================================================
-	// B：橡树（粗壮分叉树干 + 团簇状圆球树冠）
-	// ===========================================================================
-	function makeOak() {
-	  const parts = [];
-	  const bark = 0x6a4a30;
-	  const barkLight = 0x7a5a3a;
-	  const leafA = 0x5a9438;
-	  const leafB = 0x4a8030;
-	  const leafC = 0x76a83e;
-
-
-	  // ---- 树干：粗方柱 + 根部外扩 ----
-	  const tw = 0.72;
-	  part$7(parts, box(tw * 1.5, 0.50, tw * 1.5, bark, 0, 0, 0));   // 根部
-	  part$7(parts, box(tw * 1.25, 0.70, tw * 1.25, bark, 0, 0.50, 0));
-	  part$7(parts, box(tw, 2.20, tw, bark, 0, 1.20, 0));
-	  // 树干上的竖向纹理（细长条，对齐格线）
-	  for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-	    part$7(parts, box(sx !== 0 ? 0.03 : tw * 0.30, 2.0, sz !== 0 ? 0.03 : tw * 0.30,
-	      barkLight, sx * (tw / 2), 1.30, sz * (tw / 2)));
-	  }
-
-	  // ---- 主枝（4 根粗枝，从树干顶部斜向上分叉）----
-	  const mainBranches = [
-	    { a: 0.5, y: 3.3, len: 1.9, thick: 0.44 },
-	    { a: 2.3, y: 3.4, len: 1.7, thick: 0.40 },
-	    { a: 4.0, y: 3.2, len: 1.8, thick: 0.42 },
-	    { a: 5.4, y: 3.5, len: 1.5, thick: 0.36 },
-	  ];
-	  for (const b of mainBranches) {
-	    const steps = 5;
-	    for (let k = 0; k < steps; k++) {
-	      const t = (k + 1) / steps;
-	      const r = b.len * t;
-	      const y = b.y + r * 0.62;
-	      const th = b.thick * (1 - t * 0.35);
-	      part$7(parts, box(th, th, th, bark,
-	        Math.cos(b.a) * r, y, Math.sin(b.a) * r));
-	    }
-	  }
-	  // 中央主干（继续向上）
-	  part$7(parts, box(0.50, 1.4, 0.50, bark, 0, 3.2, 0));
-
-	  // ---- 树冠：6 团大圆球（参考图里是明显的团簇状）----
-	  const clusters = [
-	    { x: 0.0, y: 5.6, z: 0.0, r: 1.85 },
-	    { x: 2.05, y: 5.0, z: 0.30, r: 1.50 },
-	    { x: -1.95, y: 5.1, z: -0.25, r: 1.48 },
-	    { x: 0.35, y: 5.0, z: 1.90, r: 1.42 },
-	    { x: -0.3, y: 5.0, z: -1.85, r: 1.40 },
-	    { x: 0.10, y: 6.9, z: 0.10, r: 1.30 },
-	  ];
-	  const lc = 0.34;
-	  for (const cl of clusters) {
-	    // 主叶（中绿）
-	    fillSphere(parts, cl.x, cl.y, cl.z, cl.r, lc, leafA, 0.20,
-	      (px, py, pz, d) => d < cl.r * 0.50);
-	    // 深色叶（下半，做阴影感）
-	    fillSphere(parts, cl.x, cl.y - 0.20, cl.z, cl.r * 0.88, lc * 1.1, leafB, 0.16,
-	      (px, py, pz, d) => d < cl.r * 0.60 || py > 0);
-	    // 亮色叶（顶部，做高光感）
-	    fillSphere(parts, cl.x, cl.y + 0.55, cl.z, cl.r * 0.62, lc * 1.2, leafC, 0.14,
-	      (px, py, pz, d) => d < cl.r * 0.35 || py < 0);
-	  }
-
-	  // 落叶（橡树的深绿大叶）
-	  addFallenLeaves(parts, 16, 2.9, [0x5a9438, 0x4a8030, 0x76a83e], 23);
-
-	  return build$6(parts, 'treeOak');
+	// 低多边形叶团
+	function blob(group, x, y, z, rx, ry, rz, color, detail = 1, ryRot = 0) {
+	  const geo = new IcosahedronGeometry(1, detail);
+	  const mesh = new Mesh(geo, mat(color));
+	  mesh.position.set(x, y, z);
+	  mesh.scale.set(rx, ry, rz);
+	  mesh.rotation.y = ryRot;
+	  mesh.castShadow = true;
+	  mesh.receiveShadow = true;
+	  group.add(mesh);
+	  return mesh;
 	}
 
-	// ===========================================================================
-	// C：云杉（分层塔状 + 逐层收窄）
-	// ===========================================================================
-	function makeSpruce() {
-	  const parts = [];
-	  const bark = 0x5a3e28;
-	  const leafA = 0x3a7a3a;
-	  const leafB = 0x4a8a42;
-	  const leafC = 0x2e6a30;
-
-
-	  // ---- 树干（棕色方柱，只在树冠下方露出）----
-	  //   ★ 尺寸迭代：2.8m（太矮）→ 6.4m（太高）→ 现在 3.2m（6.4 的 50%）
-	  //     3.2m ≈ 1.55 个人高（人物 2.07m），树干高挑但不夸张。
-	  part$7(parts, box(0.56, 1.8, 0.56, bark, 0, 0, 0));
-	  part$7(parts, box(0.48, 1.4, 0.48, bark, 0, 1.8, 0));
-
-	  // ---- 10 层塔状树冠 ----
-	  const layers = 10;
-	  const baseY = 3.0;        // 树冠从树干顶（3.2）稍下方开始
-	  const topY = 10.6;        // 塔形总高约 10.8m
-	  const cell = 0.38;
-	  for (let i = 0; i < layers; i++) {
-	    const t = i / (layers - 1);
-	    const y = baseY + (topY - baseY) * t;
-	    // 该层半径：底部最宽，顶部收成尖
-	    const r = 2.35 * (1 - t * 0.92);
-	    const n = Math.round(r / cell);
-	    // 明暗：下层深、上层亮
-	    const col = i % 2 === 0 ? leafA : leafB;
-	    for (let ix = -n; ix <= n; ix++) {
-	      for (let iz = -n; iz <= n; iz++) {
-	        const px = ix * cell, pz = iz * cell;
-	        // 方形判据（不是圆！参考图里云杉是方塔状）
-	        if (Math.abs(px) > r || Math.abs(pz) > r) continue;
-	        // 挖空中心（省面数，也像真实枝叶）
-	        if (i < layers - 1 && Math.abs(px) < 0.30 && Math.abs(pz) < 0.30) continue;
-	        part$7(parts, box(cell, cell, cell, col, px, y, pz));
-	      }
-	    }
-	    // 层底的深色（做成层叠阴影）
-	    for (let ix = -n; ix <= n; ix++) {
-	      for (let iz = -n; iz <= n; iz++) {
-	        const px = ix * cell, pz = iz * cell;
-	        if (Math.abs(px) > r || Math.abs(pz) > r) continue;
-	        if (Math.abs(px) < r * 0.45 && Math.abs(pz) < r * 0.45) continue;
-	        part$7(parts, box(cell * 0.94, cell * 0.34, cell * 0.94, leafC, px, y - cell * 0.55, pz));
-	      }
-	    }
-	  }
-	  // 树顶尖
-	  part$7(parts, box(0.34, 0.55, 0.34, leafB, 0, topY + 0.22, 0));
-
-	  // 落叶（云杉的针叶少一些，颜色更深）
-	  //   ★ 树冠半径从 2.35 增到约 2.6、树干加高后整体更大，
-	  //     落叶范围同步从 2.2 扩到 3.2，否则叶子全堆在树根上。
-	  addFallenLeaves(parts, 12, 3.2, [0x3a7a3a, 0x2e6a30, 0x4a8a42], 37);
-
-	  return build$6(parts, 'treeSpruce');
+	function trunkBase(group, h, rBottom, rTop, color = 0x6b4a32, radial = 7) {
+	  addMesh(group, new CylinderGeometry(rTop, rBottom, h, radial), mat(color), 0, h / 2, 0);
 	}
 
-	// ===========================================================================
-	// D：秋树（粗短树干 + 橙红黄混合叶团）
-	// ===========================================================================
-	function makeAutumnTree() {
-	  const parts = [];
+	// ---------------------------------------------------------------------------
+	// 1. 阔叶树（参考图 1）—— 多层团簇 + 板根 + 细枝
+	// ---------------------------------------------------------------------------
+	function makeBroadleaf() {
+	  const g = new Group();
+	  g.name = 'broadleaf';
 	  const bark = 0x5a4030;
 	  const barkDark = 0x46301f;
-	  const leafOrange = 0xd86820;
-	  const leafRed = 0xb83a1a;
-	  const leafYellow = 0xe8a830;
-	  const leafDeep = 0x9a3018;
+	  trunkBase(g, 8.2, 1.75, 0.9, bark, 8);
 
-	  // （地面落叶已删除，保持干净）
-
-	  // ---- 树干：粗短（参考图里树干很短，树冠从很低的地方就开始）----
-	  const tw = 0.62;
-	  part$7(parts, box(tw * 1.4, 0.40, tw * 1.4, barkDark, 0, 0, 0));
-	  part$7(parts, box(tw, 1.70, tw, bark, 0, 0.40, 0));
-	  // 树干竖向纹理
-	  for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-	    part$7(parts, box(sx !== 0 ? 0.03 : tw * 0.28, 1.5, sz !== 0 ? 0.03 : tw * 0.28,
-	      barkDark, sx * (tw / 2), 0.5, sz * (tw / 2)));
+	  // 板根
+	  for (let i = 0; i < 5; i++) {
+	    const a = (i / 5) * Math.PI * 2 + 0.4;
+	    branch(g, 0, 2.5, 0, Math.cos(a) * 2.7, 0.1, Math.sin(a) * 2.7, 0.78, 0.22, barkDark, 5);
 	  }
 
-	  // ---- 分叉（4 根短粗枝）----
-	  const branches = [
-	    { a: 0.6, y: 1.9, len: 1.1, thick: 0.34 },
-	    { a: 2.4, y: 2.0, len: 1.0, thick: 0.32 },
-	    { a: 4.1, y: 1.85, len: 1.05, thick: 0.33 },
-	    { a: 5.5, y: 2.05, len: 0.95, thick: 0.30 },
+	  const mains = [
+	    [-4.9, 11.9, 1.2], [5.0, 11.7, -1.1],
+	    [-2.3, 12.9, 3.9], [2.5, 12.7, -3.9], [0.2, 13.5, 0.4],
 	  ];
-	  for (const b of branches) {
-	    const steps = 3;
-	    for (let k = 0; k < steps; k++) {
-	      const t = (k + 1) / steps;
-	      const r = b.len * t;
-	      const y = b.y + r * 0.75;
-	      const th = b.thick * (1 - t * 0.30);
-	      part$7(parts, box(th, th, th, bark, Math.cos(b.a) * r, y, Math.sin(b.a) * r));
-	    }
+	  for (const [x, y, z] of mains) {
+	    branch(g, 0, 6.4, 0, x * 0.6, y - 2.4, z * 0.6, 0.66, 0.38, bark, 6);
+	    branch(g, x * 0.6, y - 2.4, z * 0.6, x, y, z, 0.38, 0.2, bark, 6);
+	    branch(g, x, y, z, x * 1.18, y + 1.3, z * 1.18, 0.16, 0.07, bark, 5);
+	    branch(g, x * 0.75, y - 1.2, z * 0.75, x * 0.2, y + 0.9, z * 0.2, 0.13, 0.06, bark, 5);
 	  }
 
-	  // ---- 树冠：5 团叶球，橙红黄混色 ----
+	  const greens = [0x2f6a3f, 0x3d7a4a, 0x4f8b55, 0x2a5e3a, 0x468049];
 	  const clusters = [
-	    { x: 0.0, y: 4.3, z: 0.0, r: 1.75 },
-	    { x: 1.85, y: 3.9, z: 0.25, r: 1.40 },
-	    { x: -1.75, y: 4.0, z: -0.2, r: 1.38 },
-	    { x: 0.30, y: 3.85, z: 1.75, r: 1.32 },
-	    { x: -0.25, y: 4.0, z: -1.7, r: 1.30 },
+	    // 主冠
+	    [0.0, 17.0, 0.0, 4.4, 3.0, 4.0, 1],
+	    [-5.9, 14.3, 1.2, 4.0, 2.7, 3.7, 0],
+	    [5.8, 14.1, -1.2, 4.0, 2.7, 3.7, 2],
+	    [-2.6, 15.9, 3.1, 3.5, 2.4, 3.2, 3],
+	    [2.7, 15.8, -3.1, 3.5, 2.4, 3.2, 1],
+	    [-1.4, 13.5, 4.6, 3.0, 2.1, 2.8, 2],
+	    [1.5, 13.5, -4.6, 3.0, 2.1, 2.8, 4],
+	    [-5.6, 12.0, 0.4, 2.9, 2.0, 2.7, 3],
+	    [5.5, 11.9, -0.4, 2.9, 2.0, 2.7, 0],
+	    [-2.4, 18.2, 1.5, 2.9, 2.1, 2.7, 4],
+	    [2.4, 18.1, -1.5, 2.9, 2.1, 2.7, 2],
+	    [0.0, 14.9, 3.8, 3.2, 2.2, 3.0, 1],
+	    [0.0, 14.7, -4, 3.2, 2.2, 3.0, 3],
+	    // 外缘小团（detail 0）
+	    [-7.4, 14.8, 0.8, 1.8, 1.3, 1.6, 2, 0],
+	    [7.4, 14.6, -0.8, 1.8, 1.3, 1.6, 1, 0],
+	    [-3.8, 17.4, 2.4, 1.7, 1.2, 1.5, 0, 0],
+	    [3.8, 17.3, -2.4, 1.7, 1.2, 1.5, 4, 0],
+	    [-0.8, 19.2, 0.8, 1.7, 1.2, 1.5, 3, 0],
+	    [0.9, 19.1, -0.8, 1.7, 1.2, 1.5, 1, 0],
+	    [-6.4, 12.8, 2.6, 1.6, 1.1, 1.4, 4, 0],
+	    [6.3, 12.7, -2.6, 1.6, 1.1, 1.4, 0, 0],
+	    [2.8, 16.8, 2.8, 1.5, 1.1, 1.3, 3, 0],
+	    [-2.8, 16.7, -2.8, 1.5, 1.1, 1.3, 2, 0],
+	    [0.0, 11.6, 4.8, 1.5, 1.0, 1.3, 1, 0],
+	    [0.0, 11.5, -5, 1.5, 1.0, 1.3, 3, 0],
 	  ];
-	  const lc = 0.32;
-	  for (const cl of clusters) {
-	    // 主体：橙色
-	    fillSphere(parts, cl.x, cl.y, cl.z, cl.r, lc, leafOrange, 0.18,
-	      (px, py, pz, d) => d < cl.r * 0.48);
-	    // 深红（下半）
-	    fillSphere(parts, cl.x, cl.y - 0.25, cl.z, cl.r * 0.85, lc * 1.1, leafRed, 0.16,
-	      (px, py, pz, d) => d < cl.r * 0.58 || py > 0);
-	    // 黄色（顶部 + 外侧）
-	    fillSphere(parts, cl.x, cl.y + 0.55, cl.z, cl.r * 0.70, lc * 1.15, leafYellow, 0.14,
-	      (px, py, pz, d) => d < cl.r * 0.40 || py < -0.1);
-	  }
-	  // 几块深色叶（点缀内部，数量固定、位置整齐）
-	  for (const [x, y, z] of [[0.9, 4.6, 0.8], [-1, 4.3, -0.9], [1.3, 3.6, -1], [-1.2, 3.8, 1.0]]) {
-	    part$7(parts, box(lc * 1.3, lc * 1.3, lc * 1.3, leafDeep, x, y, z));
-	  }
+	  clusters.forEach((c, i) => {
+	    blob(g, c[0], c[1], c[2], c[3], c[4], c[5], greens[c[6] % greens.length], c[7] === undefined ? 1 : c[7], i * 0.55);
+	  });
 
-	  // 落叶（秋树的橙红黄落叶，数量最多、最显眼）
-	  addFallenLeaves(parts, 22, 2.8, [0xd86820, 0xb83a1a, 0xe8a830, 0x9a3018], 53);
-
-	  return build$6(parts, 'treeAutumn');
+	  return g;
 	}
 
 	// ---------------------------------------------------------------------------
-	// 参天大树 demo —— 9 种体素巨树（严格按用户参考图的"形"重做）
-	//
-	// ★ 上一版失败的原因：树冠做成一个大球、树干只有一截矮桩，
-	//   和参考图毫无关系。参考图的共性是：
-	//     · 树干【明显锥度】、根部外扩；
-	//     · 主枝【可见分叉】并伸进树冠，枝叶长在枝端；
-	//     · 树冠由【多个叶团】组成，不是单一球体；
-	//     · 层叠型（常青树）有【分层外张下垂】的枝叶平台。
-	//   本版全部按这个结构重做。
-	//
-	// 尺寸对齐现有参天大树（TRUNK_H 14 + 冠 10 ≈ 高 25、冠半径 10）。
-	// 干净原则：叶团用整数格 + 按高度三档明暗（下深/中基/上亮），
-	//   不做随机杂点；内部挖空省面。
+	// 2. 仙人掌（参考图 2）—— 棱线 + 尖刺 + 圆角手臂
 	// ---------------------------------------------------------------------------
-
-	const part$6 = (arr, geo) => { arr.push(geo); return geo; };
-
-	function build$5(parts, name) {
-	  const m = meshFrom(parts);
-	  m.name = name;
-	  return m;
-	}
-
-	// ---------------------------------------------------------------------------
-	// 树干：圆形截面的锥形柱（上细下粗），带轻微树皮色带
-	// ---------------------------------------------------------------------------
-	function trunkTaper(parts, cx, cz, rBottom, rTop, h, colA, colB, cell = 0.58) {
-	  const n = Math.ceil(h / cell);
-	  for (let i = 0; i < n; i++) {
-	    const t = i / Math.max(1, n - 1);
-	    const y = i * cell;
-	    const r = rBottom + (rTop - rBottom) * t;
-	    const k = Math.max(1, Math.round(r / cell));
-	    const col = (i % 5 < 3) ? colA : colB;
-	    for (let ix = -k; ix <= k; ix++) {
-	      for (let iz = -k; iz <= k; iz++) {
-	        if (Math.hypot(ix, iz) > k) continue;
-	        part$6(parts, box(cell, cell, cell, col, cx + ix * cell, y, cz + iz * cell));
-	      }
-	    }
-	  }
-	}
-
-	// ---------------------------------------------------------------------------
-	// 枝：从 A 到 B 的阶梯状方柱链（体素风斜枝），越往外越细
-	// ---------------------------------------------------------------------------
-	function branchChain(parts, ax, ay, az, bx, by, bz, thick, cell, cols) {
-	  const dx = bx - ax, dy = by - ay, dz = bz - az;
-	  const len = Math.hypot(dx, dy, dz);
-	  if (len < 1e-4) return;
-	  const n = Math.max(2, Math.round(len / cell));
-	  for (let i = 0; i <= n; i++) {
-	    const t = i / n;
-	    const x = ax + dx * t, y = ay + dy * t, z = az + dz * t;
-	    const s = thick * (1 - t * 0.42);
-	    part$6(parts, box(s, cell * 1.2, s, cols[i % cols.length], x, y, z));
-	  }
-	}
-
-	// ---------------------------------------------------------------------------
-	// 叶团：椭球填格，按【高度】分三档明暗（下深 / 中基 / 上亮），内部挖空
-	//   —— 这样是"有体积的干净块"，不是杂点。
-	// ---------------------------------------------------------------------------
-	function foliage(parts, cx, cy, cz, rx, ry, rz, cell, cols, hollow = 0.45) {
-	  const nx = Math.ceil(rx / cell), ny = Math.ceil(ry / cell), nz = Math.ceil(rz / cell);
-	  for (let ix = -nx; ix <= nx; ix++) {
-	    for (let iy = -ny; iy <= ny; iy++) {
-	      for (let iz = -nz; iz <= nz; iz++) {
-	        const px = ix * cell, py = iy * cell, pz = iz * cell;
-	        const d = Math.sqrt((px / rx) ** 2 + (py / ry) ** 2 + (pz / rz) ** 2);
-	        if (d > 1) continue;
-	        if (d < hollow) continue;
-	        const t = (py / ry + 1) / 2;                  // 0 底 → 1 顶
-	        const col = t < 0.34 ? cols[0] : (t > 0.70 ? cols[2] : cols[1]);
-	        part$6(parts, box(cell, cell, cell, col, cx + px, cy + py - cell / 2, cz + pz));
-	      }
-	    }
-	  }
-	}
-
-	// ---------------------------------------------------------------------------
-	// 落叶：与树冠同色的扁平方块，极坐标均匀撒一圈（沿用原做法）
-	// ---------------------------------------------------------------------------
-	function fallenLeaves(parts, count, radius, cols) {
-	  for (let i = 0; i < count; i++) {
-	    const ang = (i / count) * Math.PI * 2 + ((i * 37) % 100) / 100 * 0.4;
-	    const rr = radius * (0.40 + ((i * 53) % 100) / 100 * 0.60);
-	    const x = Math.cos(ang) * rr, z = Math.sin(ang) * rr;
-	    const col = cols[i % cols.length];
-	    part$6(parts, box(0.40, 0.10, 0.40, col, x, 0.05, z));
-	    if (i % 3 === 0) {
-	      part$6(parts, box(0.26, 0.08, 0.26, cols[(i + 1) % cols.length], x + 0.28, 0.04, z - 0.18));
-	    }
-	  }
-	}
-
-	// ===========================================================================
-	// 2 分叉阔叶树 —— 参考图 2：粗壮锥形树干 + 明显分叉主枝 + 多个圆叶团
-	// ===========================================================================
-	function makeBroadleaf() {
-	  const parts = [];
-	  const bark = 0x6b4a30, barkDark = 0x543823;
-	  const C = [0x2f6a24, 0x3f7d30, 0x52993c];
-
-	  // 粗壮锥形树干（底部外扩），到分叉点 y=8.1（原 6.2，拉长 30%）
-	  trunkTaper(parts, 0, 0, 2.4, 1.1, 8.1, bark, barkDark, 0.6);
-
-	  // 4 根主枝 + 每根再分 2 个次级枝（形成明显分叉骨架）
-	  const mains = [0.5, Math.PI / 2 + 0.35, Math.PI + 0.15, Math.PI * 1.5 + 0.4];
-	  const tips = [];
-	  for (const a of mains) {
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const midX = dx * 4.2, midZ = dz * 4.2, midY = 11.5;
-	    branchChain(parts, 0, 7.7, 0, midX, midY, midZ, 0.95, 0.6, [barkDark, bark]);
-	    // 次级枝两根
-	    for (const s of [-0.55, 0.55]) {
-	      const a2 = a + s;
-	      const ex = midX + Math.cos(a2) * 3.6;
-	      const ez = midZ + Math.sin(a2) * 3.6;
-	      const ey = midY + 2.8;
-	      branchChain(parts, midX, midY, midZ, ex, ey, ez, 0.62, 0.6, [barkDark, bark]);
-	      tips.push({ x: ex, y: ey, z: ez, r: 3.4 });
-	    }
-	    tips.push({ x: midX * 1.15, y: midY + 0.6, z: midZ * 1.15, r: 4.0 });
-	  }
-	  // 中央大叶团（cell 加大到 0.85：体素感更强、顶点降约 40%）
-	  foliage(parts, 0, 13.5, 0, 6.4, 4.6, 6.4, 0.85, C, 0.45);
-	  // 枝端叶团
-	  for (const tp of tips) {
-	    foliage(parts, tp.x, tp.y, tp.z, tp.r, tp.r * 0.78, tp.r, 0.82, C, 0.42);
-	  }
-
-	  fallenLeaves(parts, 26, 10.2, C);
-	  return build$5(parts, 'bigTreeBroadleaf');
-	}
-
-	// ===========================================================================
-	// 3 凤凰木 —— 参考图 3：极宽的伞形冠，红橙黄，枝干在下层可见
-	// ===========================================================================
-	function makePoinciana() {
-	  const parts = [];
-	  const bark = 0x5c3626, barkDark = 0x4a2a1c;
-	  const red = 0xc63a22, orange = 0xdd7524, yellow = 0xe8ae2a, brown = 0x8a5426;
-	  const C = [brown, orange, yellow];
-
-	  // 粗树干，很快分叉（原 5.6，拉长 30% → 7.3）
-	  trunkTaper(parts, 0, 0, 2.0, 0.85, 7.3, bark, barkDark, 0.6);
-
-	  // 5 根近乎水平的伞骨枝（伸得很远）
-	  const bones = 5;
-	  for (let i = 0; i < bones; i++) {
-	    const a = (i / bones) * Math.PI * 2 + 0.3;
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const ex = dx * 9.0, ez = dz * 9.0, ey = 11.1;
-	    branchChain(parts, 0, 6.9, 0, ex, ey, ez, 0.72, 0.62, [barkDark, bark]);
-	    // 伞骨末端小叶团
-	    foliage(parts, ex * 0.92, ey + 0.5, ez * 0.92, 3.2, 1.5, 3.2, 0.66, C, 0.38);
-	  }
-
-	  // 主冠：极宽极扁（伞形）
-	  foliage(parts, 0, 12.9, 0, 9.8, 2.9, 9.8, 0.72, C, 0.40);
-	  // 上层提亮的小冠
-	  foliage(parts, 0, 15.1, 0, 6.2, 1.9, 6.2, 0.66, [orange, yellow, red], 0.35);
-
-	  fallenLeaves(parts, 30, 11.0, [red, orange, yellow]);
-	  return build$5(parts, 'bigTreePoinciana');
-	}
-
-	// ===========================================================================
-	// 4 仙人掌 —— 参考图 4：粗圆柱主干 + 弯臂 + 圆头
-	// ===========================================================================
 	function makeCactus() {
-	  const parts = [];
-	  const g1 = 0x2f6a2c, g2 = 0x3f8a3a, g3 = 0x55a04c;
+	  const g = new Group();
+	  g.name = 'cactus';
+	  const green = 0x3f7a46;
+	  const dark = 0x2f6038;
+	  const light = 0x4f8f56;
+	  const spineColor = 0xe8dfa0;
 
-	  const cell = 0.55;
+	  // 主柱
+	  addMesh(g, new CylinderGeometry(1.35, 1.65, 15.5, 10), mat(green), 0, 7.75, 0);
+	  addMesh(g, new SphereGeometry(1.35, 10, 7), mat(green), 0, 15.5, 0);
+	  // 根部裙边
+	  addMesh(g, new CylinderGeometry(1.7, 2.0, 0.7, 10), mat(dark), 0, 0.35, 0);
 
-	  // ---- 主柱：圆形截面，带纵向棱条（8 条，明暗交替）----
-	  const H = 15.0;
-	  const nY = Math.ceil(H / cell);
-	  for (let iy = 0; iy < nY; iy++) {
-	    const y = iy * cell;
-	    const t = iy / nY;
-	    const r = 3.1 - t * 0.5;                 // 上略细
-	    const k = Math.round(r / cell);
-	    for (let ix = -k; ix <= k; ix++) {
-	      for (let iz = -k; iz <= k; iz++) {
-	        if (Math.hypot(ix, iz) > k) continue;   // 圆形截面
-	        const ang = Math.atan2(iz, ix);
-	        const rib = Math.floor(((ang + Math.PI) / (Math.PI * 2)) * 8) % 2;
-	        part$6(parts, box(cell, cell, cell, rib === 0 ? g2 : g1, ix * cell, y, iz * cell));
-	      }
-	    }
-	  }
-	  // ---- 顶部圆帽（半球）----
-	  const capR = 3.1;
-	  for (let iy = 0; iy <= 4; iy++) {
-	    const rr = capR * Math.cos((iy / 4) * Math.PI * 0.5);
-	    const k = Math.round(rr / cell);
-	    for (let ix = -k; ix <= k; ix++) {
-	      for (let iz = -k; iz <= k; iz++) {
-	        if (Math.hypot(ix, iz) > k) continue;
-	        part$6(parts, box(cell, cell, cell, g3, ix * cell, H + iy * cell, iz * cell));
-	      }
-	    }
+	  // 竖向棱线
+	  const ribCount = 10;
+	  for (let i = 0; i < ribCount; i++) {
+	    const a = (i / ribCount) * Math.PI * 2;
+	    branch(g,
+	      Math.cos(a) * 1.62, 1.0, Math.sin(a) * 1.62,
+	      Math.cos(a) * 1.36, 15.2, Math.sin(a) * 1.36,
+	      0.10, 0.08, dark, 4);
 	  }
 
-	  // ---- 两条粗臂：先向外伸出，再向上弯，末端圆头 ----
+	  // 尖刺
+	  const spine = (a, y, r) => {
+	    const c = new ConeGeometry(0.09, 0.42, 4);
+	    c.translate(0, 0.21, 0);
+	    c.rotateZ(-Math.PI / 2);
+	    c.rotateY(-a);
+	    c.translate(Math.cos(a) * (r + 0.08), y, Math.sin(a) * (r + 0.08));
+	    addMesh(g, c, mat(spineColor), 0, 0, 0);
+	  };
+	  const heights = [2.8, 5.2, 7.6, 10.0, 12.4, 14.2];
+	  for (const y of heights) {
+	    const t = (y - 1.0) / 14.2;
+	    const r = 1.62 + (1.36 - 1.62) * t;
+	    for (let i = 0; i < ribCount; i++) {
+	      spine((i / ribCount) * Math.PI * 2 + (y % 1) * 0.2, y, r);
+	    }
+	  }
+
+	  // 手臂：圆角肘部
 	  const arms = [
-	    { side: -1, baseY: 5.0, outLen: 3.2, upLen: 8.2 },
-	    { side: 1,  baseY: 6.8, outLen: 2.9, upLen: 6.8 },
+	    { side: -1, h: 5.4, out: 3.8, up: 6.4, r: 0.68 },
+	    { side: 1, h: 7.0, out: 3.2, up: 5.2, r: 0.62 },
+	    { side: -1, h: 9.2, out: 2.7, up: 3.6, r: 0.52 },
+	    { side: 1, h: 4.0, out: 2.3, up: 3.5, r: 0.46 },
 	  ];
-	  for (const arm of arms) {
-	    const s = arm.side;
-	    // 横臂（粗 1.9，圆形截面感：中心块 + 四向小块）
-	    const nOut = Math.ceil(arm.outLen / cell);
-	    for (let i = 0; i < nOut; i++) {
-	      const x = s * (2.6 + i * cell);
-	      part$6(parts, box(cell * 2.0, cell * 2.0, cell * 2.0, i % 2 ? g2 : g1, x, arm.baseY, 0));
+	  for (const a of arms) {
+	    const x = a.side * a.out;
+	    branch(g, 0, a.h, 0, x, a.h, 0, a.r, a.r, green, 8);
+	    addMesh(g, new SphereGeometry(a.r * 1.02, 8, 6), mat(green), x, a.h, 0);
+	    branch(g, x, a.h, 0, x, a.h + a.up, 0, a.r, a.r * 0.82, green, 8);
+	    addMesh(g, new SphereGeometry(a.r * 0.84, 8, 6), mat(light), x, a.h + a.up, 0);
+	    // 手臂棱线
+	    for (let k = 0; k < 4; k++) {
+	      const ang = (k / 4) * Math.PI * 2;
+	      const ox = Math.cos(ang) * a.r * 0.9;
+	      const oz = Math.sin(ang) * a.r * 0.9;
+	      branch(g, x + ox, a.h + 0.4, oz, x + ox, a.h + a.up - 0.4, oz, 0.055, 0.045, dark, 4);
 	    }
-	    // 竖臂
-	    const upX = s * (2.6 + arm.outLen);
-	    const nUp = Math.ceil(arm.upLen / cell);
-	    for (let i = 0; i < nUp; i++) {
-	      const y = arm.baseY + i * cell;
-	      part$6(parts, box(cell * 1.9, cell, cell * 1.9, i % 2 ? g1 : g2, upX, y, 0));
-	    }
-	    // 臂顶圆头
-	    for (let ix = -2; ix <= 2; ix++) {
-	      for (let iz = -2; iz <= 2; iz++) {
-	        if (Math.hypot(ix, iz) > 2) continue;
-	        part$6(parts, box(cell, cell, cell, g3, upX + ix * cell, arm.baseY + arm.upLen, iz * cell));
+	    // 手臂尖刺
+	    for (let k = 0; k < 4; k++) {
+	      const y = a.h + 1.0 + k * (a.up - 1.1) / 3;
+	      for (let m = 0; m < 3; m++) {
+	        spine((m / 3) * Math.PI * 2 + a.h, y, a.r * 0.95);
 	      }
 	    }
-	    // 臂与主柱的连接块（避免脱节）
-	    part$6(parts, box(cell * 2.0, cell * 2.0, cell * 2.0, g1, s * 2.0, arm.baseY, 0));
 	  }
 
-	  fallenLeaves(parts, 10, 5.5, [g3]);
-	  return build$5(parts, 'bigTreeCactus');
+	  return g;
 	}
 
-	// ===========================================================================
-	// 5 紫叶树 —— 参考图 5：深色扭枝 + 紫色三角叶团
-	// ===========================================================================
-	function makePurpleTree() {
-	  const parts = [];
-	  const bark = 0x3e2c22, barkDark = 0x2e2018;
-	  const C = [0x5a3f74, 0x70508c, 0x8a68a4];
-
-	  // 树干拉长 30%：6.0 → 7.8
-	  trunkTaper(parts, 0, 0, 2.0, 0.9, 7.8, bark, barkDark, 0.6);
-
-	  // 4 根弯曲主枝（扭枝感：分两段转折）
+	// ---------------------------------------------------------------------------
+	// 3. 凤凰木（参考图 3）—— 细碎红橙花团 + 更多分枝
+	// ---------------------------------------------------------------------------
+	function makePoinciana() {
+	  const g = new Group();
+	  g.name = 'poinciana';
+	  const bark = 0x5a3028;
+	  const barkDark = 0x43221c;
+	  trunkBase(g, 7.2, 1.55, 0.95, bark, 8);
 	  for (let i = 0; i < 4; i++) {
-	    const a = (i / 4) * Math.PI * 2 + 0.4;
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const mx = dx * 3.4, mz = dz * 3.4, my = 10.8;
-	    branchChain(parts, 0, 7.4, 0, mx, my, mz, 0.85, 0.6, [barkDark, bark]);
-	    const a2 = a + 0.7;
-	    const ex = mx + Math.cos(a2) * 3.2, ez = mz + Math.sin(a2) * 3.2, ey = 14.4;
-	    branchChain(parts, mx, my, mz, ex, ey, ez, 0.58, 0.6, [barkDark, bark]);
-	    foliage(parts, ex, ey + 1.2, ez, 3.5, 3.0, 3.5, 0.64, C, 0.40);
+	    const a = (i / 4) * Math.PI * 2 + 0.6;
+	    branch(g, 0, 2.2, 0, Math.cos(a) * 2.3, 0.1, Math.sin(a) * 2.3, 0.7, 0.2, barkDark, 5);
 	  }
-	  foliage(parts, 0, 14.2, 0, 6.6, 4.8, 6.6, 0.66, C, 0.42);
 
-	  fallenLeaves(parts, 26, 10.2, C);
-	  return build$5(parts, 'bigTreePurple');
+	  const mains = [
+	    [-6.2, 11.4, 1.6], [6.4, 11.2, -1.4], [-3.2, 12.2, -3.8],
+	    [3.2, 12.0, 3.8], [0.0, 12.6, 0.2], [-4.5, 12.6, -1.8], [4.6, 12.5, 1.7],
+	  ];
+	  for (const [x, y, z] of mains) {
+	    branch(g, 0, 6.2, 0, x * 0.55, y - 2.1, z * 0.55, 0.6, 0.34, bark, 6);
+	    branch(g, x * 0.55, y - 2.1, z * 0.55, x, y, z, 0.34, 0.18, bark, 6);
+	    branch(g, x, y, z, x * 1.12, y + 1.0, z * 1.12, 0.14, 0.06, bark, 5);
+	  }
+
+	  const reds = [0xb83226, 0xd84a24, 0xee7a2a, 0xf0a33a, 0x9e2a1e];
+	  const rings = [
+	    { y: 14.8, r: 0.0, n: 1, s: 3.8 },
+	    { y: 14.2, r: 3.2, n: 8, s: 2.8 },
+	    { y: 13.6, r: 6.8, n: 16, s: 3.0 },
+	    { y: 13.0, r: 9.6, n: 24, s: 2.8 },
+	  ];
+	  let ci = 0;
+	  rings.forEach((ring, ri) => {
+	    for (let i = 0; i < ring.n; i++) {
+	      const a = (i / ring.n) * Math.PI * 2 + ri * 0.4;
+	      const rr = ring.r + (i % 2) * 0.4 - 0.2;
+	      const y = ring.y - 1.0 + (((i * 37) % 100) / 100 - 0.5) * 0.5;
+	      blob(g,
+	        Math.cos(a) * rr, y, Math.sin(a) * rr,
+	        ring.s * (0.88 + (i % 3) * 0.10),
+	        ring.s * (0.52 + (i % 2) * 0.10),
+	        ring.s * (0.82 + (i % 3) * 0.08),
+	        reds[ci % reds.length], ri >= 3 ? 0 : 1, i * 0.5);
+	      ci++;
+	    }
+	  });
+	  // 伞沿外的黄花
+	  for (let i = 0; i < 18; i++) {
+	    const a = (i / 18) * Math.PI * 2 + 0.2;
+	    const r = 9.4 + (i % 3) * 0.5;
+	    blob(g, Math.cos(a) * r, 11.3 + (i % 4) * 0.3, Math.sin(a) * r, 0.4, 0.34, 0.4, 0xf5c542, 0, i);
+	  }
+
+	  return g;
 	}
 
-	// ===========================================================================
-	// 6 秋树 —— 参考图 6：红橙黄棕多色叶团，宽冠
-	// ===========================================================================
-	function makeAutumnBig() {
-	  const parts = [];
-	  const bark = 0x5a3826, barkDark = 0x46291a;
-	  const red = 0xb83420, orange = 0xd07426, yellow = 0xdca828, brown = 0x7e4a24;
-	  const C = [brown, orange, yellow];
+	// ---------------------------------------------------------------------------
+	// 4. 猴面包树（参考图 4）—— 竖向树皮沟壑 + 板根 + 稀疏叶团
+	// ---------------------------------------------------------------------------
+	function makeBaobab() {
+	  const g = new Group();
+	  g.name = 'baobab';
+	  const bark = 0x7a5a3a;
+	  const barkDark = 0x5e4229;
 
-	  // 树干拉长 30%：5.8 → 7.5
-	  trunkTaper(parts, 0, 0, 2.2, 1.0, 7.5, bark, barkDark, 0.6);
+	  // 瓶形树干
+	  addMesh(g, new CylinderGeometry(2.7, 3.5, 5.2, 10), mat(bark), 0, 2.6, 0);
+	  addMesh(g, new CylinderGeometry(1.7, 2.7, 4.4, 10), mat(bark), 0, 7.4, 0);
+	  addMesh(g, new SphereGeometry(2.4, 9, 7), mat(bark), 0, 1.4, 0);
 
-	  // 5 根主枝
+	  // 板根
 	  for (let i = 0; i < 5; i++) {
 	    const a = (i / 5) * Math.PI * 2 + 0.25;
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const ex = dx * 6.4, ez = dz * 6.4, ey = 12.7;
-	    branchChain(parts, 0, 7.1, 0, ex, ey, ez, 0.78, 0.6, [barkDark, bark]);
-	    foliage(parts, ex, ey + 1.0, ez, 3.8, 3.2, 3.8, 0.66, C, 0.40);
+	    branch(g, 0, 3.0, 0, Math.cos(a) * 3.55, 0.12, Math.sin(a) * 3.55, 1.15, 0.30, barkDark, 5);
 	  }
-	  // 中央冠（红橙混）
-	  foliage(parts, 0, 13.5, 0, 7.2, 5.0, 7.2, 0.68, [brown, red, orange], 0.42);
-	  foliage(parts, 0, 17.3, 0, 4.4, 3.4, 4.4, 0.64, [orange, yellow, red], 0.38);
+	  // 树皮环带（比竖条自然）
+	  for (const ry of [2.2, 4.0, 5.8, 7.6]) {
+	    const rr = 3.5 - (ry / 9.6) * 1.8;
+	    addMesh(g, new CylinderGeometry(rr + 0.03, rr + 0.03, 0.16, 10), mat(barkDark), 0, ry, 0);
+	  }
+	  // 树瘤
+	  for (let i = 0; i < 9; i++) {
+	    const a = (i / 9) * Math.PI * 2;
+	    const y = 1.5 + (i % 5) * 1.35;
+	    const r = 3.35 - (y / 9.6) * 1.45;
+	    const s = 0.28 + (i % 3) * 0.12;
+	    blob(g, Math.cos(a) * r, y, Math.sin(a) * r, s, s * 0.8, s, barkDark, 0, i);
+	  }
 
-	  fallenLeaves(parts, 30, 10.6, [red, orange, yellow, brown]);
-	  return build$5(parts, 'bigTreeAutumn');
+	  const mains = [
+	    [-4.4, 13.0, 1.5], [4.4, 12.8, -1.3], [-1.9, 14.0, -3.2],
+	    [1.9, 13.8, 3.2], [0.0, 14.4, 0.0], [-3.2, 12.2, -2.2], [3.3, 12.1, 2.2],
+	  ];
+	  for (const [x, y, z] of mains) {
+	    branch(g, 0, 8.6, 0, x * 0.6, y - 1.8, z * 0.6, 0.9, 0.44, bark, 6);
+	    branch(g, x * 0.6, y - 1.8, z * 0.6, x, y, z, 0.44, 0.2, bark, 5);
+	  }
+
+	  const greens = [0x2f6a3f, 0x3d7a4a, 0x4f8b55, 0x2a5e3a];
+	  const clusters = [
+	    [-4.5, 15.2, 1.5, 2.6, 2.0, 2.4, 0],
+	    [4.5, 15.0, -1.3, 2.6, 2.0, 2.4, 1],
+	    [-1.9, 16.2, -3.2, 2.3, 1.8, 2.1, 2],
+	    [1.9, 16.0, 3.2, 2.3, 1.8, 2.1, 3],
+	    [0.0, 16.8, 0.0, 2.8, 2.2, 2.6, 1],
+	    [-3.1, 14.0, -2.2, 1.8, 1.4, 1.6, 2],
+	    [3.2, 13.9, 2.2, 1.8, 1.4, 1.6, 0],
+	    [-5.2, 14.0, -0.6, 1.6, 1.2, 1.4, 3],
+	    [5.3, 13.9, 0.6, 1.6, 1.2, 1.4, 1],
+	    [-0.5, 14.8, 3.4, 1.7, 1.3, 1.5, 0],
+	    [-0.6, 14.7, -3.5, 1.7, 1.3, 1.5, 2],
+	    [2.4, 17.2, 0.8, 1.4, 1.1, 1.2, 3],
+	    [-2.4, 17.0, -0.9, 1.4, 1.1, 1.2, 1],
+	  ];
+	  clusters.forEach((c, i) => {
+	    blob(g, c[0], c[1], c[2], c[3], c[4], c[5], greens[c[6] % greens.length], 1, i * 0.8);
+	  });
+
+	  return g;
 	}
 
-	// ===========================================================================
-	// 7 黄叶树 —— 参考图 7：金黄、枝多、叶团较散
-	// ===========================================================================
-	function makeGoldenTree() {
-	  const parts = [];
-	  const bark = 0x54432c, barkDark = 0x40311f;
-	  const C = [0xb8981c, 0xd8bc28, 0xf0d848];
-
-	  // 树干拉长 30%：6.4 → 8.3
-	  trunkTaper(parts, 0, 0, 1.9, 0.8, 8.3, bark, barkDark, 0.6);
-
-	  // 6 根主枝（枝多、分布开）
-	  for (let i = 0; i < 6; i++) {
-	    const a = (i / 6) * Math.PI * 2 + 0.15;
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const ex = dx * 7.0, ez = dz * 7.0, ey = 12.5 + (i % 3) * 1.4;
-	    branchChain(parts, 0, 7.9, 0, ex, ey, ez, 0.68, 0.6, [barkDark, bark]);
-	    foliage(parts, ex, ey + 1.2, ez, 3.2, 2.8, 3.2, 0.64, C, 0.38);
+	// ---------------------------------------------------------------------------
+	// 5. 分层冷杉（参考图 5）—— 双层错位枝层 + 层缘碎块
+	// ---------------------------------------------------------------------------
+	function makeFir() {
+	  const g = new Group();
+	  g.name = 'fir';
+	  trunkBase(g, 11.2, 1.30, 0.62, 0x5a4430, 8);
+	  for (let i = 0; i < 4; i++) {
+	    const a = (i / 4) * Math.PI * 2 + 0.5;
+	    branch(g, 0, 1.6, 0, Math.cos(a) * 1.9, 0.1, Math.sin(a) * 1.9, 0.7, 0.18, 0x4a3626, 5);
 	  }
-	  foliage(parts, 0, 14.5, 0, 6.0, 4.2, 6.0, 0.66, C, 0.42);
-	  foliage(parts, 0, 17.7, 0, 3.6, 2.8, 3.6, 0.62, C, 0.36);
 
-	  fallenLeaves(parts, 28, 10.4, C);
-	  return build$5(parts, 'bigTreeGolden');
+	  const greens = [0x1e5a4a, 0x2a6e58, 0x357a62, 0x245f4e];
+	  const layers = 9;
+	  for (let i = 0; i < layers; i++) {
+	    const t = i / (layers - 1);
+	    const y = 8.4 + t * 13.2;
+	    const r = 7.8 * (1 - t * 0.88) + 0.35;
+	    const h = 4.6 * (1 - t * 0.30) + 0.6;
+	    addMesh(g, new ConeGeometry(r, h, 9), mat(greens[i % 3]), 0, y, 0);
+	    const sub = addMesh(g, new ConeGeometry(r * 0.86, h * 0.80, 9), mat(greens[(i + 1) % 3]), 0, y - 0.9, 0);
+	    sub.rotation.y = 0.34;
+	  }
+	  addMesh(g, new ConeGeometry(1.0, 2.6, 8), mat(greens[1]), 0, 23.8, 0);
+	  addMesh(g, new ConeGeometry(0.55, 1.6, 7), mat(greens[3]), 0, 25.0, 0);
+
+	  return g;
 	}
 
-	// ===========================================================================
-	// 8 粉花树 —— 参考图 8：粉/玫瑰叶团，宽冠
-	// ===========================================================================
-	function makePinkBlossom() {
-	  const parts = [];
-	  const bark = 0x3e2c22, barkDark = 0x2e2018;
-	  const C = [0xa84a68, 0xd07894, 0xf0b0c4];
-
-	  // 树干拉长 30%：6.0 → 7.8
-	  trunkTaper(parts, 0, 0, 2.0, 0.9, 7.8, bark, barkDark, 0.6);
-
-	  for (let i = 0; i < 5; i++) {
-	    const a = (i / 5) * Math.PI * 2 + 0.35;
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const ex = dx * 6.6, ez = dz * 6.6, ey = 12.6 + (i % 2) * 1.2;
-	    branchChain(parts, 0, 7.4, 0, ex, ey, ez, 0.74, 0.6, [barkDark, bark]);
-	    foliage(parts, ex, ey + 1.1, ez, 3.6, 3.0, 3.6, 0.64, C, 0.40);
+	// ---------------------------------------------------------------------------
+	// 6. 伞形金合欢（参考图 6）—— 多层伞冠 + 细碎叶团
+	// ---------------------------------------------------------------------------
+	function makeAcacia() {
+	  const g = new Group();
+	  g.name = 'acacia';
+	  const bark = 0x6a5a3a;
+	  const barkDark = 0x4f4128;
+	  trunkBase(g, 7.4, 1.75, 1.0, bark, 8);
+	  for (let i = 0; i < 4; i++) {
+	    const a = (i / 4) * Math.PI * 2 + 0.2;
+	    branch(g, 0, 2.2, 0, Math.cos(a) * 2.2, 0.1, Math.sin(a) * 2.2, 0.65, 0.2, barkDark, 5);
 	  }
-	  foliage(parts, 0, 14.0, 0, 6.8, 4.6, 6.8, 0.66, C, 0.42);
-	  foliage(parts, 0, 17.2, 0, 4.0, 3.0, 4.0, 0.62, [0xd07894, 0xf0b0c4, 0xa84a68], 0.36);
 
-	  fallenLeaves(parts, 28, 10.4, C);
-	  return build$5(parts, 'bigTreePinkBlossom');
-	}
+	  const mains = [
+	    [-5.4, 11.2, 2.1], [5.6, 11.0, -2.1], [-2.3, 12.0, -3.5],
+	    [2.3, 11.8, 3.5], [0.2, 12.4, 0.2], [-4.2, 12.4, -1.4], [4.3, 12.3, 1.4],
+	  ];
+	  for (const [x, y, z] of mains) {
+	    branch(g, 0, 7.0, 0, x * 0.55, y - 2.0, z * 0.55, 0.62, 0.36, bark, 6);
+	    branch(g, x * 0.55, y - 2.0, z * 0.55, x, y, z, 0.36, 0.18, bark, 6);
+	    branch(g, x, y, z, x * 1.12, y + 0.8, z * 1.12, 0.15, 0.06, bark, 5);
+	  }
 
-	// ===========================================================================
-	// 9 绿金树 —— 参考图 9：枝叶极多、绿+黄+金混色
-	// ===========================================================================
-	function makeGreenGold() {
-	  const parts = [];
-	  const bark = 0x564327, barkDark = 0x42311c;
-	  const C = [0x2f6a24, 0x4a8a30, 0xb8a022, 0xdcc23a];
-
-	  // 树干拉长 30%：6.2 → 8.1
-	  trunkTaper(parts, 0, 0, 2.2, 0.95, 8.1, bark, barkDark, 0.6);
-
-	  // 5 主枝 + 每枝 2 次枝（枝叶最密的一棵）
-	  for (let i = 0; i < 5; i++) {
-	    const a = (i / 5) * Math.PI * 2 + 0.2;
-	    const dx = Math.cos(a), dz = Math.sin(a);
-	    const mx = dx * 4.0, mz = dz * 4.0, my = 11.3;
-	    branchChain(parts, 0, 7.6, 0, mx, my, mz, 0.8, 0.6, [barkDark, bark]);
-	    for (const s of [-0.5, 0.5]) {
-	      const a2 = a + s;
-	      const ex = mx + Math.cos(a2) * 3.4, ez = mz + Math.sin(a2) * 3.4, ey = my + 2.6;
-	      branchChain(parts, mx, my, mz, ex, ey, ez, 0.55, 0.6, [barkDark, bark]);
-	      foliage(parts, ex, ey + 0.9, ez, 2.8, 2.4, 2.8, 0.62, C, 0.36);
+	  const greens = [0x2f6a4a, 0x3f7d58, 0x4f8f66, 0x2a5e40];
+	  // 冠心底部补块，堵住从下往上看时的空洞
+	  blob(g, 0, 12.5, 0, 4.8, 0.9, 4.2, 0x24513a, 1, 0.2);
+	  blob(g, -3.6, 12.2, 1.4, 2.4, 0.7, 2.2, 0x2a5e40, 1, 0.7);
+	  blob(g, 3.5, 12.3, -1.3, 2.4, 0.7, 2.2, 0x24513a, 1, 1.2);
+	  const rings = [
+	    { y: 15.1, r: 0.0, n: 1, s: 3.0 },
+	    { y: 14.6, r: 3.4, n: 8, s: 2.4 },
+	    { y: 13.9, r: 7.0, n: 16, s: 2.5 },
+	    { y: 13.2, r: 9.8, n: 24, s: 2.6 },
+	    { y: 13.3, r: 2.2, n: 6, s: 2.2 },
+	    { y: 12.3, r: 4.6, n: 9, s: 2.1 },
+	  ];
+	  let ci = 0;
+	  rings.forEach((ring, ri) => {
+	    for (let i = 0; i < ring.n; i++) {
+	      const a = (i / ring.n) * Math.PI * 2 + ri * 0.35;
+	      const rr = ring.r + (i % 2) * 0.35 - 0.15;
+	      const y = ring.y - 1.0 + (((i * 29) % 100) / 100 - 0.5) * 0.35;
+	      blob(g,
+	        Math.cos(a) * rr, y, Math.sin(a) * rr,
+	        ring.s * (0.9 + (i % 3) * 0.09),
+	        ring.s * (0.26 + (i % 2) * 0.05),
+	        ring.s * (0.84 + (i % 3) * 0.07),
+	        greens[ci % greens.length], ri >= 3 ? 0 : 1, i * 0.4);
+	      ci++;
 	    }
-	  }
-	  foliage(parts, 0, 13.7, 0, 6.6, 4.8, 6.6, 0.66, C, 0.42);
-	  foliage(parts, 0, 17.1, 0, 4.2, 3.2, 4.2, 0.62, [0x4a8a30, 0xdcc23a, 0xb8a022], 0.36);
+	  });
 
-	  fallenLeaves(parts, 28, 10.6, [0x2f6a24, 0x4a8a30, 0xb8a022, 0xdcc23a]);
-	  return build$5(parts, 'bigTreeGreenGold');
+	  return g;
 	}
 
-	// 目录
+	// ---------------------------------------------------------------------------
+	// 7. 银杏树（参考图 7）—— 金色扇形叶 + 深色分叉树干 + 飘叶
+	// ---------------------------------------------------------------------------
+	function makeGinkgo() {
+	  const g = new Group();
+	  g.name = 'ginkgo';
+	  const bark = 0x3c2f28;
+	  const barkDark = 0x2c221d;
+	  trunkBase(g, 8.4, 1.55, 0.8, bark, 8);
+	  for (let i = 0; i < 5; i++) {
+	    const a = (i / 5) * Math.PI * 2 + 0.3;
+	    branch(g, 0, 2.4, 0, Math.cos(a) * 2.5, 0.1, Math.sin(a) * 2.5, 0.75, 0.2, barkDark, 5);
+	  }
+
+	  const mains = [
+	    [-4.9, 13.0, 1.2], [5.0, 12.8, -1.1], [-2.6, 14.2, 3.4],
+	    [2.7, 14.0, -3.4], [0.2, 14.8, 0.3],
+	  ];
+	  for (const [x, y, z] of mains) {
+	    branch(g, 0, 6.4, 0, x * 0.55, y - 2.3, z * 0.55, 0.62, 0.34, bark, 6);
+	    branch(g, x * 0.55, y - 2.3, z * 0.55, x, y, z, 0.34, 0.16, bark, 5);
+	    // 末端细枝
+	    branch(g, x, y, z, x * 1.18, y + 1.2, z * 1.18, 0.14, 0.05, barkDark, 4);
+	    branch(g, x * 0.8, y - 1.4, z * 0.8, x * 1.35, y - 0.2, z * 1.35, 0.11, 0.04, barkDark, 4);
+	  }
+
+	  const golds = [0xd9a91f, 0xe8c33a, 0xc9971c, 0xf0d45a, 0xb8860b];
+	  const rnd = makeRng(20260);
+	  const count = 300;
+	  for (let i = 0; i < count; i++) {
+	    const u = rnd() * 2 - 1;
+	    const phi = rnd() * Math.PI * 2;
+	    const rr = Math.sqrt(Math.max(0, 1 - u * u));
+	    const dx = Math.cos(phi) * rr;
+	    const dy = u;
+	    const dz = Math.sin(phi) * rr;
+	    const shell = 0.55 + rnd() * 0.45;
+	    const x = dx * 7.6 * shell;
+	    const y = 15.0 + dy * 4.6 * shell;
+	    const z = dz * 6.8 * shell;
+	    const size = 1.15 + rnd() * 0.65;
+	    fanLeaf(g, x, y, z, size, golds[i % golds.length], rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
+	  }
+	  return g;
+	}
+
+	// ---------------------------------------------------------------------------
+	// 8. 紫晶树（参考图 8）—— 紫色三角碎片冠 + 扭曲树干 + 光环
+	// ---------------------------------------------------------------------------
+	function makeAmethyst() {
+	  const g = new Group();
+	  g.name = 'amethyst';
+	  const bark = 0x4a3a4c;
+	  const barkDark = 0x332838;
+	  const barkLight = 0x5c4a60;
+
+	  // 扭曲主干：两段错位
+	  addMesh(g, new CylinderGeometry(1.45, 1.85, 7.2, 9), mat(bark), 0, 3.6, 0);
+	  addMesh(g, new CylinderGeometry(0.95, 1.45, 4.6, 9), mat(barkLight), 0.28, 8.9, 0.18);
+	  for (let i = 0; i < 5; i++) {
+	    const a = (i / 5) * Math.PI * 2 + 0.4;
+	    branch(g, 0, 2.6, 0, Math.cos(a) * 2.3, 0.1, Math.sin(a) * 2.3, 0.8, 0.2, barkDark, 5);
+	  }
+
+	  const mains = [
+	    [-5, 13.2, 1.6], [5.1, 13.0, -1.5], [-2.7, 14.4, -3.5],
+	    [2.8, 14.2, 3.5], [0.1, 15.0, 0.2], [-3.4, 12.4, 2.8], [3.5, 12.2, -2.9],
+	  ];
+	  for (const [x, y, z] of mains) {
+	    branch(g, 0.15, 8.4, 0.1, x * 0.55, y - 2.2, z * 0.55, 0.72, 0.38, bark, 6);
+	    branch(g, x * 0.55, y - 2.2, z * 0.55, x, y, z, 0.38, 0.16, barkDark, 5);
+	    branch(g, x, y, z, x * 1.16, y + 1.0, z * 1.16, 0.14, 0.05, barkDark, 4);
+	  }
+
+	  const purples = [0x9a8ac9, 0xb4a6dc, 0x8272b3, 0xc7bce8, 0x6f5fa0];
+	  const rnd = makeRng(8844);
+	  const shard = (x, y, z, s) => {
+	    const geo = new TetrahedronGeometry(1, 0);
+	    const m = addMesh(g, geo, mat(purples[Math.floor(rnd() * purples.length)]),
+	      x, y, z, rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
+	    m.scale.set(s * (0.9 + rnd() * 0.5), s * (0.9 + rnd() * 0.5), s * (0.3 + rnd() * 0.25));
+	  };
+	  for (let i = 0; i < 280; i++) {
+	    const u = rnd() * 2 - 1;
+	    const phi = rnd() * Math.PI * 2;
+	    const rr = Math.sqrt(Math.max(0, 1 - u * u));
+	    const shell = 0.55 + rnd() * 0.5;
+	    shard(Math.cos(phi) * rr * 7.3 * shell, 15.0 + u * 4.5 * shell, Math.sin(phi) * rr * 6.4 * shell, 0.55 + rnd() * 0.65);
+	  }
+	  return g;
+	}
+
 	const BIG_TREE_KINDS = [
-	  { id: 'broadleaf', name: '阔叶树',     make: makeBroadleaf },
-	  { id: 'poinciana', name: '凤凰木',     make: makePoinciana },
-	  { id: 'cactus',    name: '仙人掌',     make: makeCactus },
-	  { id: 'purple',    name: '紫叶树',     make: makePurpleTree },
-	  { id: 'autumn',    name: '秋树',       make: makeAutumnBig },
-	  { id: 'golden',    name: '黄叶树',     make: makeGoldenTree },
-	  { id: 'pink',      name: '粉花树',     make: makePinkBlossom },
-	  { id: 'greengold', name: '绿金树',     make: makeGreenGold },
+	  { id: 'broadleaf', name: '阔叶树', make: makeBroadleaf },
+	  { id: 'poinciana', name: '凤凰木', make: makePoinciana },
+	  { id: 'cactus', name: '仙人掌', make: makeCactus },
+	  { id: 'purple', name: '紫晶树', make: makeAmethyst },
+	  { id: 'baobab', name: '猴面包树', make: makeBaobab },
+	  { id: 'fir', name: '分层冷杉', make: makeFir },
+	  { id: 'acacia', name: '伞形金合欢', make: makeAcacia },
+	  { id: 'ginkgo', name: '银杏树', make: makeGinkgo },
 	];
 
 	// ---------------------------------------------------------------------------
@@ -40393,20 +43014,8 @@ void main() {
 	function buildBigTree(model, rng, center = { x: -2, z: -18 }) {
 	  const group = new Group();
 	  group.name = 'bigtree';
-
-	  // ★ 换成新版体素巨树（阔叶树造型）——
-	  //   旧版是「圆柱树干 + 三个二十面体球」，没有枝干结构。
-	  //   新版有锥形树干、分叉主枝、多个叶团，和参考图一致。
-	  //
-	  //   ★ 尺寸校正：新版阔叶树原始 h=17.9 / w=30.7，
-	  //     旧版地标 h=25.2 / w=23.1 —— 新版偏矮偏宽。
-	  //     这里做【非等比缩放】：高度 ×1.40 到 25，横向 ×0.80 收到 24.6，
-	  //     让地标恢复成"高大于宽"的挺拔比例。
-	  setSkipFallenLeaves(true);
-	  const geo = mergeBigTreeGroup(makeBroadleaf());
-	  setSkipFallenLeaves(false);
-	  geo.scale(0.80, 1.40, 0.80);
-	  geo.computeBoundingBox();
+	  const broadleafEntry = BIG_TREE_KINDS.find((k) => k.id === 'broadleaf');
+	  const geo = normalizeBigTreeGeo(mergeBigTreeGroup(broadleafEntry.make()));
 	  // shared:false —— setSeason 会在运行时改这个材质的 color / emissive，
 	  // 必须独占，绝不能和别的网格共用（否则一换季全场一起变色）。
 	  const mat = toonLambert({
@@ -40516,14 +43125,7 @@ void main() {
 	    return outlineRef;
 	  };
 
-	  // ---------- 参天大树换品种（新版 9 种体素巨树）----------
-	  //   按品种单独算缩放：新版原始高 16.8~31.2 差异大，统一乘一个倍数会大小不一。
-	  const BIG_SCALE = {
-	    broadleaf: 1.40, poinciana: 1.49, cactus: 1.40,
-	    purple: 1.31, autumn: 1.20, golden: 1.22, pink: 1.25, greengold: 1.22,
-	  };
-	  const BIG_SQUEEZE_XZ = 0.80;
-
+	  // ---------- 参天大树换品种（8 种低多边形巨树）----------
 	  // ★ 几何体缓存：切换品种时优先复用，避免重复构建（构建本身 30~340ms）
 	  //   缓存值 = 缩放后的 BufferGeometry 的 clone()（每次 clone 约 3~8ms，
 	  //   远低于重新跑一遍体素方块生成）。
@@ -40534,28 +43136,29 @@ void main() {
 	    if (cached) return cached.clone();
 	    const entry = BIG_TREE_KINDS.find((k) => k.id === kind);
 	    if (!entry) return null;
-	    setSkipFallenLeaves(true);
-	    const g = mergeBigTreeGroup(entry.make());
-	    setSkipFallenLeaves(false);
-	    const sy = BIG_SCALE[kind] || 1.4;
-	    g.scale(BIG_SQUEEZE_XZ * sy, sy, BIG_SQUEEZE_XZ * sy);
-	    g.computeBoundingBox();
+	    const g = normalizeBigTreeGeo(mergeBigTreeGroup(entry.make()));
 	    geoCache.set(kind, g);
 	    return g.clone();
 	  }
 
+	  const BIG_TREE_ALIASES = {
+	    autumn: 'ginkgo', golden: 'ginkgo', pink: 'acacia', greengold: 'acacia',
+	  };
+
 	  group.userData.setKind = (newKind) => {
-	    const newGeo = geoForBigKind(newKind);
+	    const kind = BIG_TREE_ALIASES[newKind] || newKind;
+	    const newGeo = geoForBigKind(kind);
 	    if (!newGeo) return false;
 	    outlineRef = findOutline();
 	    if (outlineRef) outlineRef.geometry = newGeo;
 	    mesh.geometry.dispose();
 	    mesh.geometry = newGeo;
-	    group.userData.kind = newKind;
+	    group.userData.kind = kind;
 	    // 雪花贴着旧几何体表面撒的，换形状必须重撒
 	    if (typeof rebuildBigSnow === 'function') rebuildBigSnow();
 	    return true;
 	  };
+
 	  group.userData.getKind = () => group.userData.kind || 'broadleaf';
 	  group.userData.kind = 'broadleaf';
 
@@ -40641,15 +43244,23 @@ void main() {
 	  return group;
 	}
 
+	// ---------------------------------------------------------------------------
+	// 对外：构建一棵指定品种的树
+	// ---------------------------------------------------------------------------
+	// ---------------------------------------------------------------------------
+	// 树木品种 —— 使用 treeDemo.js 的新版体素模型
+	//
+	// ★ 为什么替换：
+	//   旧版是「圆柱树干 + 几个二十面体树冠」的极简造型，
+	//   新版是体素方块堆出的树干/枝杈/树冠，细节和参考图一致。
+	//
+	// ★ 用法：新版返回 Group（多 mesh），需要合并成单个几何体。
+	// ---------------------------------------------------------------------------
 	// 场景里的四棵小树用【新版】体素模型
-	const TREE_KINDS = {
-	  oak: makeOak,
-	  birch: makeBirch,
-	  spruce: makeSpruce,
-	  autumn: makeAutumnTree,
-	};
+	const TREE_KINDS = Object.fromEntries(SMALL_TREE_MAKERS.map((m) => [m.kind, m.make]));
+	const TREE_ALIASES = { oak: 'apple', spruce: 'camellia', autumn: 'maple' };
 
-	// 参天大树可选品种（新版 9 种体素巨树）
+	// 参天大树可选品种（8 种低多边形巨树）
 	const BIG_TREE_SPECIES = BIG_TREE_KINDS.map((k) => ({
 	  kind: k.id,
 	  name: k.name,
@@ -40657,14 +43268,27 @@ void main() {
 	}));
 
 	// 小树可选品种（供 UI 使用）
-	const TREE_SPECIES = [
-	  { kind: 'oak',    name: '橡树',   desc: '粗壮低矮，宽而扁的冠' },
-	  { kind: 'birch',  name: '白桦',   desc: '细高，白树干带黑斑' },
-	  { kind: 'spruce', name: '云杉',   desc: '针叶层叠，塔形轮廓' },
-	  { kind: 'autumn', name: '秋树',   desc: '橙红树冠，秋季地标' },
-	];
+	const TREE_SPECIES = SMALL_TREE_MAKERS.map((m) => ({
+	  kind: m.kind,
+	  name: m.name,
+	  desc: '树木',
+	}));
 
 	// 把【新版巨树】Group 里的所有 mesh 合并成单个几何体（保留顶点色）
+	const BIG_TARGET_H = 25;
+	const BIG_MAX_W = 28;
+
+	function normalizeBigTreeGeo(geo) {
+	  geo.computeBoundingBox();
+	  const size = new Vector3();
+	  geo.boundingBox.getSize(size);
+	  const sy = BIG_TARGET_H / Math.max(1e-3, size.y);
+	  const sxz = Math.min(sy, BIG_MAX_W / Math.max(1e-3, size.x, size.z));
+	  geo.scale(sxz, sy, sxz);
+	  geo.computeBoundingBox();
+	  return geo;
+	}
+
 	function mergeBigTreeGroup(group) {
 	  group.updateMatrixWorld(true);
 	  const geos = [];
@@ -40674,25 +43298,14 @@ void main() {
 	    g.applyMatrix4(o.matrixWorld);
 	    if (!g.attributes.color) {
 	      const n = g.attributes.position.count;
-	      g.setAttribute('color', new BufferAttribute(new Float32Array(n * 3).fill(1), 3));
-	    }
-	    geos.push(g);
-	  });
-	  if (!geos.length) return new BoxGeometry(1, 1, 1);
-	  return merge(geos);
-	}
-
-	// 把 Group 里的所有 mesh 合并成单个几何体（保留顶点色）
-	function mergeTreeGroup(group) {
-	  group.updateMatrixWorld(true);
-	  const geos = [];
-	  group.traverse((o) => {
-	    if (!o.isMesh || !o.geometry) return;
-	    const g = o.geometry.clone();
-	    g.applyMatrix4(o.matrixWorld);
-	    if (!g.attributes.color) {
-	      const n = g.attributes.position.count;
-	      g.setAttribute('color', new BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+	      const src = (o.material && o.material.color) ? o.material.color : new Color(1, 1, 1);
+	      const arr = new Float32Array(n * 3);
+	      for (let i = 0; i < n; i++) {
+	        arr[i * 3] = src.r;
+	        arr[i * 3 + 1] = src.g;
+	        arr[i * 3 + 2] = src.b;
+	      }
+	      g.setAttribute('color', new BufferAttribute(arr, 3));
 	    }
 	    geos.push(g);
 	  });
@@ -40701,57 +43314,23 @@ void main() {
 	}
 
 	// ---------- 品种高度归一化 ----------
-	//
-	// ★ 问题：4 个品种的原始高度差得很多（实测，scale=1 时）：
-	//     橡树 8.09 / 白桦 8.94 / 云杉 12.52 / 秋树 6.14
-	//   而场景里每棵树只有一个 scale，直接乘上去就会——
-	//     同一棵树切到秋树时矮了 3.65 米，树冠沉到地面；
-	//     切到云杉时又高了 6 米，像换了一棵树。
-	//   用户反馈的"秋树位置有高度差"就是这个。
-	//
-	// ★ 做法：每个品种先乘一个修正系数，把高度拉回同一个基准（橡树 8.09），
-	//   再乘树自己的 scale。这样换品种只换形态，不换体量。
-	//   参天大树用的是同一套思路（见 BIG_SCALE）。
-	//   实测基准高度（scale=1 时的模型总高）：
-	//     橡树 8.09 / 白桦 8.12 / 云杉 11.37 / 秋树 6.14
-	//   参考高度取橡树的 8.09 —— 场景里橡树和白桦的现有 scale 是按它调的，
-	//   这样归一化后它们的实际高度几乎不变，只有矮的秋树和高的云杉被拉平。
-	const TREE_BASE_H = { oak: 8.09, birch: 8.12, spruce: 11.37, autumn: 6.14 };
 	const TREE_REF_H = 8.09;
-
-	function treeHeightFix(kind) {
-	  return TREE_REF_H / (TREE_BASE_H[kind] || TREE_REF_H);
-	}
-
-	// ---------- 品种宽度微收 ----------
-	//
-	// 秋树模型是"矮而宽"的（原始 6.14 高、7.24 宽），
-	// 按高度拉齐到橡树后，树冠横向会达到 17.9，比橡树（14.8）宽 21%，
-	// 近景时整棵树冠把谷仓都盖住 —— 用户反馈的"位置有高度差"修好后
-	// 又会变成"换品种后体量明显变大"。
-	//
-	// 这里只对明显偏宽的品种做 x/z 微收，云杉这种本来就细高的不动。
-	const TREE_WIDTH_FIX = { autumn: 0.88 };
 
 	// 构建指定品种的几何体（已按 scale 缩放）
 	function makeTreeGeo(kind, scale = 1) {
-	  const maker = TREE_KINDS[kind] || TREE_KINDS.oak;
-	  // ★ 场景里跳过模型自带的落叶（4 棵树各散十几片，草地上会变成碎点）
-	  setSkipFallenLeaves(true);
-	  const geo = mergeTreeGroup(maker());
-	  setSkipFallenLeaves(false);
-	  // 先归一化到统一高度，再乘这棵树自己的 scale
-	  const s = scale * treeHeightFix(kind);
+	  const maker = TREE_KINDS[kind] || TREE_KINDS.apple;
+	  const mesh = maker();
+	  const geo = mesh.geometry;
+	  geo.computeBoundingBox();
+	  const h = geo.boundingBox.max.y - geo.boundingBox.min.y;
+	  const s = scale * (TREE_REF_H / Math.max(1e-3, h));
 	  geo.scale(s, s, s);
-	  // 横向微收（只作用于偏宽的品种，见 TREE_WIDTH_FIX）
-	  const wf = TREE_WIDTH_FIX[kind];
-	  if (wf) geo.scale(wf, 1, wf);
 	  geo.computeBoundingBox();
 	  return geo;
 	}
 
 	function buildTree(model, rng, opts) {
-	  const { x, z, kind = 'oak', scale = 1 } = opts;
+	  const { x, z, kind = 'apple', scale = 1 } = opts;
 	  const group = new Group();
 	  group.name = 'tree-' + kind;
 
@@ -40807,15 +43386,16 @@ void main() {
 	  // ★ 雪花必须跟着重建：它是贴着【旧品种表面】撒的，
 	  //   换了形态（尤其秋树矮、云杉高）之后，雪会悬在半空或埋进树冠。
 	  group.userData.setKind = (newKind) => {
-	    if (!TREE_KINDS[newKind]) return false;
-	    const newGeo = makeTreeGeo(newKind, scale);
+	    const kind = TREE_ALIASES[newKind] || newKind;
+	    if (!TREE_KINDS[kind]) return false;
+	    const newGeo = makeTreeGeo(kind, scale);
 	    // ★ 同步更新描边几何体（见上）
 	    outlineRef = findOutline();
 	    if (outlineRef) outlineRef.geometry = newGeo;
 	    mesh.geometry.dispose();
 	    mesh.geometry = newGeo;
-	    group.name = 'tree-' + newKind;
-	    group.userData.kind = newKind;
+	    group.name = 'tree-' + kind;
+	    group.userData.kind = kind;
 	    // 换形状后重撒雪花（沿用当前季节可见性）
 	    snowDots.group.removeFromParent();
 	    snowDots.group.traverse((o) => {
@@ -40824,7 +43404,7 @@ void main() {
 	        if (o.material) o.material.dispose();
 	      }
 	    });
-	    const fresh = makeSnowDots(mesh, newKind);
+	    const fresh = makeSnowDots(mesh, kind);
 	    group.add(fresh.group);
 	    snowDots.group = fresh.group;
 	    snowDots.material = fresh.material;
@@ -42161,11 +44741,11 @@ void main() {
 	//   原来的 scale（0.85~1.0）是按旧版调的，换成新版后明显偏小。
 	//   这里整体放大一倍，让它们回到和建筑、卡车协调的体量。
 	const TREE_SPECS = [
-	  { kind: 'oak',    x: -2,  z: 22,  scale: 1.872, name: '橡树' },
+	  { kind: 'apple',  x: -2,  z: 22,  scale: 1.872, name: '苹果树' },
 	  // ★ 原"云杉"(48, -8) 已删除 —— 它紧贴水塔(48,10)北侧（距 18 单位），
 	  //   挡住了水塔和风车的视线。用户要求删这棵，不是羊驼群那棵橡树。
 	  { kind: 'birch',  x: -40, z: -25, scale: 1.7,   name: '白桦' },
-	  { kind: 'birch',  x: 24,  z: -5,  scale: 1.7,   name: '白桦（卡车旁）' },
+	  { kind: 'blossom', x: 24, z: -5,  scale: 1.7,   name: '樱花树' },
 	];
 
 	// 参天大树（地标）
@@ -42511,17 +45091,17 @@ void main() {
 	  // ★ 水池边只保留一棵 —— 用户指定保留【原来那棵】（水池北岸橡树），
 	  //   删掉南岸这棵红色的秋树。
 	  // ★ 往北挪 5 单位到岸上（原 -22 实际在池塘水线内侧，池塘实测半径 25.9）
-	  { x: -78,   z: -27,   kind: 'oak',    size: 0.70 },   // 水池北岸 · 橡树
+	  { x: -78,   z: -27,   kind: 'camellia', size: 0.70 },   // 水池北岸 · 橡树
 	  { x: 18,    z: -28,   kind: 'birch',  size: 0.50 },   // 上方：作物田间草地（农舍西北）
 	  // ★ 农舍门口的镜像树 —— 与农舍西北那棵白桦(18,-28) 绕农舍中心(30,-18) 对称，
 	  //   位置 (42,-8)，距农舍 15.6（和原树完全相同）。
 	  //   尺寸比原树大 30%：原 7.5 米 → 9.75 米（size 0.50 → 0.65，scale 0.92 → 1.20）。
-	  { x: 42,    z: -8,    kind: 'birch',  size: 0.65 },   // 农舍东南 · 镜像树
+	  { x: 42,    z: -8,    kind: 'blossom', size: 0.65 },   // 农舍东南 · 镜像树
 	  // ★ 原"水塔旁云杉"(74, 6) 已删除 —— 它就长在风车正上方，
 	  //   风车造型被挡住。用户要求删这棵，不是羊驼群那棵橡树。
-	  { x: 52,    z: 40,    kind: 'oak',    size: 0.50 },   // 右下：篝火旁
+	  { x: 52,    z: 40,    kind: 'maple',  size: 0.50 },   // 右下：篝火旁
 	  // 牛羊群中心靠左（PASTURE 牧场内，质心 -22.3,48.7，靠左取 x=-38）
-	  { x: -38,    z: 50,    kind: 'oak',    size: 0.70 },   // 牛羊群中心靠左
+	  { x: -38,    z: 50,    kind: 'apple',  size: 0.70 },   // 牛羊群中心靠左
 	];
 
 	// ★ buildTree 内部已按品种把高度归一化到 TREE_REF_H（见 bigtree.js 的
@@ -56477,7 +59057,7 @@ void main() {
 	//
 	// SNAPSHOT_VERSION 变更后，老用户本地存档会在下一次打开时被新默认覆盖一次。
 	// ---------------------------------------------------------------------------
-	const SNAPSHOT_VERSION = '0.5.0-snapshot-2';
+	const SNAPSHOT_VERSION = '0.6.0-snapshot-1';
 
 	const DEFAULT_SNAPSHOT = {
 	  snapshotVersion: SNAPSHOT_VERSION,
@@ -56491,7 +59071,7 @@ void main() {
 	  watermillStyle: 0,
 	  snowmenStyles: ['lowpoly', 'lowpoly', 'lowpoly'],
 	  fields: ['wheat', 'cabbage', 'sunflower', 'pasture2'],
-	  trees: ['oak', 'birch', 'birch', 'birch', 'birch', 'birch', 'autumn', 'autumn'],
+	  trees: ['apple', 'birch', 'blossom', 'camellia', 'birch', 'blossom', 'maple', 'apple'],
 	  bigtreeKind: 'purple',
 	  truckStyle: 'blue',
 	  muted: true,
@@ -57054,8 +59634,8 @@ void main() {
 	    // ★ 传入树冠障碍列表 —— 相机落点若钻进别的树冠，rig 会自动偏转方位角
 	    app.rig.flyTo(center, dist, { radius, avoidTrees: collectTreeObstacles });
 
-	    // ---------- 参天大树：9 种新版体素巨树 ----------
-	    //   ★ 单独一个面板（9 个品种），和普通树的 4 品种区分开。
+	    // ---------- 参天大树：8 种低多边形巨树 ----------
+	    //   ★ 单独一个面板（8 个品种），和普通树的 4 品种区分开。
 	    if (root.name === 'bigtree' && root.userData.setKind) {
 	      const curKind = root.userData.getKind();
 	      BIG_TREE_SPECIES.find(s => s.kind === curKind)?.name || '参天大树';
@@ -57467,10 +60047,10 @@ void main() {
 	    wheat: '🌾', cabbage: '🥬', pumpkin: '🎃', sunflower: '🌻',
 	    corn: '🌽', tomato: '🍅', carrot: '🥕', lavender: '💜',
 	  };
-	  const TREE_ICON = { oak: '🌳', birch: '🍃', spruce: '🌲', autumn: '🍁' };
+	  const TREE_ICON = { apple: '🍎', blossom: '🌸', maple: '🍁', birch: '🍃', camellia: '🌼' };
 	  const BIG_TREE_ICON = {
 	    broadleaf: '🌳', poinciana: '🌺', cactus: '🌵', purple: '🟣',
-	    autumn: '🍁', golden: '🌟', pink: '🌸', greengold: '🌿',
+	    baobab: '🪵', fir: '🌲', acacia: '🌿', ginkgo: '🌟',
 	  };
 	  const ANIMAL_ICON = {
 	    cow: '🐄', sheep: '🐑', chicken: '🐔', horse: '🐴', alpaca: '🦙',
@@ -57899,17 +60479,15 @@ void main() {
 	        const nodes = collectTreeNodes();
 	        d.trees.forEach((kind, i) => {
 	          const t = nodes[i];
-	          if (t && t.userData.setKind && TREE_SPECIES.some(sp => sp.kind === kind)) {
+	          if (t && t.userData.setKind) {
 	            try { t.userData.setKind(kind); } catch (e) {}
 	          }
 	        });
 	      }
 
 	      if (d.bigtreeKind && app.bigtree && app.bigtree.userData.setKind) {
-	        // ★ 参天大树用 BIG_TREE_SPECIES（9 种），不是 TREE_SPECIES（4 种）
-	        if (BIG_TREE_SPECIES.some(sp => sp.kind === d.bigtreeKind)) {
-	          try { app.bigtree.userData.setKind(d.bigtreeKind); } catch (e) {}
-	        }
+	        // ★ setKind 内部兼容旧存档的品种名
+	        try { app.bigtree.userData.setKind(d.bigtreeKind); } catch (e) {}
 	      }
 
 	      if (typeof d.truckStyle === 'string' && app.truck && app.rebuildTruck) {
@@ -58216,7 +60794,7 @@ void main() {
 
 	function boot() {
 	  const seed = 20240521;
-	  const rng = makeRng(seed);
+	  const rng = makeRng$1(seed);
 
 	  // ---------- 设备检测与画质分级 ----------
 	  const device = detectDevice();
