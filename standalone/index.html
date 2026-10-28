@@ -51445,7 +51445,7 @@ void main() {
 	        '  float ch = fract(sin(dot(co.xz, vec2(127.1, 311.7))) * 43758.5453);\n' +
 	        '  float cspd = 0.8 + ch * 1.0;\n' +
 	        '  float cph = ch * 6.2831;\n' +
-	        '  float csway = transformed.y * (0.012 + ch * 0.010);\n' +
+	        '  float csway = transformed.y * (0.024 + ch * 0.020);\n' +
 	        '  transformed.x += sin(uTime * cspd + cph + co.x * 0.25) * csway;\n' +
 	        '  transformed.z += cos(uTime * cspd * 0.83 + cph * 1.3 + co.z * 0.2) * csway * 0.65;\n' +
 	        '#endif'
