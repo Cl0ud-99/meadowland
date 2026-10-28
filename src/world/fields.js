@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FIELD_RECTS } from './layout.js';
 import { tint } from '../util/geo.js';
 import { toonLambert } from '../render/toon.js';
+import { makeFbm } from '../util/noise.js';
 import {
   makeWheat, makePumpkin, makeSunflower, makeCorn,
   makeCarrot, setSkipSoil,
@@ -257,12 +258,16 @@ function localToWorld(x, z, rot, lx, lz) {
   return [x + lx * c + lz * s, z - lx * s + lz * c];
 }
 
+const soilBumpFbm = makeFbm(4321, 3, 2.15, 0.5);
+
 // ---------------------------------------------------------------------------
 // 贴合地形的土壤网格：把矩形细分成 N×M，每个顶点取地形高度 + 微抬
 // 这样坡地上也不会悬空，且和周围草地严丝合缝
 // ---------------------------------------------------------------------------
 function makeSoilMesh(model, x, z, w, d, rot, color, segX = 12, segZ = 10) {
-  const geo = new THREE.PlaneGeometry(w, d, segX, segZ);
+  const fineSegX = Math.max(segX, Math.ceil(w / 1.5));
+  const fineSegZ = Math.max(segZ, Math.ceil(d / 1.5));
+  const geo = new THREE.PlaneGeometry(w, d, fineSegX, fineSegZ);
   geo.rotateX(-Math.PI / 2);
 
   const pos = geo.attributes.position;
@@ -279,7 +284,9 @@ function makeSoilMesh(model, x, z, w, d, rot, color, segX = 12, segZ = 10) {
     pos.setX(i, wx);
     pos.setZ(i, wz);
     // 抬高 0.12，避免和地形 z-fighting，同时形成一点"田埂厚度"的观感
-    pos.setY(i, model.heightAt(wx, wz) + 0.12);
+    const bump = soilBumpFbm(wx * 0.55, wz * 0.55) * 0.032
+               + soilBumpFbm(wx * 2.4, wz * 2.4) * 0.010;
+    pos.setY(i, model.heightAt(wx, wz) + 0.12 + bump);
   }
   geo.computeVertexNormals();
 
@@ -288,7 +295,41 @@ function makeSoilMesh(model, x, z, w, d, rot, color, segX = 12, segZ = 10) {
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
+    shared: false,
   });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader =
+      'varying vec3 vSoilWorld;\nvarying float vSoilDist;\n' +
+      shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\n         vSoilWorld = transformed;\n         vSoilDist = length((modelViewMatrix * vec4(transformed, 1.0)).xyz);'
+      );
+    const prefix = 'varying vec3 vSoilWorld;\nvarying float vSoilDist;\n' +
+      'float soilHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n' +
+      'float soilNoise(vec2 p) {\n' +
+      '  vec2 i = floor(p), f = fract(p);\n' +
+      '  f = f * f * (3.0 - 2.0 * f);\n' +
+      '  float a = soilHash(i), b = soilHash(i + vec2(1.0, 0.0));\n' +
+      '  float c = soilHash(i + vec2(0.0, 1.0)), d = soilHash(i + vec2(1.0, 1.0));\n' +
+      '  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);\n' +
+      '}\n' +
+      'float soilFbm(vec2 p) { return soilNoise(p) * 0.62 + soilNoise(p * 2.1) * 0.38; }\n';
+    shader.fragmentShader = prefix + shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      '#include <color_fragment>\n' +
+      '  float sCoarse = soilFbm(vSoilWorld.xz * 0.45);\n' +
+      '  float sClod = soilNoise(vSoilWorld.xz * 2.1);\n' +
+      '  float sFine = soilNoise(vSoilWorld.xz * 7.5);\n' +
+      '  float sGrit = soilHash(floor(vSoilWorld.xz * 16.0));\n' +
+      '  float sShade = 0.82 + sCoarse * 0.14 + (sClod - 0.5) * 0.15 + (sFine - 0.5) * 0.08;\n' +
+      '  vec3 sCol = diffuseColor.rgb * sShade;\n' +
+      '  sCol += vec3(0.070, 0.050, 0.030) * smoothstep(0.72, 1.0, sGrit);\n' +
+      '  float sFade = 1.0 - smoothstep(95.0, 320.0, vSoilDist);\n' +
+      '  diffuseColor.rgb = mix(diffuseColor.rgb, sCol, sFade);'
+    );
+    mat.userData.shader = shader;
+  };
+  mat.customProgramCacheKey = () => 'soil-clods';
   const mesh = new THREE.Mesh(geo, mat);
   // 顶点已经是世界坐标（含旋转与高度），mesh 本身不再位移或旋转
   mesh.position.set(0, 0, 0);
