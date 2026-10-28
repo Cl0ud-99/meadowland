@@ -52,13 +52,23 @@ export function waterSinkFor(seasonT) {
 }
 
 export function createTerrainModel(seed = 20240521) {
-  // ★ 0.6.1-flat：整张地图压平，没有山丘、没有水池坑。
-  //   所有贴地物体通过 heightAt 采样都会落在同一高度。
+  // ★ 0.6.1-flat：整张地图压平，只保留坐着的人前面的一个池塘坑。
+  //   坑壁用"大平底 + 陡岸"，水面可以铺满，岸上直接是平地。
+  const NEW_POND = { x: -78, z: 2, r: 16 };
+  const DEPTH = 2.0;
+  const INNER = NEW_POND.r * 0.84;
+  const flatHeightAt = (x, z) => {
+    const pd = Math.hypot(x - NEW_POND.x, z - NEW_POND.z);
+    if (pd >= NEW_POND.r) return PLATEAU_Y;
+    if (pd <= INNER) return PLATEAU_Y - DEPTH;
+    const k = 1 - smoothstep(INNER, NEW_POND.r, pd);
+    return PLATEAU_Y - DEPTH * k;
+  };
   return {
-    heightAt: () => PLATEAU_Y,
-    groundAt: () => PLATEAU_Y,
+    heightAt: flatHeightAt,
+    groundAt: flatHeightAt,
     slopeAt: () => 0,
-    raw: () => PLATEAU_Y,
+    raw: flatHeightAt,
   };
 
   const fbm = makeFbm(seed, 5, 2.05, 0.5);
@@ -273,6 +283,60 @@ export function buildTerrain(model, segments = WORLD.segments) {
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
   mesh.userData.snowUniform = snowUniform;
+  return mesh;
+}
+
+// 池塘浅岸：水线到草地之间的一圈泥坡。
+// 地面是平的，所以外圈可以贴着地形同高、同色，不会出现独立网格的缝。
+export function buildPondShore(model, center, radius, waterY) {
+  const segs = 96;
+  const rings = 6;
+  const innerR = radius * 0.945;
+  const outerR = radius * 1.06;
+  const pos = [], col = [], idx = [];
+  const groundColorAt = makeGroundColor();
+  const cMud = { r: 0.30, g: 0.24, b: 0.15 };
+  const cTmp = new THREE.Color();
+
+  for (let j = 0; j <= rings; j++) {
+    const t = j / rings;
+    const rr = innerR + (outerR - innerR) * t;
+    const y = (waterY - 0.04) + (PLATEAU_Y + 0.012 - (waterY - 0.04)) * (t * t * (3 - 2 * t));
+    for (let i = 0; i < segs; i++) {
+      const a = (i / segs) * Math.PI * 2;
+      const wx = center.x + Math.cos(a) * rr;
+      const wz = center.z + Math.sin(a) * rr;
+      pos.push(Math.cos(a) * rr, y, Math.sin(a) * rr);
+      const g = groundColorAt(wx, wz, PLATEAU_Y);
+      const k = smoothstep(0.18, 0.72, t);
+      cTmp.setRGB(
+        cMud.r + (g.r - cMud.r) * k,
+        cMud.g + (g.g - cMud.g) * k,
+        cMud.b + (g.b - cMud.b) * k,
+        THREE.LinearSRGBColorSpace
+      );
+      col.push(cTmp.r, cTmp.g, cTmp.b);
+    }
+  }
+  for (let j = 0; j < rings; j++) {
+    for (let i = 0; i < segs; i++) {
+      const a = j * segs + i;
+      const b = j * segs + (i + 1) % segs;
+      const c = (j + 1) * segs + i;
+      const d = (j + 1) * segs + (i + 1) % segs;
+      idx.push(a, b, c, b, d, c);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mat = toonLambert({ vertexColors: true, shared: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'pondShore';
+  mesh.position.set(center.x, 0, center.z);
+  mesh.receiveShadow = true;
   return mesh;
 }
 

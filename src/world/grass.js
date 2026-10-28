@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { WORLD } from '../config.js';
+import { BUILDINGS } from './layout.js';
 import { toonLambert } from '../render/toon.js';
 
 // 近景草丛：只在台地附近撒，用实例化的小三角片，保证治愈的"毛茸茸"边缘
@@ -76,6 +77,9 @@ export function buildGrassTufts(model, rng, count = 2600) {
     const x = Math.cos(ang) * rad;
     const z = Math.sin(ang) * rad;
     if (Math.abs(x) > WORLD.size * 0.45 || Math.abs(z) > WORLD.size * 0.45) continue;
+    // 水里不长草：池塘范围直接跳过
+    const pond = BUILDINGS.pond;
+    if (Math.hypot(x - pond.x, z - pond.z) < pond.r * 1.04) continue;
     const y = model.heightAt(x, z);
     if (model.slopeAt(x, z) > 0.7) continue;
     p.set(x, y, z);

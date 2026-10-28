@@ -4,7 +4,9 @@ import './style.css';
 import { LIGHT, DUSK_T, PALETTE, SEASON } from './config.js';
 import { makeRng } from './util/rng.js';
 import { detectDevice, getQuality, logDeviceInfo } from './util/quality.js';
-import { createTerrainModel, buildTerrain } from './world/terrain.js';
+import { createTerrainModel, buildTerrain, buildPond } from './world/terrain.js';
+import { buildPondLife } from './world/pond.js';
+import { buildWatermill } from './world/watermill.js';
 import { buildSeasonFX } from './world/seasonfx.js';
 import { buildCampfire } from './world/campfire.js';
 import { buildOwl, refreshWatertowerPerch, refreshWindmillPerch } from './world/owl.js';
@@ -120,16 +122,38 @@ function boot() {
   const fields = buildFields(terrainModel, rng);
   world.add(fields);
 
-  // ★ 0.6.1-flat：水池整体删除（连坑一起抹平）
-  const pond = new THREE.Group();
-  pond.name = 'pond';
-  pond.visible = false;
-  const pondLife = new THREE.Group();
-  pondLife.name = 'pondLife';
-  pondLife.visible = false;
-  pondLife.userData.update = () => {};
-  pondLife.userData.setWaterLevel = () => {};
-  const watermill = null;
+  // ★ 池塘：就在坐着的人 (-78,-23) 正前方，池心 (-78,2)
+  const pond = buildPond(terrainModel, { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z }, BUILDINGS.pond.r);
+  // 水面用正圆收边：岸坡环保留但隐藏，水盘半径略小于地形水线，
+  // 这样水边是光滑圆弧，不是地形粗网格切出来的锯齿。
+  const pondBank = pond.getObjectByName('pondBank');
+  if (pondBank) pondBank.visible = false;
+  const waterMesh = pond.children.find((c) => c.isMesh && c.material && c.material.uniforms && c.material.uniforms.uTime);
+  if (waterMesh) {
+    const desiredR = BUILDINGS.pond.r * 0.95;
+    const baseR = pond.userData.waterR || desiredR;
+    const wScale = desiredR / baseR;
+    waterMesh.scale.set(wScale, 1, wScale);
+    waterMesh.material.uniforms.uRadius.value = desiredR;
+    const baseSeason = pond.userData.setSeason;
+    pond.userData.setSeason = (t) => {
+      baseSeason(t);
+      waterMesh.scale.set(wScale, 1, wScale);
+      waterMesh.material.uniforms.uRadius.value = desiredR;
+    };
+    pond.userData.setSeason(0);
+  }
+  world.add(pond);
+
+
+  // 水池生态：鱼 + 荷叶 + 水藻
+  const pondLife = buildPondLife(
+    terrainModel,
+    { x: BUILDINGS.pond.x, z: BUILDINGS.pond.z },
+    BUILDINGS.pond.r,
+    rng
+  );
+  world.add(pondLife);
 
   // 季节特效：樱花/落叶/雪 + 蝴蝶/蜜蜂 + 南瓜/雪人
   const seasonFX = buildSeasonFX(terrainModel, rng, quality);
@@ -138,6 +162,10 @@ function boot() {
   // 篝火露营区（农舍南侧开阔地）
   const campfire = buildCampfire(terrainModel, rng, { x: 26, z: 8 });
   world.add(campfire);
+
+  // 水车（池塘西侧）
+  const watermill = buildWatermill(terrainModel, rng, { x: -93, z: 2 });
+  world.add(watermill);
 
   // 猫头鹰彩蛋（双峰致敬）：随机停在谷仓/农舍/水塔/风车屋顶
   const owl = buildOwl(terrainModel, rng);
