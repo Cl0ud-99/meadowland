@@ -86,12 +86,26 @@ export function buildGrassTufts(model, rng, count = 2600) {
   const tint = new THREE.Color();
 
   let i = 0, guard = 0;
+  let clusterX = 0, clusterZ = 0, clusterLeft = 0, clusterRadius = 1.5;
   while (i < count && guard < count * 20) {
     guard++;
-    const ang = rng.next() * Math.PI * 2;
-    const rad = 20 + Math.sqrt(rng.next()) * 150;
-    const x = Math.cos(ang) * rad;
-    const z = Math.sin(ang) * rad;
+    if (clusterLeft <= 0) {
+      // 先撒一个簇心，再在簇心周围撒 3~6 根单锥草。
+      const ang = rng.next() * Math.PI * 2;
+      const near = i < count * 0.65;
+      const rad = near
+        ? 20 + Math.sqrt(rng.next()) * 45
+        : 55 + Math.sqrt(rng.next()) * 115;
+      clusterX = Math.cos(ang) * rad;
+      clusterZ = Math.sin(ang) * rad;
+      clusterLeft = 3 + Math.floor(rng.next() * 4);
+      clusterRadius = rng.range(0.8, 2.4);
+    }
+    clusterLeft--;
+    const ca = rng.next() * Math.PI * 2;
+    const cr = Math.sqrt(rng.next()) * clusterRadius;
+    const x = clusterX + Math.cos(ca) * cr;
+    const z = clusterZ + Math.sin(ca) * cr;
     if (Math.abs(x) > WORLD.size * 0.45 || Math.abs(z) > WORLD.size * 0.45) continue;
     // 水里不长草：池塘范围直接跳过
     const pond = BUILDINGS.pond;
@@ -100,7 +114,11 @@ export function buildGrassTufts(model, rng, count = 2600) {
     if (model.slopeAt(x, z) > 0.7) continue;
     p.set(x, y, z);
     q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
-    const sc = rng.range(0.6, 1.6);
+    // 混入一部分短草，让贴地草和长草有层次
+    const pick = rng.next();
+    const sc = pick < 0.3 ? rng.range(0.28, 0.62)
+             : pick < 0.82 ? rng.range(0.68, 1.25)
+             : rng.range(1.3, 1.8);
     s.set(sc, sc * rng.range(0.8, 1.5), sc);
     m.compose(p, q, s);
     mesh.setMatrixAt(i, m);
