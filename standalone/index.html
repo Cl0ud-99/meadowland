@@ -44817,8 +44817,12 @@ void main() {
 	  let guard = 0;
 	  while (stones.length < groupCount * 3 && guard < groupCount * 30) {
 	    guard++;
+	    // 主场景为主、外圈点缀：约 75% 落在农场近景，25% 铺到外围。
 	    const ang = rng.next() * Math.PI * 2;
-	    const rad = 15 + Math.sqrt(rng.next()) * 245;
+	    const nearMain = rng.next() < 0.75;
+	    const rad = nearMain
+	      ? 15 + Math.sqrt(rng.next()) * 95
+	      : 105 + Math.sqrt(rng.next()) * 140;
 	    const cx = Math.cos(ang) * rad;
 	    const cz = Math.sin(ang) * rad;
 	    if (inField(cx, cz) || inBuilding(cx, cz)) continue;
