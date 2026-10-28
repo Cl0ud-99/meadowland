@@ -52401,12 +52401,6 @@ void main() {
 	    new CylinderGeometry(0.022, 0.028, cordH, 5),
 	    new MeshBasicMaterial({ color: 0x2f241b })
 	  );
-	  const branch = new Mesh(
-	    new CylinderGeometry(0.075, 0.095, 1, 5),
-	    new MeshBasicMaterial({ color: 0x7a4a2c })
-	  );
-	  treeLamp.add(branch);
-
 	  const socket = new Mesh(
 	    new CylinderGeometry(0.10, 0.12, 0.16, 8),
 	    new MeshBasicMaterial({ color: 0x2a2018 })
@@ -52448,15 +52442,18 @@ void main() {
 	    const cordTop = gy + h * 0.32 + 0.75;
 	    const cordLen = Math.max(0.7, cordTop - bulbY - 0.1);
 	    cord.scale.y = cordLen / cordH;
-	    cord.position.set(x, cordTop - cordLen * 0.5, z);
-	    // 从树干中心伸到吊线顶部的小树枝
-	    const bx = x - cx, bz = z - cz;
-	    const blen = Math.max(0.35, Math.hypot(bx, bz));
-	    branch.position.set((x + cx) * 0.5, cordTop, (z + cz) * 0.5);
-	    branch.scale.set(1, blen, 1);
-	    branch.quaternion.setFromUnitVectors(
+	    // 纯吊灯：吊线上端埋在树冠内侧，下端连到灯泡，不做横向树枝。
+	    const anchorX = cx + rx * 0.30;
+	    const anchorZ = cz + rz * 0.36;
+	    const anchorY = gy + h * 0.52;
+	    const topX = x, topZ = z, topY = bulbY + 0.16;
+	    const dx = topX - anchorX, dz = topZ - anchorZ, dy = topY - anchorY;
+	    const wireLen = Math.max(0.2, Math.hypot(dx, dy, dz));
+	    cord.scale.y = wireLen / cordH;
+	    cord.position.set((anchorX + topX) * 0.5, (anchorY + topY) * 0.5, (anchorZ + topZ) * 0.5);
+	    cord.quaternion.setFromUnitVectors(
 	      new Vector3(0, 1, 0),
-	      new Vector3(bx, 0, bz).normalize()
+	      new Vector3(dx, dy, dz).normalize()
 	    );
 	    socket.position.set(x, bulbY + 0.13, z);
 	    treeBulb.position.set(x, bulbY, z);
