@@ -530,30 +530,11 @@ function buildField(model, rng, opts) {
     const mat = toonLambert({
       color: 0xffffff,
       flatShading: true,
-      transparent: true,
+      transparent: false,
       vertexColors: true,
       shared: false,
     });
-    mat.onBeforeCompile = (shader) => {
-      shader.uniforms.uFadeNear = { value: 200.0 };
-      shader.uniforms.uFadeFar = { value: 320.0 };
-      shader.vertexShader = 'varying vec3 vWorldPosCrop;\n' + shader.vertexShader.replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-         vWorldPosCrop = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;`
-      );
-      shader.fragmentShader =
-        'uniform float uFadeNear;\nuniform float uFadeFar;\nvarying vec3 vWorldPosCrop;\n' +
-        shader.fragmentShader.replace(
-          '#include <dithering_fragment>',
-          `#include <dithering_fragment>
-           float cd = distance(vWorldPosCrop, cameraPosition);
-           float fadeC = 1.0 - smoothstep(uFadeNear, uFadeFar, cd);
-           if (fadeC < 0.03) discard;
-           gl_FragColor.a *= fadeC;`
-        );
-    };
-    mat.customProgramCacheKey = () => 'crop-fade';
+
     cropMat = mat;
 
     const mesh = new THREE.InstancedMesh(geo, mat, rows * cols);
