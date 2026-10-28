@@ -3,29 +3,47 @@ import { WORLD } from '../config.js';
 import { BUILDINGS } from './layout.js';
 import { toonLambert } from '../render/toon.js';
 
-// 近景草丛：只在台地附近撒，用实例化的小三角片，保证治愈的"毛茸茸"边缘
-export function buildGrassTufts(model, rng, count = 2600) {
-  const blade = new THREE.ConeGeometry(0.16, 0.9, 3);
-  blade.translate(0, 0.45, 0);
-
-  const geo = new THREE.BufferGeometry();
-  const src = blade.toNonIndexed();
-  geo.setAttribute('position', src.attributes.position);
-  geo.setAttribute('normal', src.attributes.normal);
-
-  // 草簇根部压暗：从根部的 0.62 渐变到叶尖的 1.0
-  {
-    const pos = src.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      const t = Math.min(1, Math.max(0, pos.getY(i) / 0.9));
-      const f = 0.54 + 0.46 * t;
-      colors[i * 3] = f;
-      colors[i * 3 + 1] = f;
-      colors[i * 3 + 2] = f;
+// 一簇草 = 4 片交叉的短锥形草叶。保持单个 InstancedMesh，
+// 用较低的叶片高度和更宽的倾角做出毛毡小簇。
+function makeTuftGeometry() {
+  const pos = [], nrm = [], col = [];
+  const BLADES = 4;
+  for (let b = 0; b < BLADES; b++) {
+    const h = 0.32 + ((b * 29) % 5) / 5 * 0.16;   // 0.32~0.48
+    const radius = 0.07 + ((b * 17) % 4) / 4 * 0.035;
+    const g = new THREE.ConeGeometry(radius, h, 3, 1, true);
+    g.translate(0, h / 2, 0);
+    const yaw = (b / BLADES) * Math.PI * 2 + 0.35;
+    const tilt = 0.38 + ((b * 23) % 5) / 5 * 0.28;
+    const spread = 0.03 + ((b * 13) % 4) / 4 * 0.06;
+    const m = new THREE.Matrix4().makeRotationY(yaw);
+    m.multiply(new THREE.Matrix4().makeRotationZ(tilt));
+    g.applyMatrix4(m);
+    g.translate(Math.cos(yaw) * spread, 0, Math.sin(yaw) * spread);
+    const n = g.toNonIndexed();
+    const pa = n.attributes.position.array;
+    const na = n.attributes.normal.array;
+    for (let i = 0; i < n.attributes.position.count; i++) {
+      pos.push(pa[i * 3], pa[i * 3 + 1], pa[i * 3 + 2]);
+      nrm.push(na[i * 3], na[i * 3 + 1], na[i * 3 + 2]);
+      const t = Math.min(1, Math.max(0, pa[i * 3 + 1] / h));
+      const f = 0.58 + 0.42 * t;
+      col.push(f, f, f);
     }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    g.dispose();
+    n.dispose();
   }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+// 近景草丛：实例化的小草簇：只在台地附近撒，用实例化的小三角片，保证治愈的"毛茸茸"边缘
+export function buildGrassTufts(model, rng, count = 2600) {
+  const geo = makeTuftGeometry();
 
   // shared:false —— 下面覆盖 onBeforeCompile 挂风摆，且 main.js 每季改 color
   const mat = toonLambert({
@@ -116,9 +134,9 @@ export function buildGrassTufts(model, rng, count = 2600) {
     q.setFromAxisAngle(up, rng.next() * Math.PI * 2);
     // 混入一部分短草，让贴地草和长草有层次
     const pick = rng.next();
-    const sc = pick < 0.3 ? rng.range(0.28, 0.62)
-             : pick < 0.82 ? rng.range(0.68, 1.25)
-             : rng.range(1.3, 1.8);
+    const sc = pick < 0.3 ? rng.range(0.55, 0.8)
+             : pick < 0.82 ? rng.range(0.85, 1.15)
+             : rng.range(1.2, 1.5);
     s.set(sc, sc * rng.range(0.8, 1.5), sc);
     m.compose(p, q, s);
     mesh.setMatrixAt(i, m);

@@ -859,7 +859,7 @@ function applySeason(t) {
   if (app.grass && app.grass.material) {
     const gc = srgbOf(grassA);
     // 草簇和地面同步压暗；冬季雪量上来后逐步恢复白色
-    const grassK = 1 - 0.30 * (1 - snowAmount);
+    const grassK = 1 - 0.26 * (1 - snowAmount);
     app.grass.material.color.setRGB(
       gc.r * grassK, gc.g * grassK, gc.b * grassK, THREE.SRGBColorSpace
     );
