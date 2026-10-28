@@ -147,12 +147,26 @@ function makeGroundColor() {
   const tmp = new THREE.Color();
   const tmp2 = new THREE.Color();
   const fbmPatch = makeFbm(777, 3, 2.1, 0.5);
+  const fbmMid = makeFbm(4242, 3, 2.2, 0.5);
 
   // 返回 { r, g, b }，坐标是世界坐标
-  return function groundColorAt(x, z, y) {
+  return function groundColorAt(x, z, y, slope = 0, concave = 0) {
     const patch = fbmPatch(x * 0.012, z * 0.012) * 0.5 + 0.5;
     tmp.copy(cGrassA).lerp(cGrassB, clamp(patch * 1.3 - 0.15, 0, 1));
     tmp.lerp(cGrassC, clamp((1 - patch) * 0.75, 0, 1) * 0.55);
+
+    // 中频草色团块：约 0.06~0.1 的 fbm，制造 10~20 米尺度的草色起伏
+    const mid = fbmMid(x * 0.085, z * 0.085);
+    const midMul = 1 + mid * 0.08;
+    tmp.r = clamp(tmp.r * midMul, 0, 1);
+    tmp.g = clamp(tmp.g * midMul, 0, 1);
+    tmp.b = clamp(tmp.b * midMul, 0, 1);
+
+    // 坡度/低洼 baked 阴影：坡上略压暗，凹下去的草色更沉
+    const shade = clamp(1 - slope * 0.075 - concave * 0.20, 0.68, 1);
+    tmp.r = clamp(tmp.r * shade, 0, 1);
+    tmp.g = clamp(tmp.g * shade, 0, 1);
+    tmp.b = clamp(tmp.b * shade, 0, 1);
 
     const dirtMask = smoothstep(0.55, 0.78, fbmPatch(x * 0.03 + 40, z * 0.03 - 20) * 0.5 + 0.5);
     if (dirtMask > 0.01) {
@@ -231,8 +245,16 @@ export function buildTerrain(model, segments = WORLD.segments) {
     const y = model.heightAt(x, z);
     pos.setY(i, y);
 
-    // 颜色：三层草地 + 土壤斑块 + 高处岩石（和池塘岸坡共用同一套）
-    const c = groundColorAt(x, z, y);
+    // 颜色：三层草地 + 土壤斑块 + 中频团块 + 坡度/低洼阴影
+    // 用四邻域采样估局部坡度与凹陷程度，烘进顶点色里。
+    const d = 3.2;
+    const hL = model.heightAt(x - d, z);
+    const hR = model.heightAt(x + d, z);
+    const hD = model.heightAt(x, z - d);
+    const hU = model.heightAt(x, z + d);
+    const slope = Math.hypot(hR - hL, hU - hD) / (2 * d);
+    const concave = clamp(((hL + hR + hD + hU) / 4 - y) / 2.5, 0, 1);
+    const c = groundColorAt(x, z, y, slope, concave);
     colors[i * 3] = c.r;
     colors[i * 3 + 1] = c.g;
     colors[i * 3 + 2] = c.b;
