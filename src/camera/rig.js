@@ -126,18 +126,28 @@ export function createCameraRig(renderer, model) {
     onDone: null,
   };
 
+  function pickIntroSpot() {
+    if (intro.spot) return intro.spot;
+    const spots = CAMERA.introSpots;
+    intro.spot = (Array.isArray(spots) && spots.length)
+      ? spots[Math.floor(Math.random() * spots.length)]
+      : Object.assign({ look: CAMERA.introLook }, CAMERA.introFrom);
+    return intro.spot;
+  }
+
   function computeIntroPoints() {
-    const fx = CAMERA.introFrom.x;
-    const fz = CAMERA.introFrom.z;
+    const spot = pickIntroSpot();
+    const fx = spot.x;
+    const fz = spot.z;
     const groundY = model.heightAt(fx, fz);
     // 开屏机位可以在地形边界之外；此时 y 作为绝对高度使用。
-    const configuredY = Number(CAMERA.introFrom.y);
+    const configuredY = Number(spot.y);
     intro.from.set(fx, Number.isFinite(configuredY) && configuredY > 0
       ? configuredY
       : Math.max(groundY + 8, 10), fz);
 
     intro.to.set(CAMERA.introTo.x, CAMERA.introTo.y, CAMERA.introTo.z);
-    const look = CAMERA.introLook || { x: 0, y: 12, z: 0 };
+    const look = spot.look || CAMERA.introLook || { x: 0, y: 12, z: 0 };
     intro.fromTarget.set(look.x, look.y, look.z);
     intro.toTarget.set(CAMERA.target.x, CAMERA.target.y, CAMERA.target.z);
   }
