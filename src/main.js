@@ -20,7 +20,7 @@ import { buildForest, buildScatterTrees } from './world/forest.js';
 import { buildGrassTufts } from './world/grass.js';
 import { buildFarm } from './world/farm.js';
 import { buildFields } from './world/fields.js';
-import { BUILDINGS, TRUCK, PASTURE, TREE_SPECS, BIG_TREE, WOODPILE } from './world/layout.js';
+import { BUILDINGS, TRUCK, PASTURE, TREE_SPECS, BIG_TREE, WOODPILE, WELL } from './world/layout.js';
 import { buildTruck, TRUCK_STYLES } from './world/truck.js';
 import { buildNightLights } from './world/nightlights.js';
 import { buildRoad, buildCar } from './world/road.js';
@@ -190,7 +190,7 @@ function boot() {
   world.add(woodpile);
 
   // 水井：木材堆另一边
-  const well = buildWell(terrainModel, rng, { x: -17.5, z: -19.5 });
+  const well = buildWell(terrainModel, rng, { x: WELL.x, z: WELL.z });
   world.add(well);
 
   // 另外 3 棵不同品种的树（有大有小，丰富场景）

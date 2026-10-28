@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { box, tint, meshFrom } from '../util/geo.js';
 import { makeQuadruped, makeSheepRig, makeHuman, makeSittingHuman, randomLook } from './character.js';
-import { PASTURE, COOP, BUILDINGS, HAY_BALES, PEOPLE_PATHS, FIELD_RECTS, HORSE_PASTURE, TREE_SPECS, BIG_TREE } from './layout.js';
+import { PASTURE, COOP, BUILDINGS, HAY_BALES, PEOPLE_PATHS, FIELD_RECTS, HORSE_PASTURE, TREE_SPECS, BIG_TREE, WELL } from './layout.js';
 import { SCATTER_SPOTS } from './forest.js';
 import { pointInPolygon, circleInsidePolygon, distToPolygonEdge } from '../util/poly.js';
 
@@ -803,6 +803,8 @@ export function buildPeople(model, rng) {
     for (const [hx, hz, hr] of HAY_BALES) {
       if (Math.hypot(x - hx, z - hz) < hr + pad) return false;
     }
+    // 水井体积碰撞：不能走进井口
+    if (Math.hypot(x - WELL.x, z - WELL.z) < WELL.r + pad) return false;
     // ★ 树的体积碰撞：不能走进树干
     for (const tr of TREE_OBSTACLES) {
       if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
@@ -845,6 +847,8 @@ export function buildPeople(model, rng) {
     for (const [hx, hz, hr] of HAY_BALES) {
       if (Math.hypot(x - hx, z - hz) < hr + pad) return false;
     }
+    // 水井体积碰撞：不能走进井口
+    if (Math.hypot(x - WELL.x, z - WELL.z) < WELL.r + pad) return false;
     // ★ 树的体积碰撞：不能穿过树干
     for (const tr of TREE_OBSTACLES) {
       if (Math.hypot(x - tr.x, z - tr.z) < tr.r + pad) return false;
