@@ -130,7 +130,11 @@ export function createCameraRig(renderer, model) {
     const fx = CAMERA.introFrom.x;
     const fz = CAMERA.introFrom.z;
     const groundY = model.heightAt(fx, fz);
-    intro.from.set(fx, Math.max(groundY + 8, 10), fz);
+    // 开屏机位可以在地形边界之外；此时 y 作为绝对高度使用。
+    const configuredY = Number(CAMERA.introFrom.y);
+    intro.from.set(fx, Number.isFinite(configuredY) && configuredY > 0
+      ? configuredY
+      : Math.max(groundY + 8, 10), fz);
 
     intro.to.set(CAMERA.introTo.x, CAMERA.introTo.y, CAMERA.introTo.z);
     const look = CAMERA.introLook || { x: 0, y: 12, z: 0 };
@@ -144,6 +148,9 @@ export function createCameraRig(renderer, model) {
     computeIntroPoints();
     camera.position.copy(intro.from);
     controls.target.copy(intro.fromTarget);
+    // 开屏机位在世界边界之外，必须先放开 OrbitControls 的距离上限，
+    // 否则下一次 controls.update() 会把相机硬拉回 maxDistance=240。
+    controls.maxDistance = Math.max(CAMERA.maxDistance, camera.position.distanceTo(controls.target) + 2);
     camera.lookAt(intro.fromTarget);
   }
 
@@ -191,6 +198,8 @@ export function createCameraRig(renderer, model) {
       intro.active = false;
 
       // 交接帧：先关阻尼同步一次 OrbitControls，再恢复阻尼
+      // 同时把开屏时临时放开的距离上限收回正常值。
+      controls.maxDistance = CAMERA.maxDistance;
       const prevDamping = controls.enableDamping;
       controls.enableDamping = false;
       controls.enabled = true;
