@@ -232,6 +232,7 @@ export function buildGrassTufts(model, rng, count = 2600) {
   mesh.count = i;
   mesh.instanceMatrix.needsUpdate = true;
 
+  const flowerMats = [];
   // 五种小花：雏菊、金凤、虞美人、矢车菊、粉花；总数量比上一版少 30%。
   // 花茎统一高于草簇，主要长在绿色草皮上。
   {
@@ -253,9 +254,29 @@ export function buildGrassTufts(model, rng, count = 2600) {
       const meshCount = ti === flowerTypes.length - 1
         ? Math.max(1, total - flowerTypes.slice(0, ti).reduce((a, t) => a + Math.round(total * t.frac), 0))
         : Math.round(total * type.frac);
+      const fMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false });
+      fMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = { value: 0 };
+        shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+          #ifdef USE_INSTANCING
+            vec3 fo = instanceMatrix[3].xyz;
+            float fh = fract(sin(dot(fo.xz, vec2(127.1, 311.7))) * 43758.5453);
+            float fspd = 0.9 + fh * 0.9;
+            float fph = fh * 6.2831;
+            float sway = transformed.y * 0.10;
+            transformed.x += sin(uTime * fspd + fph + fo.x * 0.2) * sway;
+            transformed.z += cos(uTime * fspd * 0.87 + fph * 1.3 + fo.z * 0.2) * sway * 0.7;
+          #endif`
+        );
+        fMat.userData.shader = shader;
+      };
+      fMat.customProgramCacheKey = () => 'flower-wind';
+      flowerMats.push(fMat);
       const flowers = new THREE.InstancedMesh(
         makeFlowerGeometry(type.petals, type.petal, type.center, type.outer, type.half),
-        new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false }),
+        fMat,
         meshCount
       );
       flowers.name = 'flowers-' + ti;
