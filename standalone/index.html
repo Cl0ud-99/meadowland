@@ -57715,8 +57715,8 @@ void main() {
 	  // 每次迭代的采样半径（半分辨率下的像素）。
 	  // 半径必须足够大才能把细草、树叶这类高频细节彻底抹平，
 	  // 否则会留下"锐利细线"的颗粒感。实测 26 能覆盖 1~2 像素宽的草。
-	  // 1/3 分辨率下，半径 18 等效于全分辨率 54px 的视觉模糊
-	  const blurRadiusPx = q.tiltBlurTaps >= 13 ? 18 : (q.tiltBlurTaps >= 8 ? 14 : 10);
+	  // 1/2 分辨率下，半径 27 等效于全分辨率 54px 的视觉模糊
+	  const blurRadiusPx = q.tiltBlurTaps >= 13 ? 27 : (q.tiltBlurTaps >= 8 ? 21 : 15);
 
 	  const renderPass = new RenderPass(scene, camera);
 	  composer.addPass(renderPass);
@@ -57739,10 +57739,10 @@ void main() {
 	  // ---------- 模糊用的 render target ----------
 	  const W = Math.max(1, Math.floor(size.x * dpr));
 	  const H = Math.max(1, Math.floor(size.y * dpr));
-	  // 1/3 分辨率：降采样比 1/2 更激进，天然把细草、树枝这类
-	  // 1~2 像素的高频细节彻底抹掉。这是"纯高斯感"的关键。
-	  const hw = Math.max(1, Math.floor(W / 3));
-	  const hh = Math.max(1, Math.floor(H / 3));
+	  // 1/2 分辨率：像素块从 3×3 降到 2×2，模糊边缘更细腻。
+	  // 采样半径同步调大，保持和原来 1/3 分辨率接近的实际模糊范围。
+	  const hw = Math.max(1, Math.floor(W / 2));
+	  const hh = Math.max(1, Math.floor(H / 2));
 
 	  const rtSharp = makeRT(W, H);      // 清晰图（全分辨率）
 	  const rtA = makeRT(hw, hh);        // 模糊 ping
